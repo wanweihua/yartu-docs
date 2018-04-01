@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Presentation Editor
  *
  *  Created by Julia Radzhabova on 12/19/16
- *  Copyright (c) 2016 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -81,6 +81,7 @@ define([
                 me.api.asc_registerCallback('asc_onShowPopMenu',            _.bind(me.onApiShowPopMenu, me));
                 me.api.asc_registerCallback('asc_onHidePopMenu',            _.bind(me.onApiHidePopMenu, me));
                 me.api.asc_registerCallback('asc_onDocumentContentReady',   _.bind(me.onApiDocumentContentReady, me));
+                Common.NotificationCenter.on('api:disconnect',              _.bind(me.onCoAuthoringDisconnect, me));
             },
 
             setMode: function (mode) {
@@ -253,7 +254,7 @@ define([
                         items[indexAfter] = items.splice(indexBefore, 1, items[indexAfter])[0];
                     };
 
-                    if (!objectLocked && _isEdit) {
+                    if (!objectLocked && _isEdit && !me.isDisconnected) {
                         if (canCopy && isObject) {
                             menuItems.push({
                                 caption: me.menuCut,
@@ -307,6 +308,10 @@ define([
                 }
 
                 return menuItems;
+            },
+
+            onCoAuthoringDisconnect: function() {
+                this.isDisconnected = true;
             },
 
             menuCut: 'Cut',

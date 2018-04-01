@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,6 @@
 
 #include "math_token_elements.h"
 #include "style_text_properties.h"
-
-#include <boost/foreach.hpp>
 
 #include <cpdoccore/odf/odf_document.h>
 
@@ -285,7 +283,12 @@ void math_mtext::add_text(const std::wstring & Text)
 
 void math_mtext::oox_convert(oox::math_context & Context)
 {
-
+	if (text_)
+	{
+		Context.output_stream() << L"<m:r><m:rPr><m:nor/></m:rPr><m:t>";
+			Context.output_stream() << XmlUtils::EncodeXmlString(*text_);
+		Context.output_stream() << L"</m:t></m:r>";
+	}
 }
 //----------------------------------------------------------------------------------------------------
 const wchar_t * math_mglyph::ns = L"math";

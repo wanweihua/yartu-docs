@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,7 +35,7 @@
  *  FormatSettingsDialog.js
  *
  *  Created by Julia Radzhabova on 13.01.2017
- *  Copyright (c) 2017 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -100,7 +100,7 @@ define([
                         '<tr>',
                             '<td class="padding-large" style="white-space: nowrap;">',
                                 '<label style="vertical-align: middle; margin-right: 4px;">' + me.txtSample + '</label>',
-                                '<label id="format-settings-label-example" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis;>100</label>',
+                                '<label id="format-settings-label-example" style="vertical-align: middle; max-width: 220px; overflow: hidden; text-overflow: ellipsis;">100</label>',
                             '</td>',
                         '</tr>',
                         '<tr>',
@@ -466,7 +466,7 @@ define([
 
             } else {
                 var info = new Asc.asc_CFormatCellsInfo();
-                info.asc_setType(Asc.c_oAscNumFormatType.None);
+                info.asc_setType(Asc.c_oAscNumFormatType.Custom);
                 info.asc_setSymbol(valSymbol);
 
                 var formatsarr = this.api.asc_getFormatCells(info),

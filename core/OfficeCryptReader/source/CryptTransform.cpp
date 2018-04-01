@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -354,13 +354,17 @@ bool EncryptCipher(_buf & key, _buf & iv, _buf & data_inp, _buf & data_out, CRYP
 		switch(algorithm)
 		{
 		case CRYPT_METHOD::AES_ECB:
-			 modeEncryption = new ECB_Mode_ExternalCipher::Encryption(aesEncryption, iv.ptr ); 
+			 modeEncryption = new CipherModeFinalTemplate_ExternalCipher<ECB_OneWay>(aesEncryption, iv.ptr ); 
 			 break;
 		case CRYPT_METHOD::AES_CBC:
-			 modeEncryption = new CBC_Mode_ExternalCipher::Encryption(aesEncryption, iv.ptr ); 
+			 modeEncryption = new CipherModeFinalTemplate_ExternalCipher<CBC_Encryption>(aesEncryption, iv.ptr ); 
 			 break;
-		case CRYPT_METHOD::AES_CFB:
-			 modeEncryption = new CFB_Mode_ExternalCipher::Encryption(aesEncryption, iv.ptr ); 
+//		case CRYPT_METHOD::AES_CFB:
+//#if defined(_IOS)
+//            return false;
+//#else
+//			modeEncryption = new CFB_Mode_ExternalCipher::Encryption(aesEncryption, iv.ptr );
+//#endif
 			break;
 		}
 	
@@ -407,13 +411,17 @@ bool DecryptCipher(_buf & key, _buf & iv, _buf & data_inp, _buf & data_out,  CRY
 		switch(algorithm)
 		{
 		case CRYPT_METHOD::AES_ECB:
-			 modeDecryption = new ECB_Mode_ExternalCipher::Decryption(aesDecryption, iv.ptr ); 
+			 modeDecryption = new CipherModeFinalTemplate_ExternalCipher<ECB_OneWay>(aesDecryption, iv.ptr ); 
 			 break;
 		case CRYPT_METHOD::AES_CBC:
-			 modeDecryption = new CBC_Mode_ExternalCipher::Decryption(aesDecryption, iv.ptr ); 
+			 modeDecryption = new CipherModeFinalTemplate_ExternalCipher<CBC_Decryption>(aesDecryption, iv.ptr );
 			 break;
-		case CRYPT_METHOD::AES_CFB:
-			 modeDecryption = new CFB_Mode_ExternalCipher::Decryption(aesDecryption, iv.ptr ); 
+//		case CRYPT_METHOD::AES_CFB:
+//#if defined(_IOS)
+//             return false;
+//#else
+//			 modeDecryption = new CFB_Mode_ExternalCipher::Decryption(aesDecryption, iv.ptr );
+//#endif
 		}
 	
 		if (!modeDecryption) return false;
@@ -813,7 +821,7 @@ void ECMAEncryptor::UpdateDataIntegrity(unsigned char* data, int  size)
 	cryptData.encryptedHmacKey		= std::string((char*)pEncHmacKey.ptr, pEncHmacKey.size);
 	cryptData.encryptedHmacValue	= std::string((char*)pEncHmacValue.ptr, pEncHmacValue.size);
 }
-
+#define PADDING_SIZE 16 // 8
 int ECMAEncryptor::Encrypt(unsigned char* data_inp_ptr, int size, unsigned char*& data_out_ptr)
 {
 	data_out_ptr = NULL;
@@ -823,10 +831,10 @@ int ECMAEncryptor::Encrypt(unsigned char* data_inp_ptr, int size, unsigned char*
 	_buf empty		(NULL, 0, false);
 
 	int size_out = size;
-	if (size_out % 8 != 0) 
-		size_out = (size_out / 8 + 1) * 8;
+	if (size_out % PADDING_SIZE != 0) 
+		size_out = (size_out / PADDING_SIZE + 1) * PADDING_SIZE;
 	
-	data_out_ptr = new unsigned char[size_out + 8]; // real size + padding + size for realsize
+	data_out_ptr = new unsigned char[size_out +	PADDING_SIZE]; // real size + padding + size for realsize
 	
 	_UINT64 nSize = size;
 	memcpy(data_out_ptr, (unsigned char*)&nSize, 8);
@@ -878,8 +886,8 @@ int ECMAEncryptor::Encrypt(unsigned char* data_inp_ptr, int size, unsigned char*
 
 			EncryptCipher(pDecryptedKey,  iv, pInp, pOut, cryptData.cipherAlgorithm);
 			
-			if (sz % 8 != 0) 
-				sz = (sz / 8 + 1) * 8;
+			if (sz % PADDING_SIZE != 0) 
+				sz = (sz / PADDING_SIZE + 1) * PADDING_SIZE;
 			
 			memcpy(data_out, pOut.ptr, sz);
 

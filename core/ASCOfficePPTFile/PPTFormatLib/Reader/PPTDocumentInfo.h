@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -41,8 +41,9 @@ public:
     std::wstring					m_strTmpDirectory;
 	std::map<int, std::wstring>		m_mapStoreImageFile;
     std::wstring					m_strPassword;
+	bool							m_bMacros;
 
-	CPPTDocumentInfo() : m_oCurrentUser(), m_arUsers() 
+	CPPTDocumentInfo() : m_oCurrentUser(), m_bMacros(true)
 	{
 	}
 
@@ -88,17 +89,19 @@ public:
 			pInfo->m_strTmpDirectory	= m_strTmpDirectory;
 			pInfo->m_bEncrypt			= m_oCurrentUser.m_bIsEncrypt;
 			pInfo->m_strPassword		= m_strPassword;
+			pInfo->m_bMacros			= m_bMacros;
            
 			bool bResult = pInfo->ReadFromStream(&oUserAtom, pStream);
 
-			offsetToEdit = pInfo->m_oUser.m_nOffsetLastEdit;
+			m_bMacros					= pInfo->m_bMacros;
+			offsetToEdit				= pInfo->m_oUser.m_nOffsetLastEdit;
 			m_oCurrentUser.m_bIsEncrypt = pInfo->m_bEncrypt;
 			
 			if (bResult == false)
 			{
 				delete pInfo;
 
-				if (pInfo->m_bEncrypt)
+				if (m_oCurrentUser.m_bIsEncrypt)
 					return false;
 				else
 					continue;

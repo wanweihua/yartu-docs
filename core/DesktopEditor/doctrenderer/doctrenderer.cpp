@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -426,15 +426,22 @@ namespace NSDoctRenderer
                         NSFile::CFileBinary oFile;
                         if (true == oFile.CreateFileW(pParams->m_strDstFilePath))
                         {
-                            oFile.WriteFile((BYTE*)pNative->m_sHeader.c_str(), (DWORD)pNative->m_sHeader.length());
+                            if (pNative->m_sHeader.find(";v10;") == std::string::npos)
+                            {
+                                oFile.WriteFile((BYTE*)pNative->m_sHeader.c_str(), (DWORD)pNative->m_sHeader.length());
 
-                            char* pDst64 = NULL;
-                            int nDstLen = 0;
-                            NSFile::CBase64Converter::Encode(pData, pNative->m_nSaveBinaryLen, pDst64, nDstLen, NSBase64::B64_BASE64_FLAG_NOCRLF);
+                                char* pDst64 = NULL;
+                                int nDstLen = 0;
+                                NSFile::CBase64Converter::Encode(pData, pNative->m_nSaveBinaryLen, pDst64, nDstLen, NSBase64::B64_BASE64_FLAG_NOCRLF);
 
-                            oFile.WriteFile((BYTE*)pDst64, (DWORD)nDstLen);
+                                oFile.WriteFile((BYTE*)pDst64, (DWORD)nDstLen);
 
-                            RELEASEARRAYOBJECTS(pDst64);
+                                RELEASEARRAYOBJECTS(pDst64);
+                            }
+                            else
+                            {
+                                oFile.WriteFile(pData, (DWORD)pNative->m_nSaveBinaryLen);
+                            }
                             oFile.CloseFile();
                         }
                     }
@@ -592,6 +599,8 @@ namespace NSDoctRenderer
 
         bool ExecuteScript(const std::string& strScript, const std::wstring& sCachePath, std::wstring& strError, std::wstring& strReturnParams)
         {
+            LOGGER_SPEED_START
+
             bool bIsBreak = false;
             v8::Isolate* isolate = CV8Worker::getInitializer()->CreateNew();
             if (true)
@@ -612,6 +621,8 @@ namespace NSDoctRenderer
                 v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, strScript.c_str());
                 v8::Local<v8::Script> script;
 
+                LOGGER_SPEED_LAP("pre_compile")
+
                 CCacheDataScript oCachedScript(sCachePath);
                 if (sCachePath.empty())
                     script = v8::Script::Compile(source);
@@ -619,6 +630,8 @@ namespace NSDoctRenderer
                 {
                     script = oCachedScript.Compile(context, source);
                 }
+
+                LOGGER_SPEED_LAP("compile")
 
                 // COMPILE
                 if (try_catch.HasCaught())
@@ -650,6 +663,8 @@ namespace NSDoctRenderer
                         bIsBreak = true;
                     }
                 }
+
+                LOGGER_SPEED_LAP("run")
 
                 if (!bIsBreak && m_oParams.m_bIsRetina)
                 {
@@ -723,11 +738,22 @@ namespace NSDoctRenderer
                         CChangesWorker oWorkerLoader;
                         int nVersion = oWorkerLoader.OpenNative(pNative->GetFilePath());
 
-                        v8::Handle<v8::Value> args_open[2];
+                        v8::Handle<v8::Value> args_open[3];
                         args_open[0] = oWorkerLoader.GetDataFull();
                         args_open[1] = v8::Integer::New(isolate, nVersion);
 
-                        func_open->Call(global_js, 2, args_open);
+                        std::wstring sXlsx = NSCommon::GetDirectoryName(pNative->GetFilePath()) + L"/Editor.xlsx";
+                        if (NSFile::CFileBinary::Exists(sXlsx))
+                        {
+                            std::string sXlsxA = U_TO_UTF8(sXlsx);
+                            args_open[2] = v8::String::NewFromUtf8(isolate, (char*)(sXlsxA.c_str()));
+                        }
+                        else
+                        {
+                            args_open[2] = v8::Undefined(isolate);
+                        }
+
+                        func_open->Call(global_js, 3, args_open);
 
                         if (try_catch.HasCaught())
                         {
@@ -742,6 +768,8 @@ namespace NSDoctRenderer
                         }
                     }
                 }
+
+                LOGGER_SPEED_LAP("open")
 
                 // CHANGES
                 if (!bIsBreak)
@@ -804,6 +832,8 @@ namespace NSDoctRenderer
                         }
                     }
                 }
+
+                LOGGER_SPEED_LAP("changes")
 
                 bool bIsMailMerge = false;
                 if (!m_oParams.m_strMailMergeDatabasePath.empty() &&
@@ -979,6 +1009,8 @@ namespace NSDoctRenderer
                 {
                     bIsBreak = Doct_renderer_SaveFile(&m_oParams, pNative, isolate, global_js, args, try_catch, strError);
                 }
+
+                LOGGER_SPEED_LAP("save")
             }
 
             isolate->Dispose();
@@ -1162,5 +1194,5 @@ bool Doct_renderer_SaveFile_ForBuilder(int nFormat, const std::wstring& strDstFi
     oParams.m_strDstFilePath = strDstFile;
 
     return NSDoctRenderer::CDoctRenderer_Private::Doct_renderer_SaveFile(&oParams,
-            pNative, isolate, global_js, args, try_catch, strError, true);
+            pNative, isolate, global_js, args, try_catch, strError, false);
 }

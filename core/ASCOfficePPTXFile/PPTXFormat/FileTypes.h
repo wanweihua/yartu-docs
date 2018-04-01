@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -43,6 +43,9 @@ namespace Presentation
 	{
 		const FileType Presentation		(L"ppt", L"presentation.xml",
 												_T("application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"),
+												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
+		const FileType PresentationMacro(L"ppt", L"presentation.xml",
+												_T("application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml"),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
 		const FileType Slide			(L"slides", L"slide.xml",
 												_T("application/vnd.openxmlformats-officedocument.presentationml.slide+xml"),

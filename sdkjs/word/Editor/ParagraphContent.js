@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -106,6 +106,9 @@ var para_Separator                 = 0x0041; // Разделить, которы
 var para_ContinuationSeparator     = 0x0042; // Большой разделитель, который используется для сносок
 var para_PageCount                 = 0x0043; // Количество страниц
 var para_InlineLevelSdt            = 0x0044; // Внутристроковый контейнер
+var para_FieldChar                 = 0x0045;
+var para_InstrText                 = 0x0046;
+var para_Bookmark                  = 0x0047;
 
 var break_Line   = 0x01;
 var break_Page   = 0x02;
@@ -149,6 +152,19 @@ g_aNumber[0x0037] = 1;
 g_aNumber[0x0038] = 1;
 g_aNumber[0x0039] = 1;
 
+// Suitable Run content for the paragraph simple changes
+var g_oSRCFPSC             = [];
+g_oSRCFPSC[para_Text]      = 1;
+g_oSRCFPSC[para_Space]     = 1;
+g_oSRCFPSC[para_End]       = 1;
+g_oSRCFPSC[para_Tab]       = 1;
+g_oSRCFPSC[para_Sym]       = 1;
+g_oSRCFPSC[para_PageCount] = 1;
+g_oSRCFPSC[para_FieldChar] = 1;
+g_oSRCFPSC[para_InstrText] = 1;
+g_oSRCFPSC[para_Bookmark]  = 1;
+
+
 
 var g_aSpecialSymbols     = [];
 g_aSpecialSymbols[0x00AE] = 1;
@@ -178,7 +194,7 @@ function CRunElementBase()
 CRunElementBase.prototype.Type             = para_RunBase;
 CRunElementBase.prototype.Get_Type         = function()
 {
-	return para_RunBase;
+	return this.Type;
 };
 CRunElementBase.prototype.Draw             = function(X, Y, Context, PDSE)
 {
@@ -225,228 +241,220 @@ CRunElementBase.prototype.GetType = function()
 	return this.Type;
 };
 
-// Класс ParaText
-function ParaText(value)
+/**
+ * Класс представляющий текстовый символ
+ * @param {Number} nCharCode - Юникодное значение символа
+ * @constructor
+ */
+function ParaText(nCharCode)
 {
-    this.Value        = (undefined !== value ? value.charCodeAt(0) : 0x00);    
-    this.Width        = 0x00000000 | 0;
-    this.WidthVisible = 0x00000000 | 0;
-    this.Flags        = 0x00000000 | 0;
-    
-    this.Set_SpaceAfter(45 === this.Value); // charCode символа "-"
+	this.Value        = undefined !== nCharCode ? nCharCode : 0x00;
+	this.Width        = 0x00000000 | 0;
+	this.WidthVisible = 0x00000000 | 0;
+	this.Flags        = 0x00000000 | 0;
+
+	this.Set_SpaceAfter(this.private_IsSpaceAfter());
+
+	if (AscFonts.IsCheckSymbols)
+		AscFonts.FontPickerByCharacter.getFontBySymbol(this.Value);
 }
 
-ParaText.prototype =
+ParaText.prototype.Type = para_Text;
+ParaText.prototype.Get_Type = function()
 {
-    Type : para_Text,
+	return para_Text;
+};
+ParaText.prototype.Set_CharCode = function(CharCode)
+{
+	this.Value = CharCode;
+	this.Set_SpaceAfter(this.private_IsSpaceAfter());
 
-    Get_Type : function()
-    {
-        return para_Text;
-    },
+	if (AscFonts.IsCheckSymbols)
+		AscFonts.FontPickerByCharacter.getFontBySymbol(this.Value);
+};
+ParaText.prototype.Draw = function(X, Y, Context)
+{
+	var CharCode = this.Value;
 
-    Set_CharCode : function(CharCode)
-    {
-        this.Value = CharCode;
-        this.Set_SpaceAfter(45 === this.Value); // charCode символа "-"
-    },
-    
-    Draw : function(X, Y, Context)
-    {
-        var CharCode = this.Value;
+	var FontKoef = 1;
+	if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT && this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS)
+		FontKoef = smallcaps_and_script_koef;
+	else if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT)
+		FontKoef = vertalign_Koef_Size;
+	else if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS)
+		FontKoef = smallcaps_Koef;
 
-        var FontKoef = 1;
-        if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT && this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS )
-            FontKoef = smallcaps_and_script_koef;
-        else if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT )
-            FontKoef = vertalign_Koef_Size;
-        else if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS )
-            FontKoef = smallcaps_Koef;
+	Context.SetFontSlot(((this.Flags >> 8) & 0xFF), FontKoef);
 
-        Context.SetFontSlot(((this.Flags >> 8) & 0xFF), FontKoef);
-        
-        var ResultCharCode = (this.Flags & PARATEXT_FLAGS_CAPITALS ? (String.fromCharCode(CharCode).toUpperCase()).charCodeAt(0) : CharCode);
+	var ResultCharCode = (this.Flags & PARATEXT_FLAGS_CAPITALS ? (String.fromCharCode(CharCode).toUpperCase()).charCodeAt(0) : CharCode);
 
-        if ( true === this.Is_NBSP() && editor && editor.ShowParaMarks )
-        {
-            Context.FillText(X, Y, String.fromCharCode(0x00B0));
-        }
-        else
-            Context.FillTextCode(X, Y, ResultCharCode);
-    },
+	if (true !== this.Is_NBSP())
+		Context.FillTextCode(X, Y, ResultCharCode);
+	else if (editor && editor.ShowParaMarks)
+		Context.FillText(X, Y, String.fromCharCode(0x00B0));
+};
+ParaText.prototype.Measure = function(Context, TextPr)
+{
+	var bCapitals      = false;
+	var CharCode       = this.Value;
+	var ResultCharCode = CharCode;
 
-    Measure : function(Context, TextPr)
-    {
-        var bCapitals = false;
-        var CharCode = this.Value;
-        var ResultCharCode = CharCode;
-        
-        if (true === TextPr.Caps || true === TextPr.SmallCaps)
-        {
-            this.Flags |= PARATEXT_FLAGS_CAPITALS;
-            ResultCharCode = (String.fromCharCode(CharCode).toUpperCase()).charCodeAt(0);
-            bCapitals = (ResultCharCode === CharCode ? true : false);
-        }
-        else
-        {
-            this.Flags &= PARATEXT_FLAGS_NON_CAPITALS;
-            bCapitals = false;
-        }
+	if (true === TextPr.Caps || true === TextPr.SmallCaps)
+	{
+		this.Flags |= PARATEXT_FLAGS_CAPITALS;
+		ResultCharCode = (String.fromCharCode(CharCode).toUpperCase()).charCodeAt(0);
+		bCapitals      = (ResultCharCode === CharCode ? true : false);
+	}
+	else
+	{
+		this.Flags &= PARATEXT_FLAGS_NON_CAPITALS;
+		bCapitals = false;
+	}
 
-        if (TextPr.VertAlign !== AscCommon.vertalign_Baseline)
-            this.Flags |= PARATEXT_FLAGS_FONTKOEF_SCRIPT;
-        else
-            this.Flags &= PARATEXT_FLAGS_NON_FONTKOEF_SCRIPT;
+	if (TextPr.VertAlign !== AscCommon.vertalign_Baseline)
+		this.Flags |= PARATEXT_FLAGS_FONTKOEF_SCRIPT;
+	else
+		this.Flags &= PARATEXT_FLAGS_NON_FONTKOEF_SCRIPT;
 
-        if (true != TextPr.Caps && true === TextPr.SmallCaps && false === bCapitals)
-            this.Flags |= PARATEXT_FLAGS_FONTKOEF_SMALLCAPS;
-        else
-            this.Flags &= PARATEXT_FLAGS_NON_FONTKOEF_SMALLCAPS;
+	if (true != TextPr.Caps && true === TextPr.SmallCaps && false === bCapitals)
+		this.Flags |= PARATEXT_FLAGS_FONTKOEF_SMALLCAPS;
+	else
+		this.Flags &= PARATEXT_FLAGS_NON_FONTKOEF_SMALLCAPS;
 
-        var Hint = TextPr.RFonts.Hint;
-        var bCS  = TextPr.CS;
-        var bRTL = TextPr.RTL;
-        var lcid = TextPr.Lang.EastAsia;
+	var Hint = TextPr.RFonts.Hint;
+	var bCS  = TextPr.CS;
+	var bRTL = TextPr.RTL;
+	var lcid = TextPr.Lang.EastAsia;
 
-        var FontSlot = g_font_detector.Get_FontClass(ResultCharCode, Hint, lcid, bCS, bRTL);
+	var FontSlot = g_font_detector.Get_FontClass(ResultCharCode, Hint, lcid, bCS, bRTL);
 
-        var Flags_0Byte = (this.Flags >>  0) & 0xFF;
-        var Flags_2Byte = (this.Flags >> 16) & 0xFF;
+	var Flags_0Byte = (this.Flags >> 0) & 0xFF;
+	var Flags_2Byte = (this.Flags >> 16) & 0xFF;
 
-        this.Flags = Flags_0Byte | ((FontSlot & 0xFF) << 8) | (Flags_2Byte << 16);
+	this.Flags = Flags_0Byte | ((FontSlot & 0xFF) << 8) | (Flags_2Byte << 16);
 
-        var FontKoef = 1;
-        if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT && this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS )
-            FontKoef = smallcaps_and_script_koef;
-        else if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT )
-            FontKoef = vertalign_Koef_Size;
-        else if ( this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS )
-            FontKoef = smallcaps_Koef;
+	var FontKoef = 1;
+	if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT && this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS)
+		FontKoef = smallcaps_and_script_koef;
+	else if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SCRIPT)
+		FontKoef = vertalign_Koef_Size;
+	else if (this.Flags & PARATEXT_FLAGS_FONTKOEF_SMALLCAPS)
+		FontKoef = smallcaps_Koef;
 
-        // Разрешенные размеры шрифта только либо целое, либо целое/2. Даже после применения FontKoef, поэтому
-        // мы должны подкрутить коэффициент так, чтобы после домножения на него, у на получался разрешенный размер.
-        var FontSize = TextPr.FontSize;
-        if (1 !== FontKoef)
-            FontKoef = (((FontSize * FontKoef * 2 + 0.5) | 0) / 2) / FontSize;
+	// Разрешенные размеры шрифта только либо целое, либо целое/2. Даже после применения FontKoef, поэтому
+	// мы должны подкрутить коэффициент так, чтобы после домножения на него, у на получался разрешенный размер.
+	var FontSize = TextPr.FontSize;
+	if (1 !== FontKoef)
+		FontKoef = (((FontSize * FontKoef * 2 + 0.5) | 0) / 2) / FontSize;
 
-        Context.SetFontSlot(FontSlot, FontKoef);
-        var Temp = Context.MeasureCode(ResultCharCode);
-        
-        var ResultWidth   = (Math.max((Temp.Width + TextPr.Spacing), 0) * TEXTWIDTH_DIVIDER) | 0;
-                
-        this.Width        = ResultWidth;
-        this.WidthVisible = ResultWidth;
-    },
+	Context.SetFontSlot(FontSlot, FontKoef);
+	var Temp = Context.MeasureCode(ResultCharCode);
 
-    Get_Width : function()
-    {
-        return (this.Width / TEXTWIDTH_DIVIDER);
-    },
-    
-    Get_WidthVisible : function()
-    {
-        return (this.WidthVisible / TEXTWIDTH_DIVIDER);
-    },
-    
-    Set_WidthVisible : function(WidthVisible)
-    {
-        this.WidthVisible = (WidthVisible * TEXTWIDTH_DIVIDER) | 0;
-    },
+	var ResultWidth = (Math.max((Temp.Width + TextPr.Spacing), 0) * TEXTWIDTH_DIVIDER) | 0;
 
-    Is_RealContent : function()
-    {
-        return true;
-    },
+	this.Width        = ResultWidth;
+	this.WidthVisible = ResultWidth;
+};
+ParaText.prototype.Get_Width = function()
+{
+	return (this.Width / TEXTWIDTH_DIVIDER);
+};
+ParaText.prototype.Get_WidthVisible = function()
+{
+	return (this.WidthVisible / TEXTWIDTH_DIVIDER);
+};
+ParaText.prototype.Set_WidthVisible = function(WidthVisible)
+{
+	this.WidthVisible = (WidthVisible * TEXTWIDTH_DIVIDER) | 0;
+};
+ParaText.prototype.Is_RealContent = function()
+{
+	return true;
+};
+ParaText.prototype.Can_AddNumbering = function()
+{
+	return true;
+};
+ParaText.prototype.Copy = function()
+{
+	return new ParaText(this.Value);
+};
+ParaText.prototype.Is_NBSP = function()
+{
+	return ( this.Value === nbsp_charcode ? true : false);
+};
+ParaText.prototype.Is_Punctuation = function()
+{
+	if (1 === g_aPunctuation[this.Value])
+		return true;
 
-    Can_AddNumbering : function()
-    {
-        return true;
-    },
+	return false;
+};
+ParaText.prototype.Is_Number = function()
+{
+	if (1 === g_aNumber[this.Value])
+		return true;
 
-    Copy : function()
-    {
-        return new ParaText(String.fromCharCode(this.Value));
-    },
+	return false;
+};
+ParaText.prototype.Is_SpecialSymbol = function()
+{
+	if (1 === g_aSpecialSymbols[this.Value])
+		return true;
 
-    Is_NBSP : function()
-    {
-        return ( this.Value === nbsp_charcode ? true : false);
-    },
+	return false;
+};
+ParaText.prototype.Is_SpaceAfter = function()
+{
+	return (this.Flags & PARATEXT_FLAGS_SPACEAFTER ? true : false);
+};
+ParaText.prototype.Get_CharForSpellCheck = function(bCaps)
+{
+	// Закрывающуюся кавычку (0x2019), посылаем как апостроф
 
-    Is_Punctuation : function()
-    {
-        if ( 1 === g_aPunctuation[this.Value] )
-            return true;
+	if (0x2019 === this.Value)
+		return String.fromCharCode(0x0027);
+	else
+	{
+		if (true === bCaps)
+			return (String.fromCharCode(this.Value)).toUpperCase();
+		else
+			return String.fromCharCode(this.Value);
+	}
+};
+ParaText.prototype.Set_SpaceAfter = function(bSpaceAfter)
+{
+	if (bSpaceAfter)
+		this.Flags |= PARATEXT_FLAGS_SPACEAFTER;
+	else
+		this.Flags &= PARATEXT_FLAGS_NON_SPACEAFTER;
+};
+ParaText.prototype.Is_NoBreakHyphen = function()
+{
+	if (false === this.Is_SpaceAfter() && (this.Value === 0x002D || this.Value === 0x2013))
+		return true;
 
-        return false;
-    },
+	return false;
+};
+ParaText.prototype.Write_ToBinary = function(Writer)
+{
+	// Long : Type
+	// Long : Value
 
-    Is_Number : function()
-    {
-        if ( 1 === g_aNumber[this.Value] )
-            return true;
+	Writer.WriteLong(para_Text);
+	Writer.WriteLong(this.Value);
+};
+ParaText.prototype.Read_FromBinary = function(Reader)
+{
+	this.Set_CharCode(Reader.GetLong());
+};
+ParaText.prototype.private_IsSpaceAfter = function()
+{
+	if (0x002D === this.Value
+		|| 0x2014 === this.Value)
+		return true;
 
-        return false;
-    },
-
-    Is_SpecialSymbol : function()
-    {
-        if ( 1 === g_aSpecialSymbols[this.Value] )
-            return true;
-
-        return false;
-    },
-    
-    Is_SpaceAfter : function()
-    {
-        return (this.Flags & PARATEXT_FLAGS_SPACEAFTER ? true : false); 
-    },
-
-    Get_CharForSpellCheck : function(bCaps)
-    {
-        // Закрывающуюся кавычку (0x2019), посылаем как апостроф
-
-        if (0x2019 === this.Value)
-            return String.fromCharCode(0x0027);
-        else
-        {
-            if (true === bCaps)
-                return (String.fromCharCode(this.Value)).toUpperCase();
-            else
-                return String.fromCharCode(this.Value);
-        }
-    },
-    
-    Set_SpaceAfter : function(bSpaceAfter)
-    {
-        if (bSpaceAfter )
-            this.Flags |= PARATEXT_FLAGS_SPACEAFTER;
-        else
-            this.Flags &= PARATEXT_FLAGS_NON_SPACEAFTER;
-    },
-
-    Is_NoBreakHyphen : function()
-    {
-        if (false === this.Is_SpaceAfter() && (this.Value === 0x002D || this.Value === 0x2013))
-            return true;
-
-        return false;
-    },
-
-    Write_ToBinary : function(Writer)
-    {
-        // Long : Type
-        // Long : Value
-
-        Writer.WriteLong( para_Text );
-        Writer.WriteLong( this.Value );
-    },
-
-    Read_FromBinary : function(Reader)
-    {
-        this.Value = Reader.GetLong();
-        this.Set_SpaceAfter(45 === this.Value);
-    }
+	return false;
 };
 
 // Класс ParaSpace
@@ -1114,6 +1122,10 @@ ParaNewLine.prototype.IsColumnBreak = function()
 {
 	return (break_Column === this.BreakType);
 };
+ParaNewLine.prototype.IsLineBreak = function()
+{
+	return (break_Line === this.BreakType);
+};
 
 
 // Класс ParaNumbering
@@ -1205,90 +1217,112 @@ var tab_Center = 0x03;
 
 var tab_Symbol = 0x0022;//0x2192;
 
-// Класс ParaTab
+/**
+ * Класс представляющий элемент табуляции.
+ * @constructor
+ * @extends {CRunElementBase}
+ */
 function ParaTab()
 {
-    this.TabType = tab_Left;
+	CRunElementBase.call(this);
 
-    this.Width        = 0;
-    this.WidthVisible = 0;
-    this.RealWidth    = 0;
+	this.Width        = 0;
+	this.WidthVisible = 0;
+	this.RealWidth    = 0;
+
+	this.DotWidth        = 0;
+	this.UnderscoreWidth = 0;
+	this.HyphenWidth     = 0;
+	this.Leader          = Asc.c_oAscTabLeader.None;
 }
 
-ParaTab.prototype =
+ParaTab.prototype = Object.create(CRunElementBase.prototype);
+ParaTab.prototype.constructor = ParaTab;
+ParaTab.prototype.Type = para_Tab;
+ParaTab.prototype.Draw = function(X, Y, Context)
 {
-    Type : para_Tab,
+	if (this.WidthVisible > 0.01)
+	{
+		var sChar = null, nCharWidth = 0;
+		switch (this.Leader)
+		{
+			case Asc.c_oAscTabLeader.Dot:
+				sChar      = '.';
+				nCharWidth = this.DotWidth;
+				break;
+			case Asc.c_oAscTabLeader.Heavy:
+			case Asc.c_oAscTabLeader.Underscore:
+				sChar      = '_';
+				nCharWidth = this.UnderscoreWidth;
+				break;
+			case Asc.c_oAscTabLeader.Hyphen:
+				sChar      = '-';
+				nCharWidth = this.HyphenWidth;
+				break;
+			case Asc.c_oAscTabLeader.MiddleDot:
+				sChar      = '·';
+				nCharWidth = this.MiddleDotWidth;
+				break;
+		}
 
-    Get_Type : function()
-    {
-        return para_Tab;
-    },
-    
-    Draw : function(X,Y,Context)
-    {
-        if ( typeof (editor) !== "undefined" && editor.ShowParaMarks )
-        {
-            var X0 = this.Width / 2 - this.RealWidth / 2;
+		if (null !== sChar && nCharWidth > 0.001)
+		{
+			Context.SetFontSlot(fontslot_ASCII, 1);
+			var nCharsCount = Math.floor(this.WidthVisible / nCharWidth);
 
-            Context.SetFont( {FontFamily: { Name : "ASCW3", Index : -1 }, FontSize: 10, Italic: false, Bold : false} );
+			var _X = X + (this.WidthVisible - nCharsCount * nCharWidth) / 2;
+			for (var nIndex = 0; nIndex < nCharsCount; ++nIndex, _X += nCharWidth)
+				Context.FillText(_X, Y, sChar);
+		}
+	}
 
-            if ( X0 > 0 )
-                Context.FillText2( X + X0, Y, String.fromCharCode( tab_Symbol ), 0, this.Width );
-            else
-                Context.FillText2( X, Y, String.fromCharCode( tab_Symbol ), this.RealWidth - this.Width, this.Width );
+	if (editor && editor.ShowParaMarks)
+	{
+		Context.p_color(0, 0, 0, 255);
+		Context.b_color1(0, 0, 0, 255);
 
-        }
-    },
+		var X0 = this.Width / 2 - this.RealWidth / 2;
 
-    Measure : function (Context)
-    {
-        Context.SetFont( {FontFamily: { Name : "ASCW3", Index : -1 }, FontSize: 10, Italic: false, Bold : false} );
-        this.RealWidth = Context.Measure( String.fromCharCode( tab_Symbol ) ).Width;
-    },
+		Context.SetFont({FontFamily : {Name : "ASCW3", Index : -1}, FontSize : 10, Italic : false, Bold : false});
 
-    Get_Width : function()
-    {
-        return this.Width;
-    },
-
-    Get_WidthVisible : function()
-    {
-        return this.WidthVisible;
-    },
-
-    Set_WidthVisible : function(WidthVisible)
-    {
-        this.WidthVisible = WidthVisible;
-    },
-
-    Is_RealContent : function()
-    {
-        return true;
-    },
-
-    Can_AddNumbering : function()
-    {
-        return true;
-    },
-
-    Copy : function()
-    {
-        return new ParaTab();
-    },
-
-    Write_ToBinary : function(Writer)
-    {
-        // Long   : Type
-        // Long   : TabType
-        Writer.WriteLong( para_Tab );
-        Writer.WriteLong( this.TabType );
-    },
-
-    Read_FromBinary : function(Reader)
-    {
-        this.TabType = Reader.GetLong();
-    }
+		if (X0 > 0)
+			Context.FillText2(X + X0, Y, String.fromCharCode(tab_Symbol), 0, this.Width);
+		else
+			Context.FillText2(X, Y, String.fromCharCode(tab_Symbol), this.RealWidth - this.Width, this.Width);
+	}
 };
+ParaTab.prototype.Measure = function(Context)
+{
+	this.DotWidth        = Context.Measure(".").Width;
+	this.UnderscoreWidth = Context.Measure("_").Width;
+	this.HyphenWidth     = Context.Measure("-").Width * 1.5;
+	this.MiddleDotWidth  = Context.Measure("·").Width;
+
+	Context.SetFont({FontFamily : {Name : "ASCW3", Index : -1}, FontSize : 10, Italic : false, Bold : false});
+	this.RealWidth = Context.Measure(String.fromCharCode(tab_Symbol)).Width;
+};
+ParaTab.prototype.SetLeader = function(nLeaderType)
+{
+	this.Leader = nLeaderType;
+};
+ParaTab.prototype.Get_Width = function()
+{
+	return this.Width;
+};
+ParaTab.prototype.Get_WidthVisible = function()
+{
+	return this.WidthVisible;
+};
+ParaTab.prototype.Set_WidthVisible = function(WidthVisible)
+{
+	this.WidthVisible = WidthVisible;
+};
+ParaTab.prototype.Copy = function()
+{
+	return new ParaTab();
+};
+
+
 
 // Класс ParaPageNum
 function ParaPageNum()
@@ -1302,6 +1336,8 @@ function ParaPageNum()
 
     this.Width        = 0;
     this.WidthVisible = 0;
+
+    this.Parent = null;
 }
 
 ParaPageNum.prototype =
@@ -1446,6 +1482,22 @@ ParaPageNum.prototype.GetPageNumValue = function()
 ParaPageNum.prototype.GetType = function()
 {
 	return this.Type;
+};
+/**
+ * Выставляем родительский класс
+ * @param {ParaRun} oParent
+ */
+ParaPageNum.prototype.SetParent = function(oParent)
+{
+	this.Parent = oParent;
+};
+/**
+ * Получаем родительский класс
+ * @returns {?ParaRun}
+ */
+ParaPageNum.prototype.GetParent = function()
+{
+	return this.Parent;
 };
 
 function CPageNumRecalculateObject(Type, Widths, String, Width, Copy)
@@ -1735,6 +1787,11 @@ ParaFootnoteReference.prototype.GetAllContentControls = function(arrContentContr
 	if (this.Footnote)
 		this.Footnote.GetAllContentControls(arrContentControls);
 };
+ParaFootnoteReference.prototype.GetAllFontNames = function(arrAllFonts)
+{
+	if (this.Footnote)
+		this.Footnote.Document_Get_AllFontNames(arrAllFonts);
+};
 
 /**
  * Класс представляющий номер сноски внутри сноски.
@@ -1889,6 +1946,7 @@ function ParaPageCount(PageCount)
 	this.Widths    = [];
 	this.String    = "";
 	this.PageCount = undefined !== PageCount ? PageCount : 1;
+	this.Parent    = null;
 }
 ParaPageCount.prototype = Object.create(CRunElementBase.prototype);
 ParaPageCount.prototype.constructor = ParaPageCount;
@@ -1946,6 +2004,10 @@ ParaPageCount.prototype.Update_PageCount = function(nPageCount)
 	this.PageCount = nPageCount;
 	this.private_UpdateWidth();
 };
+ParaPageCount.prototype.SetNumValue = function(nValue)
+{
+	this.Update_PageCount(nValue);
+};
 ParaPageCount.prototype.private_UpdateWidth = function()
 {
 	this.String = "" + this.PageCount;
@@ -1979,6 +2041,22 @@ ParaPageCount.prototype.GetPageCountValue = function()
 {
 	return this.PageCount;
 };
+/**
+ * Выставляем родительский класс
+ * @param {ParaRun} oParent
+ */
+ParaPageCount.prototype.SetParent = function(oParent)
+{
+	this.Parent = oParent;
+};
+/**
+ * Получаем родительский класс
+ * @returns {?ParaRun}
+ */
+ParaPageCount.prototype.GetParent = function()
+{
+	return this.Parent;
+};
 
 function ParagraphContent_Read_FromBinary(Reader)
 {
@@ -1991,6 +2069,7 @@ function ParagraphContent_Read_FromBinary(Reader)
 		case para_Drawing:
 		case para_HyperlinkStart:
 		case para_InlineLevelSdt:
+		case para_Bookmark:
 		{
 			var ElementId = Reader.GetString2();
 			Element       = g_oTableId.Get_ById(ElementId);
@@ -2014,6 +2093,8 @@ function ParagraphContent_Read_FromBinary(Reader)
 		case para_Separator             : Element = new ParaSeparator(); break;
 		case para_ContinuationSeparator : Element = new ParaContinuationSeparator(); break;
 		case para_PageCount             : Element = new ParaPageCount(); break;
+		case para_FieldChar             : Element = new ParaFieldChar(); break;
+		case para_InstrText             : Element = new ParaInstrText(); break;
 	}
 
 	if (null != Element)
@@ -2024,8 +2105,11 @@ function ParagraphContent_Read_FromBinary(Reader)
 
 //--------------------------------------------------------export----------------------------------------------------
 window['AscCommonWord'] = window['AscCommonWord'] || {};
-window['AscCommonWord'].ParaNewLine = ParaNewLine;
-window['AscCommonWord'].ParaText    = ParaText;
+window['AscCommonWord'].ParaNewLine   = ParaNewLine;
+window['AscCommonWord'].ParaText      = ParaText;
+window['AscCommonWord'].ParaSpace     = ParaSpace;
+window['AscCommonWord'].ParaPageNum   = ParaPageNum;
+window['AscCommonWord'].ParaPageCount = ParaPageCount;
 
 window['AscCommonWord'].break_Page = break_Page;
 window['AscCommonWord'].break_Column = break_Column;

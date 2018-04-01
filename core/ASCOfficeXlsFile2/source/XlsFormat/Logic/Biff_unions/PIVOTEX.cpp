@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,9 +31,10 @@
  */
 
 #include "PIVOTEX.h"
-#include <Logic/Biff_records/SXEx.h>
-#include <Logic/Biff_unions/PIVOTSELECT.h>
-#include <Logic/Biff_unions/PIVOTFORMAT.h>
+#include "PIVOTSELECT.h"
+#include "PIVOTFORMAT.h"
+
+#include "../Biff_records/SXEx.h"
 
 namespace XLS
 {
@@ -54,7 +55,6 @@ BaseObjectPtr PIVOTEX::clone()
 	return BaseObjectPtr(new PIVOTEX(*this));
 }
 
-
 // PIVOTEX = SXEx *PIVOTSELECT *PIVOTFORMAT
 const bool PIVOTEX::loadContent(BinProcessor& proc)
 {
@@ -62,9 +62,21 @@ const bool PIVOTEX::loadContent(BinProcessor& proc)
 	{
 		return false;
 	}
+	m_SXEx = elements_.back();
+	elements_.pop_back();
+
 	int count = 0;
 	count = proc.repeated<PIVOTSELECT>(0, 0);
+	while(count--)
+	{
+		m_arPIVOTSELECT.push_back(elements_.front());	elements_.pop_front();
+	}
+	
 	count = proc.repeated<PIVOTFORMAT>(0, 0);
+	while(count--)
+	{
+		m_arPIVOTFORMAT.push_back(elements_.front());	elements_.pop_front();
+	}
 
 	return true;
 }

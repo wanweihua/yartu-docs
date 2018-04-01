@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,7 +31,7 @@
  */
 
 #include "SXString.h"
-
+#include "../../../../../Common/DocxFormat/Source/XML/Utils.h"
 namespace XLS
 {
 
@@ -39,11 +39,9 @@ SXString::SXString()
 {
 }
 
-
 SXString::~SXString()
 {
 }
-
 
 BaseObjectPtr SXString::clone()
 {
@@ -60,6 +58,15 @@ void SXString::readFields(CFRecord& record)
 		segment.setSize(cch);
 		record >> segment;
 	}
+}
+
+std::wstring SXString::value()
+{
+	std::wstring s = segment.value();
+	XmlUtils::replace_all(s, L"\x0d", L"_x000d_");
+	XmlUtils::replace_all(s, L"\x0a", L"_x000a_");
+
+	return s;
 }
 
 } // namespace XLS

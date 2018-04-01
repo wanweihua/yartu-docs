@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -84,11 +84,6 @@ CShape.prototype.Is_UseInDocument = function(){
     {
         return this.drawingBase.isUseInDocument();
     }
-    return false;
-};
-
-CShape.prototype.isEmptyPlaceholder = function()
-{
     return false;
 };
 
@@ -333,6 +328,12 @@ CShape.prototype.setRecalculateInfo = function()
     this.compiledStyles = [];
     this.lockType = AscCommon.c_oAscLockTypes.kLockTypeNone;
 };
+
+
+    CShape.prototype.checkNeedRecalculate = function(){
+        return this.recalcInfo.recalculateTransform === true || this.recalcInfo.recalculateContent === true;
+    };
+
 CShape.prototype.recalcContent = function()
 {
     this.recalcInfo.recalculateContent = true;
@@ -414,6 +415,7 @@ CShape.prototype.handleUpdateExtents = function()
     this.recalcGeometry();
     this.recalcBounds();
     this.recalcTransform();
+    this.recalcTransformText();
     this.recalcContent();
     this.addToRecalculate();
    //delete this.fromSerialize;
@@ -462,7 +464,8 @@ CShape.prototype.handleUpdateGeometry = function()
 CShape.prototype.convertPixToMM = function(pix)
 {
     var drawingObjects =  getDrawingObjects_Sp(this);
-    return drawingObjects ? drawingObjects.convertMetric(pix, 0, 3) : 0;
+    var _ret = drawingObjects ? drawingObjects.convertMetric(AscCommon.AscBrowser.convertToRetinaValue(pix, true), 0, 3) : 0;
+    return _ret;
 };
 CShape.prototype.getCanvasContext = function()
 {

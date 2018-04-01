@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -821,39 +821,35 @@ namespace NSEditorApi
 		LINK_PROPERTY_OBJECT_JS(CAscColor, Bg)
 	};
 
-	class CAscFillGradColors
-	{
-	private:
-		js_wrapper<CAscColor>*	m_pColors;
-		js_wrapper<int>*		m_pPositions;
-		int m_lCount;
+    class CAscFillGradColors
+    {
+        private:
+        std::vector<CAscColor*>  m_arColors;
+        std::vector<int>         m_arPositions;
 
-	public:
+        public:
 
-		CAscFillGradColors()
-		{
-			m_pColors = NULL;
-			m_pPositions = NULL;
-			m_lCount = 0;			
-		}
-		virtual ~CAscFillGradColors()
-		{
-			if (NULL != m_pColors)
-				delete [] m_pColors;
-			if (NULL != m_pPositions)
-				delete [] m_pPositions;
-		}
+        CAscFillGradColors()
+        {
 
-		int GetCount() { return m_lCount; }
-		js_wrapper<CAscColor>* GetColors() { return m_pColors; }
-		js_wrapper<int>* GetPositions() { return m_pPositions; }
-		void SetColors(js_wrapper<CAscColor>* pColors, js_wrapper<int>* pPositions, int nCount)
-		{
-			m_pColors = pColors;
-			m_pPositions = pPositions;
-			m_lCount = nCount;
-		}
-	};
+        }
+
+        virtual ~CAscFillGradColors()
+        {
+            for (std::vector<CAscColor*>::iterator i = m_arColors.begin(); i != m_arColors.end(); ++i)
+            {
+                CAscColor* data = *i;
+                if (NULL != data)
+                data->Release();
+            }
+        }
+
+        inline std::vector<CAscColor*>& GetColors() {return m_arColors;}
+        inline void AddColor(CAscColor* color) {m_arColors.push_back(color);}
+
+        inline std::vector<int> GetPositions() {return m_arPositions;}
+        inline void AddPosition(int position) {m_arPositions.push_back(position);}
+    };
 
 	class CAscFillGrad : public CAscFillBase
 	{
@@ -1087,9 +1083,9 @@ namespace NSEditorApi
 	class CAscCatAxisSettings
     {
 	private:
-        js_wrapper<double>		m_dInternalBetweenTick;
+        js_wrapper<double>		m_dIntervalBetweenTick;
 		js_wrapper<int>			m_nIntervalBetweenLabelsRule;	// c_oAscBetweenLabelsRule_
-		js_wrapper<double>		m_dInternalBetweenLabels;
+		js_wrapper<double>		m_dIntervalBetweenLabels;
 
 		js_wrapper<bool>		m_bInvertCatOrder;
 		js_wrapper<double>		m_dLabelsAxisDistance;
@@ -1105,15 +1101,18 @@ namespace NSEditorApi
 		js_wrapper<int>			m_nLabelsPosition;	// c_oAscLabelsPosition_
 
 		js_wrapper<int>			m_nAxisType;		// c_oAscAxisType_
+        
+        js_wrapper<int>			m_nCrossMinVal;
+        js_wrapper<int>			m_nCrossMaxVal;
 
 	public:
 		CAscCatAxisSettings()
 		{
 		}
 
-		LINK_PROPERTY_DOUBLE_JS(InternalBetweenTick)
+		LINK_PROPERTY_DOUBLE_JS(IntervalBetweenTick)
 		LINK_PROPERTY_INT_JS(IntervalBetweenLabelsRule)
-		LINK_PROPERTY_DOUBLE_JS(InternalBetweenLabels)
+		LINK_PROPERTY_DOUBLE_JS(IntervalBetweenLabels)
 
 		LINK_PROPERTY_BOOL_JS(InvertCatOrder)
 		LINK_PROPERTY_DOUBLE_JS(LabelsAxisDistance)
@@ -1125,6 +1124,9 @@ namespace NSEditorApi
 		LINK_PROPERTY_INT_JS(Crosses)
 		LINK_PROPERTY_INT_JS(LabelsPosition)
 		LINK_PROPERTY_INT_JS(AxisType)
+        
+        LINK_PROPERTY_INT_JS(CrossMinVal)
+        LINK_PROPERTY_INT_JS(CrossMaxVal)
     };
 
 	class CAscChartProperties : public IMenuEventDataBase
@@ -1155,8 +1157,11 @@ namespace NSEditorApi
         
 		js_wrapper<std::wstring>	m_sSeparator;
 
-		js_wrapper<CAscValAxisSettings>	m_oHorAxisProps;
-		js_wrapper<CAscValAxisSettings>	m_oVertAxisProps;
+		js_wrapper<CAscValAxisSettings>	m_oHorValAxisProps;
+		js_wrapper<CAscValAxisSettings>	m_oVertValAxisProps;
+       
+        js_wrapper<CAscCatAxisSettings>	m_oHorCatAxisProps;
+        js_wrapper<CAscCatAxisSettings>	m_oVertCatAxisProps;
         
 		js_wrapper<std::wstring>	m_sRange;
 		js_wrapper<bool>			m_bInColumns;
@@ -1196,8 +1201,11 @@ namespace NSEditorApi
 
 		LINK_PROPERTY_STRING_JS(Separator)
 
-		LINK_PROPERTY_OBJECT_JS(CAscValAxisSettings, HorAxisProps)
-		LINK_PROPERTY_OBJECT_JS(CAscValAxisSettings, VertAxisProps)
+		LINK_PROPERTY_OBJECT_JS(CAscValAxisSettings, HorValAxisProps)
+		LINK_PROPERTY_OBJECT_JS(CAscValAxisSettings, VertValAxisProps)
+      
+        LINK_PROPERTY_OBJECT_JS(CAscCatAxisSettings, HorCatAxisProps)
+        LINK_PROPERTY_OBJECT_JS(CAscCatAxisSettings, VertCatAxisProps)
 
 		LINK_PROPERTY_STRING_JS(Range)
 		LINK_PROPERTY_BOOL_JS(InColumns)
@@ -2310,9 +2318,9 @@ namespace NSEditorApi
 
 	public:
 		CAscMenuEvent(int nType = -1)
+                    : m_nType(nType)
+                    , m_pData(NULL)
 		{
-			m_nType = nType;
-			m_pData = NULL;
 		}
 		virtual ~CAscMenuEvent()
 		{
@@ -2363,6 +2371,38 @@ namespace NSEditorApi
 		{
 			if (NULL != pEvent)
                 pEvent->Release();
+		}
+	};
+
+	class CAscCefMenuEvent : public CAscMenuEvent
+	{
+	public:
+		int	m_nSenderId;
+
+	public:
+		CAscCefMenuEvent(int nType = -1) : CAscMenuEvent(nType)
+		{
+			m_nSenderId = -1;
+		}
+		virtual ~CAscCefMenuEvent()
+		{
+		}
+
+		LINK_PROPERTY_INT(SenderId)
+	};
+
+	class CAscCefMenuEventListener
+	{
+	public:
+		// memory release!!!
+		virtual void OnEvent(CAscCefMenuEvent* pEvent)
+		{
+			if (NULL != pEvent)
+				pEvent->Release();
+		}
+		virtual bool IsSupportEvent(int nEventType)
+		{
+			return true;
 		}
 	};
 }
@@ -2556,6 +2596,7 @@ namespace NSEditorApi
 
         CAscLocalRecentsAll()
         {
+            m_nId = -1;
         }
         virtual ~CAscLocalRecentsAll()
         {

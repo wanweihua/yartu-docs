@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,6 @@
 #include <sstream>
 #include <string>
 
-#include <boost/foreach.hpp>
 #include <boost/regex.hpp>
 
 #include <cpdoccore/odf/odf_document.h>
@@ -67,9 +66,9 @@ namespace odf_reader {
 namespace {
 bool IsExistProperty(std::vector<_property> Heap,const std::wstring Name)
 {
-	BOOST_FOREACH(_property const & p, Heap)
+    for (size_t i = 0; i < Heap.size(); i++)
 	{
-		int res = p.name_.find(Name);
+		int res = Heap[i].name_.find(Name);
 		if (res>=0)
 		{
 			return true;
@@ -755,7 +754,7 @@ int ComputeMarginY(const style_page_layout_properties_attlist		& pageProperties,
 
 }
 
-void common_draw_docx_convert(oox::docx_conversion_context & Context, const union_common_draw_attlists & attlists_, oox::_docx_drawing *drawing) 
+void common_draw_docx_convert(oox::docx_conversion_context & Context, union_common_draw_attlists & attlists_, oox::_docx_drawing *drawing) 
 {
 	const std::wstring styleName = attlists_.shape_with_text_and_styles_.
 					common_shape_draw_attlist_.draw_style_name_.get_value_or(L"");
@@ -900,7 +899,16 @@ void common_draw_docx_convert(oox::docx_conversion_context & Context, const unio
 		}
 	}
 ///////////////////////////
-
+	if (attlists_.rel_size_.common_draw_size_attlist_.svg_width_)
+	{
+		double w_shape = attlists_.rel_size_.common_draw_size_attlist_.svg_width_->get_value_unit(length::pt);
+		if (w_shape < 1) attlists_.rel_size_.common_draw_size_attlist_.svg_width_ = length(1, length::pt);
+	}
+	if (attlists_.rel_size_.common_draw_size_attlist_.svg_height_)
+	{
+		double h_shape = attlists_.rel_size_.common_draw_size_attlist_.svg_height_->get_value_unit(length::pt);
+		if (h_shape < 1) attlists_.rel_size_.common_draw_size_attlist_.svg_height_ = length(1, length::pt);
+	}
 	drawing->x = get_value_emu(attlists_.position_.svg_x_);
     drawing->y = get_value_emu(attlists_.position_.svg_y_);
 
@@ -1041,23 +1049,44 @@ void draw_shape::docx_convert(oox::docx_conversion_context & Context)
 
     std::wostream & strm = Context.output_stream();
 
-	bool pState = Context.get_paragraph_state();
-	Context.set_paragraph_state(false);		
+	bool runState	= Context.get_run_state();
+	bool paraState	= Context.get_paragraph_state();
+	bool keepState	= Context.get_paragraph_keep();
+
+	//Context.set_run_state		(false);	
+	Context.set_paragraph_state	(false);	
+
+	bool new_run = false;
 	
-	bool new_run = true;
-	
-	if ((pState == false && Context.get_drawing_context().get_current_level() == 1) || (Context.get_drawing_context().in_group()))
+	if ((paraState == false && Context.get_drawing_context().get_current_level() == 1) || (Context.get_drawing_context().in_group()))
 	{
-		new_run = false;
 	}
 	else
-		Context.add_new_run(_T(""));
+	{
+		if (!Context.get_drawing_context().in_group() && !runState)
+		{
+			if (!paraState)
+			{
+				Context.start_paragraph();
+			}
+			Context.add_new_run(L"");
+
+			new_run = true;
+		}
+	}
 
 	drawing.serialize(strm/*, Context.get_drawing_state_content()*/);
 
-	if (new_run) Context.finish_run();
+	if (new_run)
+	{
+		Context.finish_run();
+		if (!paraState)
+		{
+			Context.finish_paragraph();
+		}
+	}
 
-	Context.set_paragraph_state(pState);		
+	Context.set_paragraph_state(paraState);		
 
 	Context.get_drawing_context().stop_shape();
 }
@@ -1068,7 +1097,7 @@ void draw_image::docx_convert(oox::docx_conversion_context & Context)
 		return;
  
 	std::wstring href		= common_xlink_attlist_.href_.get_value_or(L"");
-	int pos_replaicement= href.find(L"ObjectReplacements"); 
+	int pos_replaicement	= href.find(L"ObjectReplacements"); 
 
     const draw_frame * frame = Context.get_drawing_context().get_current_frame();//owner
 	if (!frame)
@@ -1077,9 +1106,12 @@ void draw_image::docx_convert(oox::docx_conversion_context & Context)
 	oox::_docx_drawing * drawing = dynamic_cast<oox::_docx_drawing *>(frame->oox_drawing_.get()); 
 	if (!drawing) return;
 
- 	if (pos_replaicement >= 0 && !Context.get_drawing_context().get_use_image_replace())
+ 	if (pos_replaicement >= 0)
 	{
-		return; //skip replacement image (math, chart, ...)  - возможно записать как альтернативный контент - todooo ???
+		if (!Context.get_drawing_context().get_use_image_replace())
+			return; //skip replacement image (math, chart, ...)  - возможно записать как альтернативный контент - todooo ???
+		if (href.length() - (pos_replaicement + 18) < 2)
+			return; //href="./ObjectReplacements/"
 	}
 
 	if (drawing->type == oox::typeUnknown)
@@ -1123,7 +1155,7 @@ void draw_image::docx_convert(oox::docx_conversion_context & Context)
 	drawing->fill.bitmap = oox::oox_bitmap_fill::create();
 	drawing->fill.type = 2;
 	drawing->fill.bitmap->isInternal = false;
-    drawing->fill.bitmap->rId = Context.add_mediaitem(href, oox::typeImage, drawing->fill.bitmap->isInternal,href);
+    drawing->fill.bitmap->rId = Context.add_mediaitem(href, oox::typeImage, drawing->fill.bitmap->isInternal, href);
 	drawing->fill.bitmap->bStretch = true;
 
     const std::wstring styleName = frame->common_draw_attlists_.shape_with_text_and_styles_.
@@ -1166,10 +1198,10 @@ void draw_text_box::docx_convert(oox::docx_conversion_context & Context)
 	bool drState = Context.get_drawing_state_content();
 	
 	Context.set_drawing_state_content(true);
-	BOOST_FOREACH(const office_element_ptr & elm, content_)
+	for (size_t i = 0; i < content_.size(); i++)
     {
-		ElementType type = elm->get_type();
-        elm->docx_convert(Context);
+		ElementType type = content_[i]->get_type();
+        content_[i]->docx_convert(Context);
     }
 	
 	Context.get_drawing_context().get_text_stream_frame() = temp_stream.str();
@@ -1284,10 +1316,10 @@ void draw_g::docx_convert(oox::docx_conversion_context & Context)
 	Context.set_paragraph_state	(false);		
 	Context.set_run_state		(false);
 		
-	BOOST_FOREACH(const office_element_ptr & elm, content_)
+	for (size_t i = 0; i < content_.size(); i++)
     {
-		ElementType type = elm->get_type();
-        elm->docx_convert(Context);
+		ElementType type = content_[i]->get_type();
+        content_[i]->docx_convert(Context);
     }
 	drawing.content_group_ = temp_stream.str();
 	
@@ -1351,7 +1383,13 @@ void draw_g::docx_convert(oox::docx_conversion_context & Context)
 }
 void draw_frame::docx_convert(oox::docx_conversion_context & Context)
 {
-	if (Context.get_drawing_context().get_current_level() > 0 && !Context.get_drawing_context().in_group() )
+	bool bImage = false;
+	if (content_.empty() == false)
+	{
+		if (content_[0]->get_type() == typeDrawImage)
+			bImage = true;
+	}
+	if (Context.get_drawing_context().get_current_level() > 0 && !Context.get_drawing_context().in_group() && !bImage)
     {
         Context.add_delayed_element(this);
         return;
@@ -1382,22 +1420,34 @@ void draw_frame::docx_convert(oox::docx_conversion_context & Context)
 
 //-----------------------------------------------------------------------------------------------------
 	bool runState	= Context.get_run_state();
-	bool pState		= Context.get_paragraph_state();
+	bool paraState	= Context.get_paragraph_state();
 	bool keepState	= Context.get_paragraph_keep();
 
 	Context.set_run_state		(false);	
 	Context.set_paragraph_state	(false);	
 
 	if (!Context.get_drawing_context().in_group() && !runState)
-		Context.add_new_run(_T(""));
+	{
+		if (!paraState)//0115GS3-KeyboardShortcuts.odt
+		{
+			Context.start_paragraph();
+		}
+		Context.add_new_run(L"");
+	}
 
 	drawing->serialize(Context.output_stream()/*, Context.get_drawing_state_content()*/);
 
 	if (!Context.get_drawing_context().in_group() && !runState)
+	{
 		Context.finish_run();
+		if (!paraState)//0115GS3-KeyboardShortcuts.odt
+		{
+			Context.finish_paragraph();
+		}
+	}
 
 	Context.set_run_state		(runState);
-	Context.set_paragraph_state	(pState);	
+	Context.set_paragraph_state	(paraState);	
 	Context.set_paragraph_keep	(keepState);
 
 	Context.get_drawing_context().stop_frame();
@@ -1407,24 +1457,27 @@ void draw_object::docx_convert(oox::docx_conversion_context & Context)
 {
     try 
 	{
-        std::wstring href		= common_xlink_attlist_.href_.get_value_or(L"");
+        std::wstring href = common_xlink_attlist_.href_.get_value_or(L"");
 
-		std::wstring folderPath = Context.root()->get_folder();
-		std::wstring objectPath = folderPath + FILE_SEPARATOR_STR + href;
+		if (!odf_document_ && !href.empty())
+		{			
+			std::wstring folderPath = Context.root()->get_folder();
+			std::wstring objectPath = folderPath + FILE_SEPARATOR_STR + href;
 
-		//normalize path ??? todooo
-		XmlUtils::replace_all( objectPath, FILE_SEPARATOR_STR + std::wstring(L"./"), FILE_SEPARATOR_STR);
+			// normalize path ???? todooo
+			XmlUtils::replace_all( objectPath, FILE_SEPARATOR_STR + std::wstring(L"./"), FILE_SEPARATOR_STR);
 
-        cpdoccore::odf_reader::odf_document objectSubDoc(objectPath ,NULL);    
+			odf_document_ = odf_document_ptr(new odf_document(objectPath, NULL));    
+		}
 //---------------------------------------------------------------------------------------------------------------------
 		draw_frame*				frame			= NULL;
 		oox::_docx_drawing *	drawing			= NULL;
-		office_element*			contentSubDoc	= objectSubDoc.get_impl()->get_content();
+		office_element*			contentSubDoc	= odf_document_ ? odf_document_->get_impl()->get_content() : NULL;
 		
 		object_odf_context	objectBuild (href);
 		if (contentSubDoc)
 		{
-			process_build_object process_build_object_(objectBuild, objectSubDoc.odf_context());
+			process_build_object process_build_object_(objectBuild, odf_document_->odf_context());
 			contentSubDoc->accept(process_build_object_); 
 
 			objectBuild.docx_convert(Context);		
@@ -1494,7 +1547,7 @@ void draw_object::docx_convert(oox::docx_conversion_context & Context)
 			bool & use_image_replace = Context.get_drawing_context().get_use_image_replace();
 			use_image_replace = true;
 
-			std::wstring href_new = office_convert(&objectSubDoc, 2);
+			std::wstring href_new = office_convert(odf_document_, 2);
 
 			if (!href_new.empty())
 			{

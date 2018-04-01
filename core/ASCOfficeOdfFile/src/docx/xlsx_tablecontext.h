@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -48,7 +48,6 @@ class xlsx_table_context
 public:
     xlsx_table_context(xlsx_conversion_context * Context, xlsx_text_context & textCotnext);
 
-public:
     void start_table(std::wstring tableName, std::wstring tableStyleName, int id);
     void end_table();
 
@@ -91,6 +90,8 @@ public:
 	void serialize_hyperlinks			(std::wostream & _Wostream);
 	void serialize_ole_objects			(std::wostream & _Wostream);
 	void serialize_page_properties		(std::wostream & _Wostream);
+	void serialize_background			(std::wostream & _Wostream);
+	void serialize_data_validation		(std::wostream & _Wostream);
 
 	xlsx_table_metrics & get_table_metrics();
   

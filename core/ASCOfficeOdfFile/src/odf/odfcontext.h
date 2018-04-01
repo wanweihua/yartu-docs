@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -193,9 +193,9 @@ public:
     const std::wstring & name() const;
     style_page_layout_properties * properties() const; 
     
-	void docx_convert_serialize	(std::wostream & strm, oox::docx_conversion_context & Context);
- 	void xlsx_serialize			(std::wostream & strm, oox::xlsx_conversion_context & Context);
-	void pptx_serialize			(std::wostream & strm, oox::pptx_conversion_context & Context);
+	void docx_serialize				(std::wostream & strm, oox::docx_conversion_context & Context);
+	void pptx_serialize				(std::wostream & strm, oox::pptx_conversion_context & Context);
+ 	void xlsx_serialize				(std::wostream & strm, oox::xlsx_conversion_context & Context);
    
     const style_page_layout * style_page_layout_;
 
@@ -230,7 +230,7 @@ public:
     style_master_page * master_page_by_name(const std::wstring & Name);
 	style_presentation_page_layout * presentation_page_layout_by_name(const std::wstring & Name); 
    
-
+	bool compare_page_properties(const std::wstring & master1, const std::wstring & master2);
 private:
 	std::vector<style_presentation_page_layout*> presentation_page_layouts_;
     instances_array instances_;

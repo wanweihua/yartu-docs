@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,7 +35,7 @@
  *  app.js
  *
  *  Created by Maxim Kadushkin on 11/14/16
- *  Copyright (c) 2016 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -51,6 +51,8 @@ require.config({
         text            : '../vendor/requirejs-text/text',
         xregexp         : '../vendor/xregexp/xregexp-all-min',
         sockjs          : '../vendor/sockjs/sockjs.min',
+        jszip           : '../vendor/jszip/jszip.min',
+        jsziputils      : '../vendor/jszip-utils/jszip-utils.min',
         api             : 'api/documents/api',
         core            : 'common/main/lib/core/application',
         extendes        : 'common/mobile/utils/extendes',
@@ -97,6 +99,8 @@ require([
     'analytics',
     'gateway',
     'locale',
+    'jszip',
+    'jsziputils',
     'sockjs'
 ], function (Backbone, Framework7) {
     Backbone.history.start();

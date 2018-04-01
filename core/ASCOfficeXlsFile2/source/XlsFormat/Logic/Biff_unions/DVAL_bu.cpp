@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -88,7 +88,7 @@ int DVAL::serialize(std::wostream & stream)
 			
 			DVal * dval	= dynamic_cast<DVal*>(m_DVal.get());
 
-			for (int i = 0 ; i < m_arDv.size(); i++)
+			for (size_t i = 0 ; i < m_arDv.size(); i++)
 			{
 				if (!m_arDv[i]) continue;
 				

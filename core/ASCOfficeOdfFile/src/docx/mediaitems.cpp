@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -181,7 +181,11 @@ std::wstring mediaitems::add_or_find(const std::wstring & href, RelsType type, b
 		sub_path = L"embeddings/";
 	}
 	else 
+	{
 		isMediaInternal = is_internal(href, odf_packet_);
+		if (href.empty() && type == typeImage)
+			return L"";
+	}
 	
 	int number=0;
 	
@@ -205,9 +209,9 @@ std::wstring mediaitems::add_or_find(const std::wstring & href, RelsType type, b
 	if ( type == typeChart) outputPath = outputPath + L".xml";
 
 	std::wstring id;
-    for (int i = 0 ; i < items_.size(); i++)
+    for (size_t i = 0 ; i < items_.size(); i++)
     {
-		if (items_[i].href == inputPath)
+		if ((items_[i].href == inputPath && !inputPath.empty()) || (items_[i].type == type && inputPath.empty()))
 		{
 			id			= items_[i].Id;
 			outputPath  = items_[i].outputName;
@@ -235,7 +239,7 @@ std::wstring mediaitems::add_or_find(const std::wstring & href, RelsType type, b
 				outputPath = outputPath.substr(0, n_svm) + L".png"; 
 			}
 //------------------------------------------------
-			if (inputFileName.empty()) return L"";
+			//if (inputFileName.empty()) return L"";  - Book 27.ods - пустые линки на картинки
 
 			id = std::wstring(L"picId") + std::to_wstring(count_image + 1);
 			count_image++;
@@ -276,10 +280,9 @@ std::wstring mediaitems::add_or_find(const std::wstring & href, RelsType type, b
 
 void mediaitems::dump_rels(rels & Rels)
 {
-    size_t i = 0;
-    for (int i = 0; i < items_.size(); i++)
+    for (size_t i = 0; i < items_.size(); i++)
     {
-		if (items_[i].count_used > items_[i].count_add) continue; // уже использовали этот релс выше(колонтитул ....)
+		if (items_[i].count_used >= items_[i].count_add) continue; // уже использовали этот релс выше(колонтитул ....)
         
 		Rels.add( relationship(
                 items_[i].Id, 

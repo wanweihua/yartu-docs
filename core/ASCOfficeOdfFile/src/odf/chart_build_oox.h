@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -86,10 +86,10 @@ static const class_type_pair class_type_str[] =
 
 chart::class_type static get_series_class_type(std::wstring const & str)
 {
-    BOOST_FOREACH(class_type_pair const & p, class_type_str)
+    for (size_t i = 0; i < 12/*class_type_str.size()*/; i++)
     {
-        if (p.class_type_str_ == str)
-            return p.class_type_;
+        if (class_type_str[i].class_type_str_ == str)
+            return class_type_str[i].class_type_;
     }
     return chart::chart_bar; //лучше хоть какой назначить чем никакой !!
 }
@@ -111,6 +111,7 @@ public:
 		width_pt_				(0), 
 		height_pt_				(0), 
 		in_axis_				(false),
+		bPivotChart_			(false),
         current_table_column_	(0),
         current_table_row_		(0),
         columns_spanned_num_	(0),
@@ -124,6 +125,8 @@ public:
     {
 	}
 	
+	void set_pivot_source(std::wstring const & val);
+
 	void set_width(double valPt);
 
     void set_height(double valPt);
@@ -170,6 +173,9 @@ public:
 	std::wstring				style_name_;
  	std::wstring				name_;
   
+	std::wstring				pivot_source_;
+	bool						bPivotChart_;
+
 	bool in_axis_;
     std::vector<chart::axis>	axises_;
     std::vector<chart::series>	series_;
@@ -182,7 +188,7 @@ public:
 	office_element_ptr_array	title_odf_context_;
 
 	chart::title				sub_title_;
-	chart::simple				legend_;
+	chart::legend				legend_;
 	chart::plot_area			plot_area_;
 
 	chart::simple				wall_;
@@ -195,6 +201,7 @@ public:
 	oox::_oox_fill				chart_fill_;
 
 	std::vector<_cell>			cash_values;
+	std::map<std::wstring, _cell>cash_pivot;
 
 //---------------------------------------
 	std::wstring				target_table_;
@@ -216,6 +223,8 @@ public:
 
 class process_build_object 
 	:	public base_visitor,
+		public visitor<office_document>,
+
 		public const_visitor<office_document_content>,
  		public visitor<office_document_content>,
 	   
@@ -283,7 +292,8 @@ private:
 	virtual void on_not_impl(std::string const & message);
 
 public:
-
+	virtual void visit(office_document				& val);
+	
 	virtual void visit(const office_document_content& val);
 	virtual void visit(office_document_content		& val);
 	

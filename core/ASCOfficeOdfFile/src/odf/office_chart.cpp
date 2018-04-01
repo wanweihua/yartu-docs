@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,10 +32,7 @@
 
 #include "office_chart.h"
 
-#include <boost/foreach.hpp>
-
 #include <cpdoccore/xml/xmlchar.h>
-#include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/attributes.h>
 
 #include "serialize_elements.h"
@@ -65,9 +62,10 @@ void chart_chart_attlist::add_attributes( const xml::attributes_wc_ptr & Attribu
     common_draw_size_attlist_.add_attributes(Attributes);
     common_attlist_.add_attributes(Attributes);
     
-	CP_APPLY_ATTR(L"chart:class", chart_class_, std::wstring(L""));
-	CP_APPLY_ATTR(L"chart:column-mapping", chart_column_mapping_);
-    CP_APPLY_ATTR(L"chart:row-mapping", chart_row_mapping_);
+	CP_APPLY_ATTR(L"chart:class",				chart_class_, std::wstring(L""));
+	CP_APPLY_ATTR(L"chart:column-mapping",		chart_column_mapping_);
+    CP_APPLY_ATTR(L"chart:row-mapping",			chart_row_mapping_);
+    CP_APPLY_ATTR(L"loext:data-pilot-source",	loext_data_pilot_source_);
 }
 
 // chart:chart
@@ -77,12 +75,21 @@ const wchar_t * chart_chart::name = L"chart";
 
 void chart_chart::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_chart_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_chart::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
 {
-	CP_CREATE_ELEMENT(content_);
+	if CP_CHECK_NAME(L"text", L"tracked-changes") 
+	{
+        //CP_CREATE_ELEMENT(tracked_changes_);
+	}
+	else if CP_CHECK_NAME(L"table", L"content-validations")
+	{
+        //CP_CREATE_ELEMENT(content_validations_);
+	}
+	else
+		CP_CREATE_ELEMENT(content_);
 }
 void chart_title_attlist::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
@@ -99,7 +106,7 @@ const wchar_t * chart_title::name = L"title";
 
 void chart_title::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_title_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_title::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -119,7 +126,7 @@ const wchar_t * chart_subtitle::name = L"subtitle";
 
 void chart_subtitle::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_title_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_subtitle::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -159,7 +166,7 @@ const wchar_t * chart_legend::name = L"legend";
 
 void chart_legend::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_legend_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_legend::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -196,7 +203,7 @@ const wchar_t * chart_plot_area::name = L"plot-area";
 
 void chart_plot_area::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_plot_area_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_plot_area::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -219,7 +226,7 @@ const wchar_t * chart_wall::name = L"wall";
 
 void chart_wall::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_wall_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_wall::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -258,7 +265,7 @@ const wchar_t * chart_axis::name = L"axis";
 
 void chart_axis::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_axis_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_axis::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -281,7 +288,7 @@ const wchar_t * chart_grid::name = L"grid";
 
 void chart_grid::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_grid_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_grid::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -308,11 +315,12 @@ void chart_categories::add_child_element( xml::sax * Reader, const std::wstring 
 
 void chart_series_attlist::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    CP_APPLY_ATTR(L"chart:values-cell-range-address", chart_values_cell_range_address_);
-    CP_APPLY_ATTR(L"chart:label-cell-", chart_label_cell_address_);
-    CP_APPLY_ATTR(L"chart:class", chart_class_);
-    CP_APPLY_ATTR(L"chart:attached-axis", chart_attached_axis_);
-    common_attlist_.add_attributes(Attributes);
+    CP_APPLY_ATTR(L"chart:values-cell-range-address",	chart_values_cell_range_address_);
+    CP_APPLY_ATTR(L"chart:label-cell-address",			chart_label_cell_address_);
+    CP_APPLY_ATTR(L"chart:class",						chart_class_);
+    CP_APPLY_ATTR(L"chart:attached-axis",				chart_attached_axis_);
+   
+	common_attlist_.add_attributes(Attributes);
 }
 
 // chart:categories
@@ -322,7 +330,7 @@ const wchar_t * chart_series::name = L"series";
 
 void chart_series::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_series_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_series::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -360,7 +368,7 @@ const wchar_t * chart_data_point::name = L"data-point";
 
 void chart_data_point::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    chart_data_point_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void chart_data_point::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -103,6 +103,15 @@
 		return ret;
 	}
 
+	function CreateGUID()
+	{
+		function s4() { return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);	}
+
+		var val = '{' + s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4() + '}';
+		val = val.toUpperCase();
+		return val;
+	}
+
 	var c_oLicenseResult = {
 		Error       : 1,
 		Expired     : 2,
@@ -110,7 +119,8 @@
 		UnknownUser : 4,
 		Connections : 5,
 		ExpiredTrial: 6,
-		SuccessLimit: 7
+		SuccessLimit: 7,
+		UsersCount  : 8
 	};
 
 	var c_oRights = {
@@ -119,6 +129,12 @@
 		Review  : 2,
 		Comment : 3,
 		View    : 4
+	};
+
+	var c_oLicenseMode = {
+		None: 0,
+		Trial: 1,
+		Developer: 2
 	};
 
 	/** @constructor */
@@ -136,7 +152,36 @@
 		this.valid = 0;
 
 		this.image = "";
+
+		this.date = "";
+		this.isvisible = false;
+		this.isrequested = false;
 	}
+	asc_CSignatureLine.prototype.correct = function()
+	{
+		if (this.id == null)
+			this.id = "0";
+		if (this.guid == null)
+			this.guid = "";
+		if (this.signer1 == null)
+			this.signer1 = "";
+		if (this.signer2 == null)
+			this.signer2 = "";
+		if (this.email == null)
+			this.email = "";
+		if (this.instructions == null)
+			this.instructions = "";
+		if (this.showDate == null)
+			this.showDate = false;
+		if (this.valid == null)
+			this.valid = 0;
+		if (this.image == null)
+			this.image = "";
+		if (this.date == null)
+			this.date = "";
+		if (this.isvisible == null)
+			this.isvisible = false;
+	};
 	asc_CSignatureLine.prototype.asc_getId = function(){ return this.id; };
 	asc_CSignatureLine.prototype.asc_setId = function(v){ this.id = v; };
 	asc_CSignatureLine.prototype.asc_getGuid = function(){ return this.guid; };
@@ -153,6 +198,12 @@
 	asc_CSignatureLine.prototype.asc_setShowDate = function(v){ this.showDate = v; };
 	asc_CSignatureLine.prototype.asc_getValid = function(){ return this.valid; };
 	asc_CSignatureLine.prototype.asc_setValid = function(v){ this.valid = v; };
+	asc_CSignatureLine.prototype.asc_getDate = function(){ return this.date; };
+	asc_CSignatureLine.prototype.asc_setDate = function(v){ this.date = v; };
+	asc_CSignatureLine.prototype.asc_getVisible = function(){ return this.isvisible; };
+	asc_CSignatureLine.prototype.asc_setVisible = function(v){ this.isvisible = v; };
+	asc_CSignatureLine.prototype.asc_getRequested = function(){ return this.isrequested; };
+	asc_CSignatureLine.prototype.asc_setRequested = function(v){ this.isrequested = v; };
 
 	/**
 	 * Класс asc_CAscEditorPermissions для прав редакторов
@@ -163,8 +214,8 @@
 	 */
 	function asc_CAscEditorPermissions() {
 		this.licenseType = c_oLicenseResult.Error;
+		this.licenseMode = c_oLicenseMode.None;
 		this.isLight = false;
-		this.trial = false;
 		this.rights = c_oRights.None;
 
 		this.canCoAuthoring = true;
@@ -202,8 +253,8 @@
 	asc_CAscEditorPermissions.prototype.asc_getIsLight = function () {
 		return this.isLight;
 	};
-	asc_CAscEditorPermissions.prototype.asc_getTrial = function () {
-		return this.trial;
+	asc_CAscEditorPermissions.prototype.asc_getLicenseMode = function () {
+		return this.licenseMode;
 	};
 	asc_CAscEditorPermissions.prototype.asc_getRights = function () {
 		return this.rights;
@@ -224,8 +275,8 @@
 	asc_CAscEditorPermissions.prototype.setIsLight = function (v) {
 		this.isLight = v;
 	};
-	asc_CAscEditorPermissions.prototype.setTrial = function (v) {
-		this.trial = v;
+	asc_CAscEditorPermissions.prototype.setLicenseMode = function (v) {
+		this.licenseMode = v;
 	};
 	asc_CAscEditorPermissions.prototype.setRights = function (v) {
 		this.rights = v;
@@ -943,9 +994,13 @@
 		},
 
 		changeType: function (type) {
-        if (this.type === type) {
-            return;
-        }
+			if(null === this.type){
+				this.putType(type);
+				return;
+			}
+			if (this.type === type) {
+				return;
+			}
 
 			var bSwapGridLines = ((this.type === c_oAscChartTypeSettings.hBarNormal ||
 			this.type === c_oAscChartTypeSettings.hBarStacked || this.type === c_oAscChartTypeSettings.hBarStackedPer
@@ -1408,21 +1463,38 @@
 	};
 
 	/** @constructor */
-	function asc_CParagraphTab(Pos, Value) {
-		this.Pos = Pos;
-		this.Value = Value;
+	function asc_CParagraphTab(Pos, Value, Leader)
+	{
+		this.Pos    = Pos;
+		this.Value  = Value;
+		this.Leader = Leader;
 	}
+	asc_CParagraphTab.prototype.asc_getValue = function()
+	{
+		return this.Value;
+	};
+	asc_CParagraphTab.prototype.asc_putValue = function(v)
+	{
+		this.Value = v;
+	};
+	asc_CParagraphTab.prototype.asc_getPos = function()
+	{
+		return this.Pos;
+	};
+	asc_CParagraphTab.prototype.asc_putPos = function(v)
+	{
+		this.Pos = v;
+	};
+	asc_CParagraphTab.prototype.asc_getLeader = function()
+	{
+		if (Asc.c_oAscTabLeader.Heavy === this.Leader)
+			return Asc.c_oAscTabLeader.Underscore;
 
-	asc_CParagraphTab.prototype = {
-		asc_getValue: function () {
-			return this.Value;
-		}, asc_putValue: function (v) {
-			this.Value = v;
-		}, asc_getPos: function () {
-			return this.Pos;
-		}, asc_putPos: function (v) {
-			this.Pos = v;
-		}
+		return this.Leader;
+	};
+	asc_CParagraphTab.prototype.asc_putLeader = function(v)
+	{
+		this.Leader = v;
 	};
 
 	/** @constructor */
@@ -1432,7 +1504,7 @@
 		if (undefined != obj) {
 			var Count = obj.Tabs.length;
 			for (var Index = 0; Index < Count; Index++) {
-				this.Tabs.push(new asc_CParagraphTab(obj.Tabs[Index].Pos, obj.Tabs[Index].Value));
+				this.Tabs.push(new asc_CParagraphTab(obj.Tabs[Index].Pos, obj.Tabs[Index].Value, obj.Tabs[Index].Leader));
 			}
 		}
 	}
@@ -1932,6 +2004,7 @@
 		this.canFill = true;
 		this.canChangeArrows = false;
 		this.bFromChart = false;
+		this.bFromImage = false;
 		this.Locked = false;
 		this.w = null;
 		this.h = null;
@@ -1944,6 +2017,7 @@
 
         this.columnNumber = null;
         this.columnSpace = null;
+        this.signatureId = null;
 	}
 
 	asc_CShapeProperty.prototype = {
@@ -2030,6 +2104,22 @@
 
 		asc_putColumnSpace: function(v){
 			this.columnSpace = v;
+		},
+
+		asc_getSignatureId: function(){
+			return this.signatureId;
+		},
+
+		asc_putSignatureId: function(v){
+			this.signatureId = v;
+		},
+
+		asc_getFromImage: function(){
+			return this.bFromImage;
+		},
+
+		asc_putFromImage: function(v){
+			this.bFromImage = v;
 		}
 	};
 
@@ -2428,6 +2518,10 @@
 			if (window['AscFormat'].isRealNumber(this.oleWidth) && window['AscFormat'].isRealNumber(this.oleHeight)) {
 				return new asc_CImageSize(this.oleWidth, this.oleHeight, true);
 			}
+			if(this.ImageUrl === null)
+			{
+				return new asc_CImageSize(50, 50, false);
+			}
 			var _section_select = api.WordControl.m_oLogicDocument.Get_PageSizesByDrawingObjects();
 			var _page_width = AscCommon.Page_Width;
 			var _page_height = AscCommon.Page_Height;
@@ -2520,6 +2614,12 @@
 
 		asc_putColumnSpace: function(v){
 			this.columnSpace = v;
+		},
+
+		asc_getSignatureId : function() {
+			if (this.ShapeProperties)
+				return this.ShapeProperties.asc_getSignatureId();
+			return undefined;
 		}
 	};
 
@@ -2866,6 +2966,59 @@
 		return this.Number;
 	};
 
+
+    function CHyperlinkProperty(obj)
+    {
+        if (obj)
+        {
+            this.Text    = (undefined != obj.Text   ) ? obj.Text : null;
+            this.Value   = (undefined != obj.Value  ) ? obj.Value : "";
+            this.ToolTip = (undefined != obj.ToolTip) ? obj.ToolTip : "";
+            this.Class   = (undefined !== obj.Class ) ? obj.Class : null;
+        }
+        else
+        {
+            this.Text    = null;
+            this.Value   = "";
+            this.ToolTip = "";
+            this.Class   = null;
+        }
+    }
+
+    CHyperlinkProperty.prototype.get_Value   = function()
+    {
+        return this.Value;
+    };
+    CHyperlinkProperty.prototype.put_Value   = function(v)
+    {
+        this.Value = v;
+    };
+    CHyperlinkProperty.prototype.get_ToolTip = function()
+    {
+        return this.ToolTip;
+    };
+    CHyperlinkProperty.prototype.put_ToolTip = function(v)
+    {
+        this.ToolTip = v ? v.slice(0, Asc.c_oAscMaxTooltipLength) : v;
+    };
+    CHyperlinkProperty.prototype.get_Text    = function()
+    {
+        return this.Text;
+    };
+    CHyperlinkProperty.prototype.put_Text    = function(v)
+    {
+        this.Text = v;
+    };
+    CHyperlinkProperty.prototype.put_InternalHyperlink = function(oClass)
+    {
+        this.Class = oClass;
+    };
+    CHyperlinkProperty.prototype.get_InternalHyperlink = function()
+    {
+        return this.Class;
+    };
+
+
 	/** @constructor */
 	function asc_CUserInfo() {
 		this.Id = null;
@@ -2914,6 +3067,7 @@
 		this.Mode = null;
 		this.Permissions = null;
 		this.Lang = null;
+		this.OfflineApp = false;
 	}
 
 	prot = asc_CDocInfo.prototype;
@@ -2953,10 +3107,10 @@
 	prot.put_Token = prot.asc_putToken = function (v) {
 		this.Token = v;
 	};
-	prot.get_OfflineApp = prot.asc_getOfflineApp = function () {
+	prot.get_OfflineApp = function () {
 		return this.OfflineApp;
 	};
-	prot.put_OfflineApp = prot.asc_putOfflineApp = function (v) {
+	prot.put_OfflineApp = function (v) {
 		this.OfflineApp = v;
 	};
 	prot.get_UserId = prot.asc_getUserId = function () {
@@ -3136,6 +3290,376 @@
         return this.Variants;
     };
 
+    function CWatermarkOnDraw(htmlContent)
+	{
+		// example content:
+		/*
+		{
+			"type" : "rect",
+			"width" : 100, // mm
+			"height" : 100, // mm
+			"rotate" : -45, // degrees
+			"margins" : [ 10, 10, 10, 10 ], // text margins
+			"fill" : [255, 0, 0], // [] => none
+			"stroke-width" : 1, // mm
+			"stroke" : [0, 0, 255], // [] => none
+			"align" : 1, // vertical text align (4 - top, 1 - center, 0 - bottom)
+
+			"paragraphs" : [
+				{
+					"align" : 4, // horizontal text align [1 - left, 2 - center, 0 - right, 3 - justify]
+					"fill" : [255, 0, 0], // paragraph highlight. [] => none
+					"linespacing" : 0,
+
+					"runs" : [
+						{
+							"text" : "some text",
+							"fill" : [255, 255, 255], // text highlight. [] => none,
+							"font-family" : "Arial",
+							"font-size" : 24, // pt
+							"bold" : true,
+							"italic" : false,
+							"strikeout" : "false",
+							"underline" : "false"
+						},
+						{
+							"text" : "<%br%>"
+						}
+					]
+				}
+			]
+		}
+		*/
+
+		this.inputContentSrc = htmlContent;
+		this.replaceMap = {};
+
+		this.image = null;
+		this.imageBase64 = undefined;
+		this.width = 0;
+		this.height = 0;
+
+		this.transparent = 0.3;
+		this.zoom = 1;
+		this.calculatezoom = -1;
+
+		this.CheckParams = function(api)
+		{
+			this.replaceMap["%user_name%"] = api.User.userName;
+		};
+
+		this.Generate = function()
+		{
+			if (this.zoom == this.calculatezoom)
+				return;
+
+			this.calculatezoom = this.zoom;
+
+			var content = this.inputContentSrc;
+			for (var key in this.replaceMap)
+			{
+				if (!this.replaceMap.hasOwnProperty(key))
+					continue;
+
+				content = content.replace(new RegExp(key, 'g'), this.replaceMap[key]);
+			}
+
+			var _obj = {};
+			try
+			{
+				var _objTmp = JSON.parse(content);
+				_obj = _objTmp;
+			}
+			catch (err)
+			{
+
+			}
+
+			this.transparent = (undefined == _obj['transparent']) ? 0.3 : _obj['transparent'];
+
+			this.privateGenerateShape(_obj);
+
+			//var _data = this.image.toDataURL("image/png");
+			//console.log(_data);
+		};
+
+		this.Draw = function(context, dw_or_dx, dh_or_dy, dw, dh)
+		{
+			if (!this.image)
+				return;
+
+			var x = 0;
+			var y = 0;
+
+			if (undefined == dw)
+			{
+				x = (dw_or_dx - this.width) >> 1;
+				y = (dh_or_dy - this.height) >> 1;
+			}
+			else
+			{
+				x = (dw_or_dx + ((dw - this.width) / 2)) >> 0;
+				y = (dh_or_dy + ((dh - this.height) / 2)) >> 0;
+			}
+			var oldGlobalAlpha = context.globalAlpha;
+			context.globalAlpha = this.transparent;
+			context.drawImage(this.image, x, y);
+			context.globalAlpha = oldGlobalAlpha;
+		};
+
+		this.StartRenderer = function()
+		{
+			var canvasTransparent = document.createElement("canvas");
+			canvasTransparent.width = this.image.width;
+			canvasTransparent.height = this.image.height;
+			var ctx = canvasTransparent.getContext("2d");
+			ctx.globalAlpha = this.transparent;
+			ctx.drawImage(this.image, 0, 0);
+			this.imageBase64 = canvasTransparent.toDataURL("image/png");
+			canvasTransparent = null;
+		};
+		this.EndRenderer = function()
+		{
+			delete this.imageBase64;
+			this.imageBase64 = undefined;
+		};
+		this.DrawOnRenderer = function(renderer, w, h)
+		{
+			var wMM = this.width * g_dKoef_pix_to_mm / this.zoom;
+			var hMM = this.height * g_dKoef_pix_to_mm / this.zoom;
+			var x = (w - wMM) / 2;
+			var y = (h - hMM) / 2;
+
+			renderer.UseOriginImageUrl = true;
+			renderer.drawImage(this.imageBase64, x, y, wMM, hMM);
+			renderer.UseOriginImageUrl = false;
+		};
+
+		this.privateGenerateShape = function(obj)
+		{
+			AscFormat.ExecuteNoHistory(function(obj) {
+
+                var oShape = new AscFormat.CShape();
+                var bWord = false;
+                var oApi = Asc['editor'] || editor;
+                if(!oApi){
+                    return null;
+                }
+                switch(oApi.getEditorId()){
+                    case AscCommon.c_oEditorId.Word:{
+                        oShape.setWordShape(true);
+                        bWord = true;
+                        break;
+                    }
+                    case AscCommon.c_oEditorId.Presentation:{
+                        oShape.setWordShape(false);
+                        oShape.setParent(oApi.WordControl.m_oLogicDocument.Slides[oApi.WordControl.m_oLogicDocument.CurPage]);
+                        break;
+                    }
+					case AscCommon.c_oEditorId.Spreadsheet:{
+                        oShape.setWordShape(false);
+                        oShape.setWorksheet(oApi.wb.getWorksheet().model);
+						break;
+					}
+				}
+
+                oShape.setBDeleted(false);
+				oShape.spPr = new AscFormat.CSpPr();
+				oShape.spPr.setParent(oShape);
+				oShape.spPr.setXfrm(new AscFormat.CXfrm());
+				oShape.spPr.xfrm.setParent(oShape.spPr);
+				oShape.spPr.xfrm.setOffX(0);
+				oShape.spPr.xfrm.setOffY(0);
+				oShape.spPr.xfrm.setExtX(obj['width']);
+				oShape.spPr.xfrm.setExtY(obj['height']);
+				oShape.spPr.xfrm.setRot(AscFormat.normalizeRotate(obj['rotate'] ? (obj['rotate'] * Math.PI / 180) : 0));
+				oShape.spPr.setGeometry(AscFormat.CreateGeometry(obj['type']));
+				if(obj['fill'] && obj['fill'].length === 3){
+					oShape.spPr.setFill(AscFormat.CreteSolidFillRGB(obj['fill'][0], obj['fill'][1], obj['fill'][2]));
+				}
+				if(AscFormat.isRealNumber(obj['stroke-width']) || Array.isArray(obj['stroke']) && obj['stroke'].length === 3){
+					var oUnifill;
+					if(Array.isArray(obj['stroke']) && obj['stroke'].length === 3){
+						oUnifill = AscFormat.CreteSolidFillRGB(obj['stroke'][0], obj['stroke'][1], obj['stroke'][2]);
+					}
+					else{
+						oUnifill = AscFormat.CreteSolidFillRGB(0, 0, 0);
+					}
+					oShape.spPr.setLn(AscFormat.CreatePenFromParams(oUnifill, undefined, undefined, undefined, undefined, AscFormat.isRealNumber(obj['stroke-width']) ? obj['stroke-width'] : 12700.0/36000.0))
+				}
+
+				if(bWord){
+					oShape.createTextBoxContent();
+				}
+				else{
+					oShape.createTextBody();
+				}
+				var align = obj['align'];
+				if(undefined != align){
+					oShape.setVerticalAlign(align);
+				}
+
+				if(Array.isArray(obj['margins']) && obj['margins'].length === 4){
+					oShape.setPaddings({Left: obj['margins'][0], Top: obj['margins'][1], Right: obj['margins'][2], Bottom: obj['margins'][3]});
+				}
+				var oContent = oShape.getDocContent();
+				var aParagraphsS = obj['paragraphs'];
+				if(aParagraphsS.length > 0){
+                    oContent.Content.length = 0;
+				}
+				for(var i = 0; i < aParagraphsS.length; ++i){
+					var oCurParS = aParagraphsS[i];
+					var oNewParagraph = new Paragraph(oContent.DrawingDocument, oContent, !bWord);
+					if(AscFormat.isRealNumber(oCurParS['align'])){
+						oNewParagraph.Set_Align(oCurParS['align'])
+					}
+					if(Array.isArray(oCurParS['fill']) && oCurParS['fill'].length === 3){
+						var oShd = new CDocumentShd();
+						oShd.Value = Asc.c_oAscShdClear;
+						oShd.Color.r = oCurParS['fill'][0];
+						oShd.Color.g = oCurParS['fill'][1];
+						oShd.Color.b = oCurParS['fill'][2];
+						oNewParagraph.Set_Shd(oShd, true);
+					}
+					if(AscFormat.isRealNumber(oCurParS['linespacing'])){
+						oNewParagraph.Set_Spacing({Line: oCurParS['linespacing'], LineRule: Asc.linerule_Auto}, true);
+					}
+					var aRunsS = oCurParS['runs'];
+					for(var j = 0; j < aRunsS.length; ++j){
+						var oRunS = aRunsS[j];
+						var oRun = new AscCommonWord.ParaRun(oNewParagraph, false);
+						if(Array.isArray(oRunS['fill']) && oRunS['fill'].length === 3){
+							oRun.Set_Unifill(AscFormat.CreteSolidFillRGB(oRunS['fill'][0], oRunS['fill'][1], oRunS['fill'][2]));
+						}
+						if(oRunS['font-family']){
+							oRun.Set_RFonts_Ascii({Name : oRunS['font-family'], Index : -1});
+							oRun.Set_RFonts_CS({Name : oRunS['font-family'], Index : -1});
+							oRun.Set_RFonts_EastAsia({Name : oRunS['font-family'], Index : -1});
+							oRun.Set_RFonts_HAnsi({Name : oRunS['font-family'], Index : -1});
+						}
+						if(oRunS['font-size']){
+							oRun.Set_FontSize(oRunS['font-size']);
+						}
+						oRun.Set_Bold(oRunS['bold'] === true);
+						oRun.Set_Italic(oRunS['italic'] === true);
+						oRun.Set_Strikeout(oRunS['strikeout'] === true);
+						oRun.Set_Underline(oRunS['underline'] === true);
+
+						var sCustomText = oRunS['text'];
+						if(sCustomText === "<%br%>"){
+							oRun.AddToContent(0, new ParaNewLine(break_Line), false);
+						}
+						else{
+							oRun.AddText(sCustomText);
+						}
+
+						oNewParagraph.Internal_Content_Add(i, oRun, false);
+					}
+					oContent.Internal_Content_Add(oContent.Content.length, oNewParagraph);
+				}
+
+				oShape.recalculate();
+				if (oShape.bWordShape)
+				{
+					oShape.recalculateText();
+				}
+
+				var oldShowParaMarks;
+				if (window.editor)
+				{
+					oldShowParaMarks = editor.ShowParaMarks;
+					editor.ShowParaMarks = false;
+				}
+
+				AscCommon.IsShapeToImageConverter = true;
+				var _bounds_cheker = new AscFormat.CSlideBoundsChecker();
+
+				var w_mm = 210;
+				var h_mm = 297;
+				var w_px = AscCommon.AscBrowser.convertToRetinaValue(w_mm * g_dKoef_mm_to_pix * this.zoom, true);
+				var h_px = AscCommon.AscBrowser.convertToRetinaValue(h_mm * g_dKoef_mm_to_pix * this.zoom, true);
+
+				_bounds_cheker.init(w_px, h_px, w_mm, h_mm);
+				_bounds_cheker.transform(1,0,0,1,0,0);
+
+				_bounds_cheker.AutoCheckLineWidth = true;
+				_bounds_cheker.CheckLineWidth(oShape);
+				oShape.draw(_bounds_cheker, 0);
+				_bounds_cheker.CorrectBounds2();
+
+				var _need_pix_width     = _bounds_cheker.Bounds.max_x - _bounds_cheker.Bounds.min_x + 1;
+				var _need_pix_height    = _bounds_cheker.Bounds.max_y - _bounds_cheker.Bounds.min_y + 1;
+
+				if (_need_pix_width <= 0 || _need_pix_height <= 0)
+					return;
+
+				if (!this.image)
+					this.image = document.createElement("canvas");
+
+				this.image.width = _need_pix_width;
+				this.image.height = _need_pix_height;
+				this.width = _need_pix_width;
+				this.height = _need_pix_height;
+
+				var _ctx = this.image.getContext('2d');
+
+				var g = new AscCommon.CGraphics();
+				g.init(_ctx, w_px, h_px, w_mm, h_mm);
+				g.m_oFontManager = AscCommon.g_fontManager;
+
+				g.m_oCoordTransform.tx = -_bounds_cheker.Bounds.min_x;
+				g.m_oCoordTransform.ty = -_bounds_cheker.Bounds.min_y;
+				g.transform(1,0,0,1,0,0);
+
+				oShape.draw(g, 0);
+
+				AscCommon.IsShapeToImageConverter = false;
+
+				if (window.editor)
+				{
+					window.editor.ShowParaMarks = oldShowParaMarks;
+				}
+
+			}, this, [obj]);
+		};
+	}
+	window.TEST_WATERMARK_STRING = "\
+	{\
+		\"transparent\" : 0.3,\
+		\"type\" : \"rect\",\
+		\"width\" : 100,\
+		\"height\" : 100,\
+		\"rotate\" : -45,\
+		\"margins\" : [ 10, 10, 10, 10 ],\
+		\"fill\" : [255, 0, 0],\
+		\"stroke-width\" : 1,\
+		\"stroke\" : [0, 0, 255],\
+		\"align\" : 1,\
+		\
+		\"paragraphs\" : [\
+		{\
+			\"align\" : 2,\
+			\"fill\" : [255, 0, 0],\
+			\"linespacing\" : 1,\
+			\
+			\"runs\" : [\
+				{\
+					\"text\" : \"Do not steal, %user_name%!\",\
+					\"fill\" : [0, 0, 0],\
+					\"font-family\" : \"Arial\",\
+					\"font-size\" : 40,\
+					\"bold\" : true,\
+					\"italic\" : false,\
+					\"strikeout\" : false,\
+					\"underline\" : false\
+				},\
+				{\
+					\"text\" : \"<%br%>\"\
+				}\
+			]\
+		}\
+	]\
+	}";
 
     /*
      * Export
@@ -3158,6 +3682,7 @@
 	prot['Connections'] = prot.Connections;
 	prot['ExpiredTrial'] = prot.ExpiredTrial;
 	prot['SuccessLimit'] = prot.SuccessLimit;
+	prot['UsersCount'] = prot.UsersCount;
 
 	window['Asc']['c_oRights'] = window['Asc'].c_oRights = c_oRights;
 	prot = c_oRights;
@@ -3166,6 +3691,12 @@
 	prot['Review'] = prot.Review;
 	prot['Comment'] = prot.Comment;
 	prot['View'] = prot.View;
+
+	window['Asc']['c_oLicenseMode'] = window['Asc'].c_oLicenseMode = c_oLicenseMode;
+	prot = c_oLicenseMode;
+	prot['None'] = prot.None;
+	prot['Trial'] = prot.Trial;
+	prot['Developer'] = prot.Developer;
 
 	window["AscCommon"]["asc_CSignatureLine"] = window["AscCommon"].asc_CSignatureLine = asc_CSignatureLine;
 	prot = asc_CSignatureLine.prototype;
@@ -3185,6 +3716,12 @@
 	prot["asc_setShowDate"] = prot.asc_setShowDate;
 	prot["asc_getValid"] = prot.asc_getValid;
 	prot["asc_setValid"] = prot.asc_setValid;
+	prot["asc_getDate"] = prot.asc_getDate;
+	prot["asc_setDate"] = prot.asc_setDate;
+	prot["asc_getVisible"] = prot.asc_getVisible;
+	prot["asc_setVisible"] = prot.asc_setVisible;
+	prot["asc_getRequested"] = prot.asc_getRequested;
+	prot["asc_setRequested"] = prot.asc_setRequested;
 
 	window["AscCommon"].asc_CAscEditorPermissions = asc_CAscEditorPermissions;
 	prot = asc_CAscEditorPermissions.prototype;
@@ -3196,7 +3733,7 @@
 	prot["asc_getAutosaveMinInterval"] = prot.asc_getAutosaveMinInterval;
 	prot["asc_getIsAnalyticsEnable"] = prot.asc_getIsAnalyticsEnable;
 	prot["asc_getIsLight"] = prot.asc_getIsLight;
-	prot["asc_getTrial"] = prot.asc_getTrial;
+	prot["asc_getLicenseMode"] = prot.asc_getLicenseMode;
 	prot["asc_getRights"] = prot.asc_getRights;
 	prot["asc_getBuildVersion"] = prot.asc_getBuildVersion;
 	prot["asc_getBuildNumber"] = prot.asc_getBuildNumber;
@@ -3406,6 +3943,8 @@
 	prot["put_Value"] = prot["asc_putValue"] = prot.asc_putValue;
 	prot["get_Pos"] = prot["asc_getPos"] = prot.asc_getPos;
 	prot["put_Pos"] = prot["asc_putPos"] = prot.asc_putPos;
+	prot["get_Leader"] = prot["asc_getLeader"] = prot.asc_getLeader;
+	prot["put_Leader"] = prot["asc_putLeader"] = prot.asc_putLeader;
 
 	window["Asc"]["asc_CParagraphTabs"] = window["Asc"].asc_CParagraphTabs = asc_CParagraphTabs;
 	prot = asc_CParagraphTabs.prototype;
@@ -3582,6 +4121,10 @@
 	prot["put_ColumnNumber"] = prot["asc_putColumnNumber"] = prot.asc_putColumnNumber;
 	prot["get_ColumnSpace"] = prot["asc_getColumnSpace"] = prot.asc_getColumnSpace;
 	prot["put_ColumnSpace"] = prot["asc_putColumnSpace"] = prot.asc_putColumnSpace;
+	prot["get_SignatureId"] = prot["asc_getSignatureId"] = prot.asc_getSignatureId;
+	prot["put_SignatureId"] = prot["asc_putSignatureId"] = prot.asc_putSignatureId;
+	prot["get_FromImage"] = prot["asc_getFromImage"] = prot.asc_getFromImage;
+	prot["put_FromImage"] = prot["asc_putFromImage"] = prot.asc_putFromImage;
 
 	window["Asc"]["asc_TextArtProperties"] = window["Asc"].asc_TextArtProperties = asc_TextArtProperties;
 	prot = asc_TextArtProperties.prototype;
@@ -3693,6 +4236,7 @@
 	prot["put_ColumnNumber"] = prot["asc_putColumnNumber"] = prot.asc_putColumnNumber;
 	prot["get_ColumnSpace"] = prot["asc_getColumnSpace"] = prot.asc_getColumnSpace;
 	prot["put_ColumnSpace"] = prot["asc_putColumnSpace"] = prot.asc_putColumnSpace;
+	prot["asc_getSignatureId"] = prot["asc_getSignatureId"] = prot.asc_getSignatureId;
 
 
 
@@ -3791,6 +4335,19 @@
 	prot["get_FootnoteText"] =  prot.get_FootnoteText;
 	prot["get_FootnoteNumber"] = prot.get_FootnoteNumber;
 
+
+
+    window['Asc']['CHyperlinkProperty']       = window['Asc'].CHyperlinkProperty = CHyperlinkProperty;
+    prot = CHyperlinkProperty.prototype;
+    prot['get_Value']             = CHyperlinkProperty.prototype.get_Value;
+    prot['put_Value']             = CHyperlinkProperty.prototype.put_Value;
+    prot['get_ToolTip']           = CHyperlinkProperty.prototype.get_ToolTip;
+    prot['put_ToolTip']           = CHyperlinkProperty.prototype.put_ToolTip;
+    prot['get_Text']              = CHyperlinkProperty.prototype.get_Text;
+    prot['put_Text']              = CHyperlinkProperty.prototype.put_Text;
+    prot['get_InternalHyperlink'] = CHyperlinkProperty.prototype.get_InternalHyperlink;
+    prot['put_InternalHyperlink'] = CHyperlinkProperty.prototype.put_InternalHyperlink;
+
 	window["Asc"]["asc_CUserInfo"] = window["Asc"].asc_CUserInfo = asc_CUserInfo;
 	prot = asc_CUserInfo.prototype;
 	prot["asc_putId"] = prot["put_Id"] = prot.asc_putId;
@@ -3814,8 +4371,6 @@
 	prot["put_Format"] = prot["asc_putFormat"] = prot.asc_putFormat;
 	prot["get_VKey"] = prot["asc_getVKey"] = prot.asc_getVKey;
 	prot["put_VKey"] = prot["asc_putVKey"] = prot.asc_putVKey;
-	prot["get_OfflineApp"] = prot["asc_getOfflineApp"] = prot.asc_getOfflineApp;
-	prot["put_OfflineApp"] = prot["asc_putOfflineApp"] = prot.asc_putOfflineApp;
 	prot["get_UserId"] = prot["asc_getUserId"] = prot.asc_getUserId;
 	prot["get_UserName"] = prot["asc_getUserName"] = prot.asc_getUserName;
 	prot["get_Options"] = prot["asc_getOptions"] = prot.asc_getOptions;
@@ -3870,4 +4425,8 @@
     prot["get_Word"] = prot.get_Word;
     prot["get_Checked"] = prot.get_Checked;
     prot["get_Variants"] = prot.get_Variants;
+
+    window["AscCommon"].CreateGUID = CreateGUID;
+
+    window["AscCommon"].CWatermarkOnDraw = CWatermarkOnDraw;
 })(window);

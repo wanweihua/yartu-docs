@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -60,7 +60,7 @@ var isRealObject = AscCommon.isRealObject;
             {
                 if(value && (typeof value.RasterImageId === "string") && value.RasterImageId.length > 0)
                 {
-                    AscCommon.CollaborativeEditing.Add_NewImage(AscCommon.getFullImageSrc2(value.RasterImageId));
+                    AscCommon.CollaborativeEditing.Add_NewImage(value.RasterImageId);
                 }
             }
         }
@@ -195,11 +195,6 @@ CImageShape.prototype.isPlaceholder  = function()
     return this.nvPicPr != null && this.nvPicPr.nvPr != undefined && this.nvPicPr.nvPr.ph != undefined;
 };
 
-CImageShape.prototype.isEmptyPlaceholder = function ()
-{
-    return false;
-};
-
 CImageShape.prototype.isShape = function()
 {
     return false;
@@ -229,32 +224,6 @@ CImageShape.prototype.hitInInnerArea = CShape.prototype.hitInInnerArea;
 CImageShape.prototype.getRotateAngle = CShape.prototype.getRotateAngle;
 
 CImageShape.prototype.changeSize = CShape.prototype.changeSize;
-
-CImageShape.prototype.getFullFlipH = function()
-{
-    if(!isRealObject(this.group))
-        return this.flipH;
-    return this.group.getFullFlipH() ? !this.flipH : this.flipH;
-};
-
-CImageShape.prototype.getFullFlipV = function()
-{
-    if(!isRealObject(this.group))
-        return this.flipV;
-    return this.group.getFullFlipV() ? !this.flipV : this.flipV;
-};
-
-CImageShape.prototype.getAspect = function(num)
-{
-    var _tmp_x = this.extX != 0 ? this.extX : 0.1;
-    var _tmp_y = this.extY != 0 ? this.extY : 0.1;
-    return num === 0 || num === 4 ? _tmp_x/_tmp_y : _tmp_y/_tmp_x;
-};
-
-CImageShape.prototype.getFullRotate = function()
-{
-    return !isRealObject(this.group) ? this.rot : this.rot + this.group.getFullRotate();
-};
 
 CImageShape.prototype.getRectBounds = function()
 {
@@ -616,6 +585,9 @@ CImageShape.prototype.getTransform = function()
 
 CImageShape.prototype.draw = function(graphics, transform)
 {
+    if(this.checkNeedRecalculate && this.checkNeedRecalculate()){
+        return;
+    }
     if(graphics.updatedRect)
     {
         var rect = graphics.updatedRect;
@@ -639,46 +611,79 @@ CImageShape.prototype.draw = function(graphics, transform)
     var oldBrush = this.brush;
     var oldPen = this.pen;
 
-    this.brush = new AscFormat.CUniFill();
-    this.brush.fill = this.blipFill;
-    this.pen = null;
+    if(this.getObjectType() === AscDFH.historyitem_type_OleObject){
+        var sImageId = this.blipFill && this.blipFill.RasterImageId;
+        if(sImageId){
+            var oApi = editor || window['Asc']['editor'];
+            if(oApi){
+                sImageId = AscCommon.getFullImageSrc2(sImageId);
+                var _img = oApi.ImageLoader.map_image_index[sImageId];
+                if ((_img && _img.Status === AscFonts.ImageLoadStatus.Loading) || (_img && _img.Image)){
+                    this.brush = new AscFormat.CUniFill();
+                    this.brush.fill = this.blipFill;
+                    this.pen = null;
+                }
+                else{
+                    this.brush = AscFormat.CreateNoFillUniFill();
+                }
+            }
+        }
+        else{
+            this.brush = new AscFormat.CUniFill();
+            this.brush.fill = this.blipFill;
+            this.pen = null;
+        }
+    }
+    else{
+        this.brush = new AscFormat.CUniFill();
+        this.brush.fill = this.blipFill;
+        this.pen = null;
+    }
 
     shape_drawer.fromShape2(this, graphics, this.calcGeometry);
     shape_drawer.draw(this.calcGeometry);
     this.brush = oldBrush;
     this.pen = oldPen;
 
-    if(!this.group)
-    {
-        var oLock;
-        if(this.parent instanceof ParaDrawing)
-        {
-            oLock = this.parent.Lock;
-        }
-        else if(this.Lock)
-        {
-            oLock = this.Lock;
-        }
-        if(oLock && AscCommon.locktype_None != oLock.Get_Type())
-        {
-            var bCoMarksDraw = true;
-            if(typeof editor !== "undefined" && editor && AscFormat.isRealBool(editor.isCoMarksDraw)){
-                bCoMarksDraw = editor.isCoMarksDraw;
-            }
-            if(bCoMarksDraw){
-                graphics.transform3(_transform);
-                graphics.DrawLockObjectRect(oLock.Get_Type(), 0, 0, this.extX, this.extY);
-            }
-        }
-    }
+    this.drawLocks(_transform, graphics);
     graphics.reset();
     graphics.SetIntegerGrid(true);
 };
 
 CImageShape.prototype.select = CShape.prototype.select;
 
-CImageShape.prototype.recalculateLocalTransform = CShape.prototype.recalculateLocalTransform;
+
+    CImageShape.prototype.handleUpdateLn = function()
+    {
+        this.recalcLine();
+        this.recalcPen();
+        this.addToRecalculate();
+    };
+
+    CImageShape.prototype.changePresetGeom = function (sPreset) {
+        if(sPreset === "textRect"){
+            return;
+        }
+        this.spPr.setGeometry( AscFormat.CreateGeometry(sPreset));
+    };
+
+
+    CImageShape.prototype.recalculateLocalTransform = CShape.prototype.recalculateLocalTransform;
 CImageShape.prototype.hit = CShape.prototype.hit;
+
+    CImageShape.prototype.changeLine = function (line)
+    {
+        if(this.recalcInfo.recalculatePen)
+        {
+            this.recalculatePen();
+        }
+        var stroke = AscFormat.CorrectUniStroke(line, this.pen);
+        if(stroke.Fill)
+        {
+            stroke.Fill.convertToPPTXMods();
+        }
+        this.spPr.setLn(stroke);
+    };
 
 CImageShape.prototype.deselect = function(drawingObjectsController)
 {

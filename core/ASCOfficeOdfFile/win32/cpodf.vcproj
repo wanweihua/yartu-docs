@@ -43,17 +43,17 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../include;&quot;../../DesktopEditor/freetype-2.5.2/include&quot;"
+				AdditionalIncludeDirectories="..\include;..\..\DesktopEditor\freetype-2.5.2\include;..\..\DesktopEditor\xml\libxml2\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;USE_LITE_READER;_USE_XMLLITE_READER_;_USE_LIBXML2_READER_;LIBXML_READER_ENABLED"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough=""
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="4"
-				DisableSpecificWarnings="4311;4267;4996;4172"
+				DisableSpecificWarnings="4005;4311;4312"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -643,6 +643,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\docx\xlsx_data_validation.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\docx\xlsx_data_validation.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\docx\xlsx_defined_names.cpp"
 					>
 				</File>
@@ -716,6 +724,14 @@
 				</File>
 				<File
 					RelativePath="..\src\docx\xlsx_package.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\docx\xlsx_pivots_context.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\docx\xlsx_pivots_context.h"
 					>
 				</File>
 				<File
@@ -1660,6 +1676,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\odf\table_data_pilot_tables.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\table_data_pilot_tables.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\odf\table_database_ranges.cpp"
 				>
 			</File>
@@ -1685,6 +1709,14 @@
 			</File>
 			<File
 				RelativePath="..\src\odf\table_xlsx.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tablefunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tablefunction.h"
 				>
 			</File>
 			<File

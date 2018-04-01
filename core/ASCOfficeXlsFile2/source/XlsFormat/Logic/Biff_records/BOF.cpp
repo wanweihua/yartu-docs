@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -87,7 +87,7 @@ void BOF::readFields(CFRecord& record)
 		fGlJmp		= GETBIT(flags, 10);
 		fFontLimit	= GETBIT(flags, 13);
 		
-		verXLHigh = static_cast<unsigned char>(GETBITS(flags, 14, 17));
+		verXLHigh = GETBITS(flags, 14, 17);
 
 		record >> verLowestBiff;
 		unsigned char flags2;

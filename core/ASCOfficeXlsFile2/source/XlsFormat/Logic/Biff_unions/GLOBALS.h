@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,20 +36,18 @@
 namespace XLS
 {
 
-
-// Logical representation of GLOBALS union of records 
 class GLOBALS: public CompositeObject
 {
 	BASE_OBJECT_DEFINE_CLASS_NAME(GLOBALS)
 public:
-	GLOBALS(const bool is_dialog_sheet);
+	GLOBALS();
 	~GLOBALS();
 
 	BaseObjectPtr clone();
 
-	virtual const	bool loadContent	(BinProcessor& proc);
+	virtual const	bool loadContent (BinProcessor& proc);
 
-	static const ElementType	type = typeGLOBALS;
+	static const ElementType type = typeGLOBALS;
 
 	int serialize(std::wostream & stream);
 

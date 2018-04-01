@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -56,48 +56,28 @@
 	CConditionalFormatting.prototype.setSqref = function(sqref) {
 		this.ranges = AscCommonExcel.g_oRangeCache.getActiveRangesFromSqRef(sqref);
 	};
-	CConditionalFormatting.prototype.clone = function() {
-		var i, res = new CConditionalFormatting();
-		res.pivot = this.pivot;
-		if (this.ranges) {
-			res.ranges = [];
-			for (i = 0; i < this.ranges.length; ++i) {
-				res.ranges.push(this.ranges[i].clone());
-			}
-		}
-		for (i = 0; i < this.aRules.length; ++i)
-			res.aRules.push(this.aRules[i].clone());
-
-		return res;
-	};
 	CConditionalFormatting.prototype.isValid = function() {
 		//todo more checks
 		return this.ranges && this.ranges.length > 0;
+	};
+	CConditionalFormatting.prototype.initRules = function() {
+		for (var i = 0; i < this.aRules.length; ++i) {
+			this.aRules[i].updateConditionalFormatting(this);
 	}
-	CConditionalFormatting.prototype.getBBox = function() {
-		var bbox = null;
-		if (this.ranges && this.ranges.length > 0) {
-			bbox = this.ranges[0].clone();
-			for(var i = 1 ; i < this.ranges.length; ++i){
-				bbox.union2(this.ranges[i]);
-			}
-		}
-		return bbox;
 	};
 
 	//todo need another approach
-	function CConditionalFormattingFormulaWrapper (ws, cf) {
+	function CConditionalFormattingFormulaWrapper (ws, rule) {
 		this.ws = ws;
-		this.cf = cf;
+		this.rule = rule;
 	}
 	CConditionalFormattingFormulaWrapper.prototype.onFormulaEvent = function(type, eventData) {
 		if (AscCommon.c_oNotifyParentType.CanDo === type) {
 			return true;
 		} else if (AscCommon.c_oNotifyParentType.IsDefName === type) {
-			return true;
+			return {bbox: this.rule.getBBox(), ranges: this.rule.ranges};
 		} else if (AscCommon.c_oNotifyParentType.Change === type) {
-			//todo collect
-			this.ws._updateConditionalFormatting(new AscCommonExcel.MultiplyRange(this.cf.ranges));
+			this.ws.setDirtyConditionalFormatting(new AscCommonExcel.MultiplyRange(this.rule.ranges));
 		}
 	};
 
@@ -120,6 +100,12 @@
 
 		this.aRuleElements = [];
 
+		// from CConditionalFormatting
+		// Combined all the rules into one array to sort the priorities,
+		// so they transferred these properties to the rule
+		this.pivot = false;
+		this.ranges = null;
+
 		return this;
 	}
 	CConditionalFormattingRule.prototype.clone = function() {
@@ -139,6 +125,8 @@
 		res.timePeriod = this.timePeriod;
 		res.type = this.type;
 
+		res.updateConditionalFormatting(this);
+
 		for (i = 0; i < this.aRuleElements.length; ++i)
 			res.aRuleElements.push(this.aRuleElements[i].clone());
 		return res;
@@ -146,60 +134,65 @@
 	CConditionalFormattingRule.prototype.getTimePeriod = function() {
 		var start, end;
 		var now = new Date();
+		now.setUTCHours(0, 0, 0, 0);
 		switch (this.timePeriod) {
 			case AscCommonExcel.ST_TimePeriod.last7Days:
+				now.setUTCDate(now.getUTCDate() + 1);
 				end = now.getExcelDate();
-				now.setDate(now.getDate() - 7);
+				now.setUTCDate(now.getUTCDate() - 7);
 				start = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.lastMonth:
+				now.setUTCDate(1);
 				end = now.getExcelDate();
-				now.setMonth(now.getMonth() - 1);
+				now.setUTCMonth(now.getUTCMonth() - 1);
 				start = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.thisMonth:
+				now.setUTCDate(1);
 				start = now.getExcelDate();
-				now.setMonth(now.getMonth() + 1);
+				now.setUTCMonth(now.getUTCMonth() + 1);
 				end = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.nextMonth:
-				now.setMonth(now.getMonth() + 1);
+				now.setUTCDate(1);
+				now.setUTCMonth(now.getUTCMonth() + 1);
 				start = now.getExcelDate();
-				now.setMonth(now.getMonth() + 1);
+				now.setUTCMonth(now.getUTCMonth() + 1);
 				end = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.lastWeek:
-				now.setDate(now.getDate() - now.getDay());
+				now.setUTCDate(now.getUTCDate() - now.getUTCDay());
 				end = now.getExcelDate();
-				now.setDate(now.getDate() - 7);
+				now.setUTCDate(now.getUTCDate() - 7);
 				start = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.thisWeek:
-				now.setDate(now.getDate() - now.getDay());
+				now.setUTCDate(now.getUTCDate() - now.getUTCDay());
 				start = now.getExcelDate();
-				now.setDate(now.getDate() + 7);
+				now.setUTCDate(now.getUTCDate() + 7);
 				end = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.nextWeek:
-				now.setDate(now.getDate() - now.getDay() + 7);
+				now.setUTCDate(now.getUTCDate() - now.getUTCDay() + 7);
 				start = now.getExcelDate();
-				now.setDate(now.getDate() + 7);
+				now.setUTCDate(now.getUTCDate() + 7);
 				end = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.yesterday:
 				end = now.getExcelDate();
-				now.setDate(now.getDate() - 1);
+				now.setUTCDate(now.getUTCDate() - 1);
 				start = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.today:
 				start = now.getExcelDate();
-				now.setDate(now.getDate() + 1);
+				now.setUTCDate(now.getUTCDate() + 1);
 				end = now.getExcelDate();
 				break;
 			case AscCommonExcel.ST_TimePeriod.tomorrow:
-				now.setDate(now.getDate() + 1);
+				now.setUTCDate(now.getUTCDate() + 1);
 				start = now.getExcelDate();
-				now.setDate(now.getDate() + 1);
+				now.setUTCDate(now.getUTCDate() + 1);
 				end = now.getExcelDate();
 				break;
 		}
@@ -263,6 +256,26 @@
 	CConditionalFormattingRule.prototype.hasStdDev = function() {
 		return null !== this.stdDev;
 	};
+	CConditionalFormattingRule.prototype.updateConditionalFormatting = function (cf) {
+		var i;
+		this.pivot = cf.pivot;
+		if (cf.ranges) {
+			this.ranges = [];
+			for (i = 0; i < cf.ranges.length; ++i) {
+				this.ranges.push(cf.ranges[i].clone());
+			}
+		}
+	};
+	CConditionalFormattingRule.prototype.getBBox = function() {
+		var bbox = null;
+		if (this.ranges && this.ranges.length > 0) {
+			bbox = this.ranges[0].clone();
+			for(var i = 1 ; i < this.ranges.length; ++i){
+				bbox.union2(this.ranges[i]);
+			}
+		}
+		return bbox;
+	};
 
 	function CColorScale () {
 		this.aCFVOs = [];
@@ -278,42 +291,46 @@
 			res.aColors.push(this.aColors[i].clone());
 		return res;
 	};
-	CColorScale.prototype.getMin = function(min, max, values) {
+	CColorScale.prototype.getMin = function(values) {
 		var oCFVO = (0 < this.aCFVOs.length) ? this.aCFVOs[0] : null;
-		return this.getValue(min, max, values, oCFVO);
+		return this.getValue(values, oCFVO);
 	};
-	CColorScale.prototype.getMid = function(min, max, values) {
+	CColorScale.prototype.getMid = function(values) {
 		var oCFVO = (2 < this.aCFVOs.length ? this.aCFVOs[1] : null);
-		return this.getValue(min, max, values, oCFVO);
+		return this.getValue(values, oCFVO);
 	};
-	CColorScale.prototype.getMax = function(min, max, values) {
+	CColorScale.prototype.getMax = function(values) {
 		var oCFVO = (2 === this.aCFVOs.length) ? this.aCFVOs[1] : (2 < this.aCFVOs.length ? this.aCFVOs[2] : null);
-		return this.getValue(min, max, values, oCFVO);
+		return this.getValue(values, oCFVO);
 	};
-	CColorScale.prototype.getValue = function(min, max, values, oCFVO) {
-		var res = min;
+	CColorScale.prototype.getValue = function(values, oCFVO) {
+		var res, min;
 		if (oCFVO) {
 			// ToDo Formula
 			switch (oCFVO.Type) {
 				case AscCommonExcel.ECfvoType.Minimum:
-					res = min;
+					res = AscCommonExcel.getArrayMin(values);
 					break;
 				case AscCommonExcel.ECfvoType.Maximum:
-					res = max;
+					res = AscCommonExcel.getArrayMax(values);
 					break;
 				case AscCommonExcel.ECfvoType.Number:
 					res = parseFloat(oCFVO.Val);
 					break;
 				case AscCommonExcel.ECfvoType.Percent:
-					res = min + Math.floor((max - min) * parseFloat(oCFVO.Val) / 100);
+					min = AscCommonExcel.getArrayMin(values);
+					res = min + Math.floor((AscCommonExcel.getArrayMax(values) - min) * parseFloat(oCFVO.Val) / 100);
 					break;
 				case AscCommonExcel.ECfvoType.Percentile:
 					res = AscCommonExcel.getPercentile(values, parseFloat(oCFVO.Val) / 100.0);
 					if (AscCommonExcel.cElementType.number === res.type) {
 						res = res.getValue();
 					} else {
-						res = min;
+						res = AscCommonExcel.getArrayMin(values);
 					}
+					break;
+				default:
+					res = -Number.MAX_VALUE;
 					break;
 			}
 		}

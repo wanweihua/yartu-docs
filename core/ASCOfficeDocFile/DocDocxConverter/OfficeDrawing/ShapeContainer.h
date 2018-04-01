@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -63,8 +63,25 @@ namespace DocFileFormat
 				Shape* sh = dynamic_cast<Shape*>( *iter );
 				if (sh)
 				{
-					if (sh->shapeType) return sh->shapeType->GetTypeCode();
-					else return 0;
+					if (sh->shapeType) 
+					{
+						return sh->shapeType->GetTypeCode();
+					}
+					else 
+					{
+						for ( std::vector<Record*>::const_iterator iter1 = this->Children.begin(); iter1 != this->Children.end(); iter1++ )
+						{
+							ShapeOptions* sh_options = dynamic_cast<ShapeOptions*>( *iter1 );
+							if (sh_options)
+							{
+								if (sh_options->OptionsByID.end() != sh_options->OptionsByID.find(Pib))
+								{
+									return msosptPictureFrame;
+								}
+							}
+						}
+						return 0;
+					}
 				}
 			}
 			return 0;

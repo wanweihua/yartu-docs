@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,24 +32,30 @@
 #pragma once
 
 #include "BiffRecord.h"
+#include "../Biff_structures/FontIndex.h"
 
 namespace XLS
 {
 
-
-// Logical representation of Fbi2 record in BIFF8
 class Fbi2: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(Fbi2)
 	BASE_OBJECT_DEFINE_CLASS_NAME(Fbi2)
 public:
-	Fbi2();
-	~Fbi2();
+	Fbi2(){}
+	~Fbi2(){}
 
 	BaseObjectPtr clone();
-
 	
+	static const ElementType type = typeFbi2;
+
 	void readFields(CFRecord& record);
+
+	unsigned short	dmixBasis;
+	unsigned short	dmiyBasis;
+	unsigned short	twpHeightBasis;
+	bool			scab;
+	FontIndex		ifnt;
 
 };
 

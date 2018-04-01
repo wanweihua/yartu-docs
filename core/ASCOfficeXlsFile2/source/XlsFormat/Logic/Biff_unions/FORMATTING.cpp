@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,18 +31,22 @@
  */
 
 #include "FORMATTING.h"
-#include <Logic/Biff_records/Font.h>
-#include <Logic/Biff_records/Format.h>
-#include <Logic/Biff_records/DXF.h>
-#include <Logic/Biff_unions/STYLES.h>
-#include <Logic/Biff_records/Palette.h>
-#include <Logic/Biff_records/ClrtClient.h>
-#include <Logic/Biff_records/TableStyles.h>
-#include <Logic/Biff_records/Compat12.h>
-#include <Logic/Biff_unions/TABLESTYLES.h>
-#include <Logic/Biff_unions/XFS.h>
-#include <Logic/Biff_unions/THEME.h>
+#include "TABLESTYLES.h"
+#include "XFS.h"
+#include "THEME.h"
+#include "STYLES.h"
 
+#include "../Biff_records/XF.h"
+#include "../Biff_records/Font.h"
+#include "../Biff_records/Format.h"
+#include "../Biff_records/DXF.h"
+#include "../Biff_records/Palette.h"
+#include "../Biff_records/ClrtClient.h"
+#include "../Biff_records/TableStyles.h"
+#include "../Biff_records/Compat12.h"
+
+#include "../Biff_records/Style.h"
+#include "../Biff_records/StyleExt.h"
 namespace XLS
 {
 
@@ -75,7 +79,7 @@ const bool FORMATTING::loadContent(BinProcessor& proc)
 		Font *font = dynamic_cast<Font *>(elements_.front().get());
 		if ((font) && (font->correct))
 		{
-			m_arFonts.push_back(elements_.front());
+			global_info->m_arFonts.push_back(elements_.front());
 		}
 		elements_.pop_front();
 		count--;
@@ -90,10 +94,10 @@ const bool FORMATTING::loadContent(BinProcessor& proc)
 	}
 //----------------------------------------------------------------------------------------------------	
 	count = proc.repeated<Font>(0, 510); // Wrong records sequence workaround (originally Font follows by Format)
-	int countFonts = m_arFonts.size();
+	int countFonts = global_info->m_arFonts.size();
 	while(count > 0)
 	{
-		m_arFonts.insert(m_arFonts.begin()+countFonts, elements_.back());
+		global_info->m_arFonts.insert(global_info->m_arFonts.begin() + countFonts, elements_.back());
 		elements_.pop_back();
 		count--;
 	}	
@@ -141,9 +145,53 @@ const bool FORMATTING::loadContent(BinProcessor& proc)
 		elements_.pop_back();
 	}
 
+	update_xfs();
+
 	return true;
 }
+void FORMATTING::update_xfs()
+{
+	STYLES * st = dynamic_cast<STYLES*>(m_Styles.get());
+	XFS * xfs	= dynamic_cast<XFS*>(m_XFS.get());
 
+	if (!xfs) return;
+
+	for (size_t i = 0; (st) && (i < st->m_arStyles.size()); i++)
+	{
+		XLS::Style		*style		= dynamic_cast<Style*>		(st->m_arStyles[i].first.get());
+		XLS::StyleExt	*styleExt	= dynamic_cast<StyleExt*>	(st->m_arStyles[i].second.get());
+			
+		if (styleExt && style)
+		{
+			if (styleExt->fBuiltIn && styleExt->xfProps.cprops > 0)
+			{
+				bool bFound = false;
+				for (size_t i = 0; i < xfs->m_arCellStyles.size(); i++)
+				{
+					XF* xf = dynamic_cast<XF*>(xfs->m_arCellStyles[i].get());
+
+					if (xf->ind_xf == style->ixfe)
+					{
+						xf->style.xf_props = styleExt->xfProps.rgExt;
+						bFound = true;
+						break;
+					}
+				}
+				//for (size_t i = 0; !bFound && i < xfs->m_arCellXFs.size(); i++) небывает совпадений
+				//{
+				//	XF* xf = dynamic_cast<XF*>(xfs->m_arCellXFs[i].get());
+				//	if (xf->ind_xf == style->ixfe)
+				//	{
+				//		xf->cell.xf_props = styleExt->xfProps.rgExt;
+				//		bFound = true;
+				//		break;
+				//	}
+				//}
+			}
+		}
+	}
+	xfs->RegisterFillBorder();
+}
 void FORMATTING::concatinate(FORMATTING* ext)
 {
 	if (ext->m_XFS)
@@ -180,26 +228,29 @@ int FORMATTING::serialize1(std::wostream & stream)
 			CP_XML_NODE(L"numFmts")
 			{
 				CP_XML_ATTR(L"count", m_arFormats.size());
-                for (int i = 0 ; i < m_arFormats.size(); i++)
+                for (size_t i = 0 ; i < m_arFormats.size(); i++)
 				{
 					m_arFormats[i]->serialize(CP_XML_STREAM());
 				}
 			}
 		}
-		if (m_arFonts.size() > 0)
+		if (!global_info->m_arFonts.empty())
 		{
 			CP_XML_NODE(L"fonts")
 			{
-				CP_XML_ATTR(L"count", m_arFonts.size());
-                for (int i = 0 ; i < m_arFonts.size(); i++)
+				CP_XML_ATTR(L"count", global_info->m_arFonts.size());
+               
+				for (size_t i = 0; i < global_info->m_arFonts.size(); i++)
 				{
-					Font * font = dynamic_cast<Font*>(m_arFonts[i].get());
+					Font * font = dynamic_cast<Font*>(global_info->m_arFonts[i].get());
+					
 					std::map<int, FillInfoExt>::iterator it = global_info->fonts_color_ext.find(i);
-					if (font && (it!=global_info->fonts_color_ext.end()))
+					
+					if (font && (it != global_info->fonts_color_ext.end()))
 					{					
 						font->set_color_ext(it->second);
 					}
-					m_arFonts[i]->serialize(CP_XML_STREAM());
+					global_info->m_arFonts[i]->serialize(CP_XML_STREAM());
 				}
 			}
 		}
@@ -225,7 +276,7 @@ int FORMATTING::serialize2(std::wostream & stream)
 			{
 				CP_XML_ATTR(L"count", global_info->cellStyleDxfs_count);
 
-				for (int i = 0 ; i < m_arDXF.size(); i++)
+				for (size_t i = 0 ; i < m_arDXF.size(); i++)
 				{
 					m_arDXF[i]->serialize(CP_XML_STREAM());
 				}

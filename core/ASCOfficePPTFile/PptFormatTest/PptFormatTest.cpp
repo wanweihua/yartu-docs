@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -38,6 +38,8 @@
 
 #include <tchar.h>
 
+#pragma comment(lib, "Rpcrt4.lib")
+
 #if defined(_WIN64)
 	#pragma comment(lib, "../../build/bin/icu/win_64/icuuc.lib")
 #elif defined (_WIN32)
@@ -46,12 +48,16 @@
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+//#ifdef _DEBUG
+//		_CrtDumpMemoryLeaks();
+//#endif
+		
 	if (argc < 2) return 1;
 
 	std::wstring sSrcPpt	= argv[1];
-    std::wstring sDstPptx	= argc > 2 ? argv[2] : sSrcPpt + L"-my.pptx";
+	std::wstring sDstPptx;
 
-	std::wstring outputDir		= NSDirectory::GetFolderPath(sDstPptx);
+	std::wstring outputDir		= NSDirectory::GetFolderPath(sSrcPpt);
 	std::wstring dstTempPath	= NSDirectory::CreateDirectoryWithUniqueName(outputDir);
 
 	std::wstring tempPath	= NSDirectory::CreateDirectoryWithUniqueName(outputDir);
@@ -60,8 +66,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	pptFile.put_TempDirectory(tempPath);
 
-	HRESULT hRes = pptFile.LoadFromFile(sSrcPpt, dstTempPath, L"password");
+	bool bMacros = true;
 	
+	HRESULT hRes = pptFile.LoadFromFile(sSrcPpt, dstTempPath, L"password", bMacros);
+	
+	if (bMacros)
+	{
+		sDstPptx = sSrcPpt + L"-my.pptm";
+	}
+	else
+	{
+		sDstPptx = sSrcPpt + L"-my.pptx";
+
+	}
 	if (hRes == S_OK)
 	{
 		COfficeUtils oCOfficeUtils(NULL);		

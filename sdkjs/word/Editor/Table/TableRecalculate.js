@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -185,8 +185,16 @@ CTable.prototype.private_RecalculateCheckPageColumnBreak = function(CurPage)
 
     var PrevElement = this.Get_DocumentPrev();
 
+	while (PrevElement && (PrevElement instanceof CBlockLevelSdt))
+		PrevElement = PrevElement.GetLastElement();
+
     if (null !== PrevElement && type_Paragraph === PrevElement.Get_Type() && true === PrevElement.Is_Empty() && undefined !== PrevElement.Get_SectionPr())
-        PrevElement = PrevElement.Get_DocumentPrev();
+	{
+		var PrevSectPr = PrevElement.Get_SectionPr();
+		var CurSectPr  = this.LogicDocument.SectionsInfo.Get_SectPr(this.Index).SectPr;
+		if (c_oAscSectionBreakType.Continuous === CurSectPr.Get_Type() && true === CurSectPr.Compare_PageSize(PrevSectPr))
+			PrevElement = PrevElement.Get_DocumentPrev();
+	}
 
     if ((0 === CurPage || true === this.Check_EmptyPages(CurPage - 1)) && null !== PrevElement && type_Paragraph === PrevElement.Get_Type())
     {
@@ -290,6 +298,8 @@ CTable.prototype.private_RecalculateGrid = function()
 				SumGrid[nTempIndex] += nTempDiff;
 		}
 
+		var nCellSpacing = Row.GetCellSpacing();
+
 		var CellsCount = Row.Get_CellsCount();
 		for (var CellIndex = 0; CellIndex < CellsCount; CellIndex++)
 		{
@@ -311,6 +321,17 @@ CTable.prototype.private_RecalculateGrid = function()
 					CellWidth = PctWidth * CellW.W / 100;
 				else
 					CellWidth = CellW.W;
+
+				if (null !== nCellSpacing)
+				{
+					if (0 === CellIndex)
+						CellWidth += nCellSpacing / 2;
+
+					CellWidth += nCellSpacing;
+
+					if (CellsCount - 1 === CellIndex)
+						CellWidth += nCellSpacing / 2;
+				}
 
 				if (CellWidth + SumGrid[CurGridCol - 1] > SumGrid[CurGridCol + GridSpan - 1])
 				{
@@ -423,17 +444,19 @@ CTable.prototype.private_RecalculateGrid = function()
                 var SumSpanMinContent = 0;
                 var SumSpanMaxContent = 0;
                 var SumSpanCurContent = 0;
+                var SumSpanMinMargin  = 0;
                 for ( var CurSpan = CurGridCol; CurSpan < CurGridCol + GridBefore; CurSpan++ )
                 {
                     SumSpanMinContent += MinContent[CurSpan];
                     SumSpanMaxContent += MaxContent[CurSpan];
+                    SumSpanMinMargin  += MinMargin[CurSpan];
                     SumSpanCurContent += this.TableGridCalc[CurSpan];
                 }
 
-                if (null !== WBeforeW && SumSpanMinContent < WBeforeW)
+                if (null !== WBeforeW && SumSpanMinContent < WBeforeW - SumSpanMinMargin)
                 {
-                    for ( var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++ )
-                        MinContent[CurSpan] = WBeforeW * this.TableGridCalc[CurSpan] / SumSpanCurContent;
+					for (var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++)
+						MinContent[CurSpan] = WBeforeW * this.TableGridCalc[CurSpan] / SumSpanCurContent - MinMargin[CurSpan];
                 }
 
                 // Если у нас в объединении несколько колонок, тогда явно записанная ширина ячейки не
@@ -475,34 +498,44 @@ CTable.prototype.private_RecalculateGrid = function()
                 else if (tblwidth_Pct === CellW.Type)
                     CellWW = PctWidth * CellW.W / 100 + Add;
 
-                // Если GridSpan > 1, тогда все равно маргины учитываются в первую колоноку спана
+				var CellMarginsLeftW = 0, CellMarginsRightW = 0;
+				if (null !== Spacing)
+				{
+					CellMarginsLeftW  = CellMargins.Left.W;
+					CellMarginsRightW = CellMargins.Right.W;
 
-                var CellMarginsW = 0;
-                if ( null !== Spacing )
-                {
-                    CellMarginsW = CellMargins.Left.W + CellMargins.Right.W;
+					if (border_None !== CellRBorder.Value)
+						CellMarginsRightW += CellRBorder.Size;
 
-                    if ( border_None !== CellRBorder.Value )
-                        CellMarginsW += CellRBorder.Size;
+					if (border_None !== CellLBorder.Value)
+						CellMarginsLeftW += CellLBorder.Size;
+				}
+				else
+				{
+					if (border_None !== CellRBorder.Value)
+						CellMarginsRightW += Math.max(CellRBorder.Size / 2, CellMargins.Right.W);
+					else
+						CellMarginsRightW += CellMargins.Right.W;
 
-                    if ( border_None !== CellLBorder.Value )
-                        CellMarginsW += CellLBorder.Size;
-                }
-                else
-                {
-                    if ( border_None !== CellRBorder.Value )
-                        CellMarginsW += Math.max( CellRBorder.Size / 2, CellMargins.Right.W );
-                    else
-                        CellMarginsW += CellMargins.Right.W;
+					if (border_None !== CellLBorder.Value)
+						CellMarginsLeftW += Math.max(CellLBorder.Size / 2, CellMargins.Left.W);
+					else
+						CellMarginsLeftW += CellMargins.Left.W;
+				}
 
-                    if ( border_None !== CellLBorder.Value )
-                        CellMarginsW += Math.max( CellLBorder.Size / 2, CellMargins.Left.W );
-                    else
-                        CellMarginsW += CellMargins.Left.W;
-                }
+				if (GridSpan <= 1)
+				{
+					if (MinMargin[CurGridCol] < CellMarginsLeftW + CellMarginsRightW)
+						MinMargin[CurGridCol] = CellMarginsLeftW + CellMarginsRightW;
+				}
+				else
+				{
+					if (MinMargin[CurGridCol] < CellMarginsLeftW)
+						MinMargin[CurGridCol] = CellMarginsLeftW;
 
-                if ( MinMargin[CurGridCol] < CellMarginsW )
-                    MinMargin[CurGridCol] = CellMarginsW;
+					if (MinMargin[CurGridCol + GridSpan - 1] < CellMarginsRightW)
+						MinMargin[CurGridCol + GridSpan - 1] = CellMarginsRightW;
+				}
 
                 // На самом деле, случай 1 === GridSpan нормально обработается и как случай GridSpan > 1,
                 // но поскольку он наиболее распространен, делаем его обработку максимально быстрой (без циклов)
@@ -514,17 +547,11 @@ CTable.prototype.private_RecalculateGrid = function()
                     if ( false === MaxFlags[CurGridCol] && MaxContent[CurGridCol] < CellMax )
                         MaxContent[CurGridCol] = CellMax;
 
-                    if (null !== CellWW)
+                    // Согласно спецификации, если где-то задана ширина, то используется только первое значение
+                    if (null !== CellWW && false === MaxFlags[CurGridCol])
                     {
-                        if (false === MaxFlags[CurGridCol])
-                        {
-                            MaxFlags[CurGridCol]   = true;
-                            MaxContent[CurGridCol] = CellWW;
-                        }
-                        else if (MaxContent[CurGridCol] < CellWW)
-                        {
-                            MaxContent[CurGridCol] = CellWW;
-                        }
+						MaxFlags[CurGridCol]   = true;
+						MaxContent[CurGridCol] = CellWW;
                     }
                 }
                 else
@@ -532,32 +559,51 @@ CTable.prototype.private_RecalculateGrid = function()
                     var SumSpanMinContent = 0;
                     var SumSpanMaxContent = 0;
                     var SumSpanCurContent = 0;
+                    var SumSpanMinMargin  = 0;
                     for ( var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++ )
                     {
                         SumSpanMinContent += MinContent[CurSpan];
                         SumSpanMaxContent += MaxContent[CurSpan];
+                        SumSpanMinMargin  += MinMargin[CurSpan];
                         SumSpanCurContent += this.TableGridCalc[CurSpan];
                     }
 
-                    if ( SumSpanMinContent < CellMin )
-                    {
-                        for ( var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++ )
-                            MinContent[CurSpan] = CellMin * this.TableGridCalc[CurSpan] / SumSpanCurContent;
-                    }
+					if (SumSpanMinContent < CellMin - SumSpanMinMargin)
+					{
+						for (var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++)
+							MinContent[CurSpan] = CellMin * this.TableGridCalc[CurSpan] / SumSpanCurContent - MinMargin[CurSpan];
+					}
 
                     // Если у нас в объединении несколько колонок, тогда явно записанная ширина ячейки не
                     // перекрывает ширину ни одной из колонок, она всего лишь учавствует в определении
                     // максимальной ширины.
                     if (null !== CellWW && CellWW > CellMax)
-                        CellMax = CellWW;
-
-                    if ( SumSpanMaxContent < CellMax )
-                    {
-                        // TODO: На самом деле, распределение здесь идет в каком-то отношении.
-                        //       Неплохо было бы выяснить как именно.
-                        for ( var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++ )
-                            MaxContent[CurSpan] = CellMax * this.TableGridCalc[CurSpan] / SumSpanCurContent;
-                    }
+					{
+						CellMax = CellWW;
+						for (var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; ++CurSpan)
+						{
+							// Согласно спецификации, если где-то задана ширина, то используется только первое значение
+							if (false === MaxFlags[CurSpan])
+							{
+								MaxFlags[CurSpan]   = true;
+								MaxContent[CurSpan] = this.TableGridCalc[CurSpan];
+							}
+						}
+					}
+					else
+					{
+						if (SumSpanMaxContent < CellMax)
+						{
+							// TODO: На самом деле, распределение здесь идет в каком-то отношении.
+							//       Неплохо было бы выяснить как именно.
+							for (var CurSpan = CurGridCol; CurSpan < CurGridCol + GridSpan; CurSpan++)
+							{
+								// Согласно спецификации, если где-то задана ширина, то используется только первое значение
+								if (true !== MaxFlags[CurSpan])
+									MaxContent[CurSpan] = CellMax * this.TableGridCalc[CurSpan] / SumSpanCurContent;
+							}
+						}
+					}
                 }
 
                 if ( 0 === CurRow && 0 === CurCell )
@@ -958,7 +1004,7 @@ CTable.prototype.private_RecalculateBorders = function()
         {
             var Cell     = Row.Get_Cell( CurCell );
             var GridSpan = Cell.Get_GridSpan();
-            var Vmerge   = Cell.Get_VMerge();
+            var Vmerge   = Cell.GetVMerge();
 
             Row.Set_CellInfo( CurCell, CurGridCol, 0, 0, 0, 0, 0, 0 );
 
@@ -1043,7 +1089,7 @@ CTable.prototype.private_RecalculateBorders = function()
                             // Если данная ячейка учавствует в вертикальном объединении,
                             // тогда найдем нижнюю ячейку.
 
-                            var Prev_VMerge = Prev_Cell.Get_VMerge();
+                            var Prev_VMerge = Prev_Cell.GetVMerge();
                             if ( vmerge_Continue === Prev_VMerge )
                                 Prev_Cell = this.Internal_Get_EndMergedCell(CurRow - 1, Prev_GridCol, Prev_GridSpan);
 
@@ -1210,7 +1256,7 @@ CTable.prototype.private_RecalculateBorders = function()
         {
             var Cell     = Row.Get_Cell( CurCell );
             var GridSpan = Cell.Get_GridSpan();
-            var Vmerge   = Cell.Get_VMerge();
+            var Vmerge   = Cell.GetVMerge();
 
             // начальная и конечная точки данного GridSpan'a
             var X_grid_start = this.TableSumGrid[CurGridCol - 1];
@@ -1320,7 +1366,7 @@ CTable.prototype.private_RecalculateBorders = function()
                         var Temp_CellsCount = Temp_Row.Get_CellsCount();
 
                         // ищем ячейку текущего объединения
-                        var Temp_CurCell = this.Internal_Get_Cell_ByStartGridCol( CurRow + Temp_CurRow, CurGridCol );
+                        var Temp_CurCell = this.private_GetCellIndexByStartGridCol( CurRow + Temp_CurRow, CurGridCol );
                         if ( Temp_CurCell < 0 )
                             continue;
 
@@ -1336,7 +1382,7 @@ CTable.prototype.private_RecalculateBorders = function()
                         else
                         {
                             var Temp_Prev_Cell = Temp_Row.Get_Cell( Temp_CurCell - 1 );
-                            var Temp_Prev_VMerge = Temp_Prev_Cell.Get_VMerge();
+                            var Temp_Prev_VMerge = Temp_Prev_Cell.GetVMerge();
                             if ( 0 != Temp_CurRow && vmerge_Continue === Temp_Prev_VMerge )
                             {
                                 Borders_Info.Left.push( Borders_Info.Left[Borders_Info.Left.length - 1] );
@@ -1365,7 +1411,7 @@ CTable.prototype.private_RecalculateBorders = function()
                         else
                         {
                             var Temp_Next_Cell = Temp_Row.Get_Cell( Temp_CurCell + 1 );
-                            var Temp_Next_VMerge = Temp_Next_Cell.Get_VMerge();
+                            var Temp_Next_VMerge = Temp_Next_Cell.GetVMerge();
                             if ( 0 != Temp_CurRow && vmerge_Continue === Temp_Next_VMerge )
                             {
                                 Borders_Info.Right.push( Borders_Info.Right[Borders_Info.Right.length - 1] );
@@ -1446,7 +1492,7 @@ CTable.prototype.private_RecalculateHeader = function()
 {
     // Если у нас таблица внутри таблицы, тогда в ней заголовочных строк не должно быть,
     // потому что так делает Word.
-    if ( true === this.Parent.Is_TableCellContent() )
+    if ( true === this.Parent.IsTableCellContent() )
     {
         this.HeaderInfo.Count = 0;
         return;
@@ -1458,7 +1504,7 @@ CTable.prototype.private_RecalculateHeader = function()
     for ( var Index = 0; Index < Rows_Count; Index++ )
     {
         var Row = this.Content[Index];
-        if ( true != Row.Is_Header() )
+        if ( true != Row.IsHeader() )
             break;
 
         Header_RowsCount++;
@@ -1504,7 +1550,7 @@ CTable.prototype.private_RecalculatePageXY = function(CurPage)
     var FirstRow = 0;
     if (0 !== CurPage)
     {
-        if (true === this.Is_EmptyPage(CurPage - 1))
+        if (true === this.IsEmptyPage(CurPage - 1))
             FirstRow = this.Pages[CurPage - 1].FirstRow;
         else if (true === this.Pages[CurPage - 1].LastRowSplit)
             FirstRow = this.Pages[CurPage - 1].LastRow;
@@ -1546,14 +1592,14 @@ CTable.prototype.private_RecalculatePositionX = function(CurPage)
         {
             case AscCommon.align_Left :
             {
-                Page.X = Page.X_origin + this.Get_TableOffsetCorrection() + TablePr.TableInd;
+                Page.X = Page.X_origin + this.GetTableOffsetCorrection() + TablePr.TableInd;
                 break;
             }
             case AscCommon.align_Right :
             {
                 var TableWidth = this.TableSumGrid[this.TableSumGrid.length - 1];
 
-                if (false === this.Parent.Is_TableCellContent())
+                if (false === this.Parent.IsTableCellContent())
                     Page.X = Page.XLimit - TableWidth + 1.9; // 1.9мм всегда добавляется справа от таблицы
                 else
                     Page.X = Page.XLimit - TableWidth;
@@ -1576,21 +1622,21 @@ CTable.prototype.private_RecalculatePositionX = function(CurPage)
             var OffsetCorrection_Left  = 0;
             var OffsetCorrection_Right = 0;
 
-            if (this.Content.length > 0 && this.Content[0].Get_CellsCount() > 0 && !(this.bPresentation === true))
+            if (true !== this.bPresentation)
             {
-                var FirstRow   = this.Content[0];
-                var Cell_Left  = FirstRow.Get_Cell(0);
-                var Cell_Right = FirstRow.Get_Cell(FirstRow.Get_CellsCount() - 1);
-
-                OffsetCorrection_Left  = Cell_Left.GetMargins().Left.W;
-                OffsetCorrection_Right = Cell_Right.GetMargins().Right.W;
+                OffsetCorrection_Left  = this.GetTableOffsetCorrection();
+                OffsetCorrection_Right = this.GetRightTableOffsetCorrection();
             }
 
-            this.X = this.X_origin + this.Get_TableOffsetCorrection();
-            this.AnchorPosition.Set_X(this.TableSumGrid[this.TableSumGrid.length - 1], this.X_origin, PageFields.X - OffsetCorrection_Left, PageFields.XLimit + OffsetCorrection_Right, LD_PageLimits.XLimit, PageLimits.X - OffsetCorrection_Left, PageLimits.XLimit + OffsetCorrection_Right);
+            this.X = this.X_origin + this.GetTableOffsetCorrection();
+            this.AnchorPosition.Set_X(this.TableSumGrid[this.TableSumGrid.length - 1], this.X_origin, PageFields.X + OffsetCorrection_Left, PageFields.XLimit + OffsetCorrection_Right, LD_PageLimits.XLimit, PageLimits.X - OffsetCorrection_Left, PageLimits.XLimit + OffsetCorrection_Right);
 
-            this.X        = this.AnchorPosition.Calculate_X(this.PositionH.RelativeFrom, this.PositionH.Align, this.PositionH.Value);
-            this.X_origin = this.X - this.Get_TableOffsetCorrection();
+            // Непонятно по какой причине, но Word для плавающих таблиц добаляется значение TableInd
+			this.AnchorPosition.Calculate_X(this.PositionH.RelativeFrom, this.PositionH.Align, this.PositionH.Value);
+			this.AnchorPosition.CalcX += TablePr.TableInd;
+
+            this.X        = this.AnchorPosition.CalcX;
+            this.X_origin = this.X - this.GetTableOffsetCorrection();
 
             if (undefined != this.PositionH_Old)
             {
@@ -1602,9 +1648,10 @@ CTable.prototype.private_RecalculatePositionX = function(CurPage)
                 // Рассчитаем сдвиг с учетом старой привязки
                 var Value = this.AnchorPosition.Calculate_X_Value(this.PositionH_Old.RelativeFrom);
                 this.Set_PositionH(this.PositionH_Old.RelativeFrom, false, Value);
+
                 // На всякий случай пересчитаем заново координату
-                this.X        = this.AnchorPosition.Calculate_X(this.PositionH.RelativeFrom, this.PositionH.Align, this.PositionH.Value);
-                this.X_origin = this.X - this.Get_TableOffsetCorrection();
+				this.X        = this.AnchorPosition.Calculate_X(this.PositionH.RelativeFrom, this.PositionH.Align, this.PositionH.Value);
+                this.X_origin = this.X - this.GetTableOffsetCorrection();
 
                 this.PositionH_Old = undefined;
             }
@@ -1620,7 +1667,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
     if ( true === this.TurnOffRecalc )
         return;
 
-	var isInnerTable       = this.Parent.Is_TableCellContent();
+	var isInnerTable       = this.Parent.IsTableCellContent();
 	var oTopDocument       = this.Parent.Is_TopDocument(true);
 	var isTopLogicDocument = (oTopDocument instanceof CDocument ? true : false);
 	var oFootnotes         = (isTopLogicDocument && !isInnerTable ? oTopDocument.Footnotes : null);
@@ -1644,7 +1691,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
     }
     else
     {
-        if (true === this.Is_EmptyPage(CurPage - 1))
+        if (true === this.IsEmptyPage(CurPage - 1))
         {
             ResetStartElement = false;
             FirstRow = this.Pages[CurPage - 1].FirstRow;
@@ -1683,6 +1730,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
     var X_min = -1;
     if ( this.HeaderInfo.Count > 0 && this.HeaderInfo.PageIndex != -1 && CurPage > this.HeaderInfo.PageIndex )
     {
+    	this.HeaderInfo.HeaderRecalculate = true;
         this.HeaderInfo.Pages[CurPage] = {};
         this.HeaderInfo.Pages[CurPage].RowsInfo = [];
         var HeaderPage = this.HeaderInfo.Pages[CurPage];
@@ -1803,7 +1851,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
             {
                 var Cell     = Row.Get_Cell( CurCell );
                 var GridSpan = Cell.Get_GridSpan();
-                var Vmerge   = Cell.Get_VMerge();
+                var Vmerge   = Cell.GetVMerge();
                 var CellMar  = Cell.GetMargins();
 
                 Row.Update_CellInfo(CurCell);
@@ -1930,7 +1978,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
             var CellHeight = HeaderPage.RowsInfo[CurRow].TableRowsBottom - Y;
 
             // TODO: улучшить проверку на высоту строки (для строк разбитых на страницы)
-            if (false === bHeaderNextPage && Asc.linerule_AtLeast === RowH.HRule && CellHeight < RowH.Value - MaxTopBorder[CurRow])
+            if (false === bHeaderNextPage && (Asc.linerule_AtLeast === RowH.HRule || Asc.linerule_Exact === RowH.HRule) && CellHeight < RowH.Value - MaxTopBorder[CurRow])
             {
                 CellHeight = RowH.Value - MaxTopBorder[CurRow];
                 HeaderPage.RowsInfo[CurRow].TableRowsBottom = Y + CellHeight;
@@ -2033,7 +2081,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                         continue;
                     else
                     {
-                        var Vmerge = Cell.Get_VMerge();
+                        var Vmerge = Cell.GetVMerge();
                         // Возьмем верхнюю ячейку теккущего объединения
                         if ( vmerge_Restart != Vmerge )
                         {
@@ -2103,18 +2151,25 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
         this.HeaderInfo.Pages[CurPage] = {};
         this.HeaderInfo.Pages[CurPage].Draw = false;
     }
+    this.HeaderInfo.HeaderRecalculate = false;
 
-	var bResetFootnotes = true;
-	var oFootnotesObject, nFootnotesHeight = 0, nSavedY = 0, nSavedTableHeight = 0;
     var bNextPage = false;
+
+    // Блок переменных для учета сносок
+	var nFootnotesHeight     = 0;
+	var arrSavedY            = [];
+	var arrSavedTableHeight  = [];
+	var arrFootnotesObject   = [];
+	var nResetFootnotesIndex = -1;
+
     for (var CurRow = FirstRow; CurRow < this.Content.length; ++CurRow)
     {
-		if (true === bResetFootnotes && oFootnotes)
+		if (oFootnotes && (-1 === nResetFootnotesIndex || CurRow > nResetFootnotesIndex))
 		{
-			oFootnotesObject  = oFootnotes.SaveRecalculateObject(nPageAbs, nColumnAbs);
-			nFootnotesHeight  = oFootnotes.GetHeight(nPageAbs, nColumnAbs);
-			nSavedY           = Y;
-			nSavedTableHeight = TableHeight;
+			nFootnotesHeight            = oFootnotes.GetHeight(nPageAbs, nColumnAbs);
+			arrFootnotesObject[CurRow]  = oFootnotes.SaveRecalculateObject(nPageAbs, nColumnAbs);
+			arrSavedY[CurRow]           = Y;
+			arrSavedTableHeight[CurRow] = TableHeight;
 
 			this.Pages[CurPage].FootnotesH = nFootnotesHeight;
 		}
@@ -2209,7 +2264,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 		for (var CurCell = 0; CurCell < CellsCount; CurCell++)
 		{
 			var Cell    = Row.Get_Cell(CurCell);
-			var Vmerge  = Cell.Get_VMerge();
+			var Vmerge  = Cell.GetVMerge();
 			var CellMar = Cell.GetMargins();
 			if (vmerge_Restart === Vmerge && CellMar.Top.W > MaxTopMargin)
 				MaxTopMargin = CellMar.Top.W;
@@ -2219,6 +2274,10 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 		var RowHValue = RowH.Value;
 		// В данном значении не учитываются маргины
 		RowHValue = RowH.Value + this.MaxBotMargin[CurRow] + MaxTopMargin;
+
+		// В таблице с отступами размер отступа входит в значение высоты строки
+		if (null !== CellSpacing)
+			RowHValue -= CellSpacing;
 
 		if (oFootnotes && (Asc.linerule_AtLeast === RowH.HRule || Asc.linerule_Exact == RowH.HRule))
 		{
@@ -2235,12 +2294,12 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
         var Merged_Cell  = [];
         var VerticallCells = [];
         var bAllCellsVertical = true;
-
+        var bFootnoteBreak = false;
         for ( var CurCell = 0; CurCell < CellsCount; CurCell++ )
         {
             var Cell     = Row.Get_Cell( CurCell );
             var GridSpan = Cell.Get_GridSpan();
-            var Vmerge   = Cell.Get_VMerge();
+            var Vmerge   = Cell.GetVMerge();
             var CellMar  = Cell.GetMargins();
 
             Row.Update_CellInfo(CurCell);
@@ -2314,11 +2373,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                     var X_content_end_old    = Cell.Content.Pages[0].XLimit;
                     var Y_content_height_old = Cell.Content.Pages[0].Bounds.Bottom - Cell.Content.Pages[0].Bounds.Top;
 
-                    // Проверим по X, Y.
-					// var nFootnotesHeight = 0;
-					// if (oTopDocument && isTopLogicDocument)
-						// nFootnotesHeight = oTopDocument.Footnotes.GetHeight(nPageAbs, nColumnAbs);
-					//
+					// Проверим по X, Y
                     if ( Math.abs( X_content_start - X_content_start_old ) < 0.001 && Math.abs( X_content_end_old - X_content_end ) < 0.001 && Y_content_start + Y_content_height_old < Y_content_end )
                     {
                         bCanShift = true;
@@ -2387,6 +2442,23 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 }
             }
 
+			var nCurFootnotesHeight = oFootnotes ? oFootnotes.GetHeight(nPageAbs, nColumnAbs) : 0;
+			if (oFootnotes && nCurFootnotesHeight > nFootnotesHeight + 0.001)
+			{
+				this.Pages[CurPage].FootnotesH = nCurFootnotesHeight;
+
+				nFootnotesHeight     = nCurFootnotesHeight;
+				nResetFootnotesIndex = CurRow;
+				Y                    = arrSavedY[Cell.Row.Index];
+				TableHeight          = arrSavedTableHeight[Cell.Row.Index];
+				oFootnotes.LoadRecalculateObject(nPageAbs, nColumnAbs, arrFootnotesObject[Cell.Row.Index]);
+
+				CurRow = Cell.Row.Index - 1;
+
+				bFootnoteBreak = true;
+				break;
+			}
+
             CurGridCol += GridSpan;
         }
 
@@ -2395,25 +2467,8 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 			oFootnotes.PopCellLimit();
 		}
 
-        var nCurFootnotesHeight = oFootnotes ? oFootnotes.GetHeight(nPageAbs, nColumnAbs) : 0;
-        if (oFootnotes && nCurFootnotesHeight > nFootnotesHeight + 0.001)
-		{
-			this.Pages[CurPage].FootnotesH = nCurFootnotesHeight;
-
-			nFootnotesHeight = nCurFootnotesHeight;
-			bResetFootnotes  = false;
-			Y                = nSavedY;
-			TableHeight      = nSavedTableHeight;
-
-			oFootnotes.LoadRecalculateObject(nPageAbs, nColumnAbs, oFootnotesObject);
-
-			CurRow--;
+		if (bFootnoteBreak)
 			continue;
-		}
-		else
-		{
-			bResetFootnotes = true;
-		}
 
         if (undefined === this.TableRowsBottom[CurRow][CurPage])
             this.TableRowsBottom[CurRow][CurPage] = Y;
@@ -2422,14 +2477,14 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
         if (true === bAllCellsVertical && Asc.linerule_Auto === RowH.HRule)
             this.TableRowsBottom[CurRow][CurPage] = Y + 4.5 + this.MaxBotMargin[CurRow] + MaxTopMargin;
 
-        if ((Asc.linerule_AtLeast === RowH.HRule || Asc.linerule_Exact == RowH.HRule) && Y + RowHValue > Y_content_end && ((0 === CurRow && 0 === CurPage && (null !== this.Get_DocumentPrev() || true === this.Parent.Is_TableCellContent())) || CurRow != FirstRow))
+        if ((Asc.linerule_AtLeast === RowH.HRule || Asc.linerule_Exact == RowH.HRule) && Y + RowHValue > Y_content_end && ((0 === CurRow && 0 === CurPage && (null !== this.Get_DocumentPrev() || true === this.Parent.IsTableCellContent())) || CurRow != FirstRow))
         {
             bNextPage = true;
 
             for ( var CurCell = 0; CurCell < CellsCount; CurCell++ )
             {
                 var Cell   = Row.Get_Cell( CurCell );
-                var Vmerge = Cell.Get_VMerge();
+                var Vmerge = Cell.GetVMerge();
 
                 var VMergeCount = this.Internal_GetVertMergeCount( CurRow, Cell.Metrics.StartGridCol, Cell.Get_GridSpan() );
 
@@ -2454,7 +2509,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
             for ( var CurCell = 0; CurCell < CellsCount; CurCell++ )
             {
                 var Cell   = Row.Get_Cell( CurCell );
-                var Vmerge = Cell.Get_VMerge();
+                var Vmerge = Cell.GetVMerge();
 
                 var VMergeCount = this.Internal_GetVertMergeCount( CurRow, Cell.Metrics.StartGridCol, Cell.Get_GridSpan() );
 
@@ -2477,7 +2532,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 for ( var CurCell = 0; CurCell < CellsCount; CurCell++ )
                 {
                     var Cell   = Row.Get_Cell( CurCell );
-                    var Vmerge = Cell.Get_VMerge();
+                    var Vmerge = Cell.GetVMerge();
 
                     var VMergeCount = this.Internal_GetVertMergeCount( CurRow, Cell.Metrics.StartGridCol, Cell.Get_GridSpan() );
 
@@ -2509,6 +2564,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 
             // Здесь мы должны рассчитать ячейки, которые попали в вертикальное объединение и из-за этого не были рассчитаны
             var CellsCount2 = Merged_Cell.length;
+            var bFootnoteBreak = false;
             for (var TempCellIndex = 0; TempCellIndex < CellsCount2; TempCellIndex++)
             {
                 var Cell = Merged_Cell[TempCellIndex];
@@ -2535,7 +2591,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 // Если в текущей строке на данной странице не убралось ничего из других ячеек, тогда
                 // рассчитываем вертикально объединенные ячейки до начала данной строки.
                 var Y_content_start = Cell.Temp.Y;
-                var Y_content_end   = false === bContentOnFirstPage ? Y : this.Pages[CurPage].YLimit;
+                var Y_content_end   = false === bContentOnFirstPage ? Y : this.Pages[CurPage].YLimit - nFootnotesHeight;
 
                 // TODO: При расчете YLimit для ячейки сделать учет толщины нижних
                 //       границ ячейки и таблицы
@@ -2591,8 +2647,29 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                     }
                 }
 
+				// Проверяем наличие сносок, т.к. они могли появится в смерженных ячейках
+				var nCurFootnotesHeight = oFootnotes ? oFootnotes.GetHeight(nPageAbs, nColumnAbs) : 0;
+				if (oFootnotes && nCurFootnotesHeight > nFootnotesHeight + 0.001 && Cell.Row.Index >= FirstRow)
+				{
+					this.Pages[CurPage].FootnotesH = nCurFootnotesHeight;
+
+					nFootnotesHeight     = nCurFootnotesHeight;
+					nResetFootnotesIndex = CurRow;
+					Y                    = arrSavedY[Cell.Row.Index];
+					TableHeight          = arrSavedTableHeight[Cell.Row.Index];
+					oFootnotes.LoadRecalculateObject(nPageAbs, nColumnAbs, arrFootnotesObject[Cell.Row.Index]);
+
+					CurRow = Cell.Row.Index - 1;
+
+					bFootnoteBreak = true;
+					break;
+				}
+
                 CurGridCol += GridSpan;
             }
+
+            if (bFootnoteBreak)
+				continue;
 
 
             // Еще раз обновляем параметр, есть ли текст на первой странице
@@ -2600,7 +2677,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
             for ( var CurCell = 0; CurCell < CellsCount; CurCell++ )
             {
                 var Cell   = Row.Get_Cell( CurCell );
-                var Vmerge = Cell.Get_VMerge();
+                var Vmerge = Cell.GetVMerge();
 
                 // Проверяем только начальные ячейки вертикального объединения..
                 if ( vmerge_Continue === Vmerge )
@@ -2653,7 +2730,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 
 		// TODO: улучшить проверку на высоту строки (для строк разбитых на страницы)
 		// Условие Y + RowHValue < Y_content_end добавлено из-за сносок.
-		if (false === bNextPage && Asc.linerule_AtLeast === RowH.HRule && CellHeight < RowHValue && Y + RowHValue < Y_content_end)
+		if (false === bNextPage && (Asc.linerule_AtLeast === RowH.HRule || Asc.linerule_Exact === RowH.HRule) && CellHeight < RowHValue && (nFootnotesHeight < 0.001 || Y + RowHValue < Y_content_end))
 		{
 			CellHeight                            = RowHValue;
 			this.TableRowsBottom[CurRow][CurPage] = Y + CellHeight;
@@ -2726,19 +2803,14 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 		{
 			this.Pages[CurPage].FootnotesH = nCurFootnotesHeight;
 
-			nFootnotesHeight = nCurFootnotesHeight;
-			bResetFootnotes  = false;
-			Y                = nSavedY;
-			TableHeight      = nSavedTableHeight;
-
-			oFootnotes.LoadRecalculateObject(nPageAbs, nColumnAbs, oFootnotesObject);
+			nFootnotesHeight     = nCurFootnotesHeight;
+			nResetFootnotesIndex = CurRow;
+			Y                    = arrSavedY[CurRow];
+			TableHeight          = arrSavedTableHeight[CurRow];
+			oFootnotes.LoadRecalculateObject(nPageAbs, nColumnAbs, arrFootnotesObject[CurRow]);
 
 			CurRow--;
 			continue;
-		}
-		else
-		{
-			bResetFootnotes = true;
 		}
 
         if ( null != CellSpacing )
@@ -2800,7 +2872,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 continue;
             else
             {
-                var Vmerge = Cell.Get_VMerge();
+                var Vmerge = Cell.GetVMerge();
                 // Возьмем верхнюю ячейку текущего объединения
                 if ( vmerge_Restart != Vmerge )
                 {
@@ -2891,7 +2963,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 for (var CurCell = 0; CurCell < CellsCount; CurCell++)
                 {
                     var Cell = Row.Get_Cell(CurCell);
-                    if (vmerge_Continue === Cell.Get_VMerge())
+                    if (vmerge_Continue === Cell.GetVMerge())
                         Cell = this.Internal_Get_StartMergedCell(CurRow, Row.Get_CellInfo(CurCell).StartGridCol, Cell.Get_GridSpan());
 
                     var Border_Info = Cell.Get_BorderInfo().Bottom;
@@ -2932,7 +3004,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                     {
                         var Cell = Row.Get_Cell(CurCell);
 
-                        if (vmerge_Continue === Cell.Get_VMerge())
+                        if (vmerge_Continue === Cell.GetVMerge())
                         {
                             Cell = this.Internal_Get_StartMergedCell(CurRow, Row.Get_CellInfo(CurCell).StartGridCol, Cell.Get_GridSpan());
                             if (null === Cell)
@@ -3048,7 +3120,7 @@ CTable.prototype.private_RecalculateSkipPage = function(CurPage)
     else
     {
         var FirstRow;
-        if (true === this.Is_EmptyPage(CurPage - 1))
+        if (true === this.IsEmptyPage(CurPage - 1))
             FirstRow = this.Pages[CurPage - 1].FirstRow;
         else
             FirstRow = this.Pages[CurPage - 1].LastRow;
@@ -3059,7 +3131,24 @@ CTable.prototype.private_RecalculateSkipPage = function(CurPage)
 };
 CTable.prototype.private_RecalculatePercentWidth = function()
 {
-    return this.XLimit - this.X - this.Get_TableOffsetCorrection() + this.Get_RightTableOffsetCorrection();
+    return this.XLimit - this.X - this.GetTableOffsetCorrection() + this.GetRightTableOffsetCorrection();
+};
+CTable.prototype.private_RecalculateGridCols = function()
+{
+	for (var nCurRow = 0, nRowsCount = this.Content.length; nCurRow < nRowsCount; ++nCurRow)
+	{
+		var oRow        = this.Content[nCurRow];
+		var oBeforeInfo = oRow.Get_Before();
+		var nCurGridCol = oBeforeInfo.GridBefore;
+
+		for (var nCurCell = 0, nCellsCount = oRow.GetCellsCount(); nCurCell < nCellsCount; ++nCurCell)
+		{
+			var oCell = oRow.GetCell(nCurCell);
+			oRow.Set_CellInfo(nCurCell, nCurGridCol, 0, 0, 0, 0, 0, 0);
+			oCell.Set_Metrics(nCurGridCol, 0, 0, 0, 0, 0, 0);
+			nCurGridCol += oCell.Get_GridSpan();
+		}
+	}
 };
 //----------------------------------------------------------------------------------------------------------------------
 // Класс CTablePage

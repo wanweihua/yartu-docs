@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,13 +31,11 @@
  */
 
 
-#include <cpdoccore/CPHash.h>
+#include <cpdoccore/CPOptional.h>
 #include <cpdoccore/xml/simple_xml_writer.h>
 
 #include "oox_data_labels.h"
 #include "oox_chart_shape.h"
-
-#include <boost/foreach.hpp>
 
 namespace cpdoccore {
 namespace oox {
@@ -51,6 +49,8 @@ oox_data_labels::oox_data_labels()//подписи на значениях
 	showPercent_		= false;
 	showSerName_		= false;
 	showVal_			= false;
+
+	position_			= -1; //not set
 }
 
 void oox_data_labels::set_common_dLbl ( std::vector<odf_reader::_property> & text_properties)
@@ -71,7 +71,7 @@ void oox_data_labels::oox_serialize(std::wostream & _Wostream)
         {
 			oox_serialize_default_text(CP_XML_STREAM(), textPr_);
 	
-			for (std::map<int, std::vector<odf_reader::_property>>::iterator it = dLbls_.begin(); it != dLbls_.end(); it++)
+			for (std::map<int, std::vector<odf_reader::_property>>::iterator it = dLbls_.begin(); it != dLbls_.end(); ++it)
 			{
 				CP_XML_NODE(L"c:dLbl")
 				{
@@ -104,6 +104,29 @@ void oox_data_labels::oox_serialize(std::wostream & _Wostream)
 					CP_XML_NODE(L"c:showBubbleSize")
 					{
 						CP_XML_ATTR(L"val", showBubbleSize_);
+					}
+				}
+			}
+			if (position_ >= 0 && position_ < 13)
+			{
+				CP_XML_NODE(L"c:dLblPos")
+				{
+					switch (position_)
+					{
+					case 0: CP_XML_ATTR(L"val", L"bestFit");break;
+					case 1: CP_XML_ATTR(L"val", L"b");		break;
+					case 2: CP_XML_ATTR(L"val", L"b");		break;
+					case 3: CP_XML_ATTR(L"val", L"b");		break;
+					case 6: CP_XML_ATTR(L"val", L"l");		break;
+					case 7: CP_XML_ATTR(L"val", L"inBase");	break;
+					case 9: CP_XML_ATTR(L"val", L"r");		break;
+					case 10: CP_XML_ATTR(L"val", L"t");		break;
+					case 11: CP_XML_ATTR(L"val", L"t");		break;
+					case 12: CP_XML_ATTR(L"val", L"t");		break;
+					case 5: //CP_XML_ATTR(L"val", L"inEnd");	break;
+					case 8: //CP_XML_ATTR(L"val", L"outEnd");	break;
+					case 4: CP_XML_ATTR(L"val", L"ctr");	break;
+
 					}
 				}
 			}

@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *    LeftMenu.js
  *
  *    Created by Maxim Kadushkin on 10 April 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -377,14 +377,15 @@ define([
             if ( !this.$el.is(':visible') ) return;
 
             if (!this.developerHint) {
-                this.developerHint = $('<div id="developer-hint">' + this.txtDeveloper + '</div>').appendTo(this.$el);
+                this.developerHint = $('<div id="developer-hint">' + ((mode == Asc.c_oLicenseMode.Trial) ? this.txtTrial : this.txtDeveloper) + '</div>').appendTo(this.$el);
                 this.devHeight = this.developerHint.outerHeight();
                 $(window).on('resize', _.bind(this.onWindowResize, this));
             }
             this.developerHint.toggleClass('hidden', !mode);
 
-            var lastbtn = this.$el.find('button.btn-category:visible:last-of-type');
-            this.minDevPosition = lastbtn.offset().top - lastbtn.offsetParent().offset().top + lastbtn.height() + 20;
+            var btns = this.$el.find('button.btn-category:visible'),
+                lastbtn = (btns.length>0) ? $(btns[btns.length-1]) : null;
+            this.minDevPosition = (lastbtn) ? (lastbtn.offset().top - lastbtn.offsetParent().offset().top + lastbtn.height() + 20) : 20;
             this.onWindowResize();
         },
 
@@ -402,6 +403,7 @@ define([
         tipSearch   : 'Search',
         tipSlides: 'Slides',
         tipPlugins  : 'Plugins',
-        txtDeveloper: 'DEVELOPER MODE'
+        txtDeveloper: 'DEVELOPER MODE',
+        txtTrial: 'TRIAL MODE'
     }, PE.Views.LeftMenu || {}));
 });

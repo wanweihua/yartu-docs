@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,8 +36,6 @@
 namespace XLS
 {
 
-
-// Logical representation of PivotChartBits record in BIFF8
 class PivotChartBits: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(PivotChartBits)
@@ -47,12 +45,13 @@ public:
 	~PivotChartBits();
 
 	BaseObjectPtr clone();
-
 	
 	void readFields(CFRecord& record);
 
-	static const ElementType	type = typePivotChartBits;
+	static const ElementType type = typePivotChartBits;
 
+	unsigned short	rt;
+	bool			fGXHide;
 };
 
 } // namespace XLS

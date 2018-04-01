@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -69,7 +69,6 @@ namespace DocFileFormat
 {
 	class WordDocument: public IVisitable
 	{
-		/*Mapping classes with direct access to the Word Document.*/
 		friend class FootnotesMapping;
 		friend class EndnotesMapping;
         friend class CommentsMapping;
@@ -98,18 +97,19 @@ namespace DocFileFormat
 		long LoadDocument (const std::wstring & fileName, const std::wstring & password);
 
 		bool	bOlderVersion;
-		int		document_code_page;
-
-	private:
-		bool DecryptOfficeFile	(CRYPT::Decryptor* Decryptor);
-		bool DecryptStream		(CRYPT::Decryptor* Decryptor, std::string streamName, POLE::Storage * storageIn, POLE::Storage * storageOut);
-		bool CopyStream			(std::string streamName, POLE::Storage * storageIn, POLE::Storage * storageOut);
-
+		int		nDocumentCodePage;
+		bool	bDocumentCodePage;
+		
 		inline StructuredStorageReader* GetStorage() const
 		{
 			return m_pStorage;
 		}
-
+	private:
+		bool DecryptOfficeFile	(CRYPT::Decryptor* Decryptor);
+		
+		bool DecryptStream		(std::wstring streamName_open, POLE::Storage * storageIn, std::wstring streamName_create, POLE::Storage * storageOut, CRYPT::Decryptor* Decryptor, bool bDecrypt);
+		void DecryptStream		(int level, std::wstring streamName, POLE::Storage * storageIn, POLE::Storage * storageOut, CRYPT::Decryptor* Decryptor);
+		
 		inline OfficeArtContent* GetOfficeArt ()
 		{
 			return officeArtContent;
@@ -162,7 +162,9 @@ namespace DocFileFormat
 		std::vector<int>							* AllPapxVector;// A vector to quick find in AllPapx
 
 		std::map<int, int>						PictureBulletsCPsMap;
+
 		std::vector<std::pair<int, int>>		BookmarkStartEndCPs;
+		std::vector<std::pair<int, int>>		AnnotStartEndCPs;
 
 		FileInformationBlock				* FIB;
 		StyleSheet							* Styles;					// The style sheet of the document
@@ -204,7 +206,10 @@ namespace DocFileFormat
 		Plex<SectionDescriptor>				*SectionPlex;						// A Plex containing all section descriptors
 	
 		Plex<BookmarkFirst>					*BookmarkStartPlex;
-		Plex<EmptyStructure>				*BookmarkEndPlex;		
+		Plex<EmptyStructure>				*BookmarkEndPlex;
+
+		Plex<BookmarkFirst>					*AnnotStartPlex;
+		Plex<EmptyStructure>				*AnnotEndPlex;
 
 		Plex<ListNumCache>					*ListPlex;
 		Plex<FieldCharacter>				*FieldsPlex;

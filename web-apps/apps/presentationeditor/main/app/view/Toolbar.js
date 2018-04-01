@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Toolbar view
  *
  *  Created by Alexander Yuzhin on 4/16/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -140,7 +140,7 @@ define([
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-addslide',
                 split       : true,
-                lock        : [_set.menuFileOpen, _set.slideDeleted, _set.lostConnect, _set.disableOnStart],
+                lock        : [_set.menuFileOpen, _set.lostConnect, _set.disableOnStart],
                 menu        : true
             });
             me.slideOnlyControls.push(me.btnAddSlide);
@@ -442,7 +442,7 @@ define([
             me.btnVerticalAlign = new Common.UI.Button({
                 id          : 'id-toolbar-btn-valign',
                 cls         : 'btn-toolbar',
-                lock        : [_set.slideDeleted, _set.paragraphLock, _set.lostConnect, _set.noSlides, _set.noParagraphSelected],
+                lock        : [_set.slideDeleted, _set.paragraphLock, _set.lostConnect, _set.noSlides, _set.noParagraphSelected, _set.noObjectSelected],
                 iconCls     : 'btn-align-middle',
                 icls        : 'btn-align-middle',
                 menu        : new Common.UI.Menu({

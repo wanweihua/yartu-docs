@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,12 +30,8 @@
  *
  */
 
-#include "oox_types_chart.h"
-
-#include <boost/foreach.hpp>
-
 #include <cpdoccore/xml/simple_xml_writer.h>
-
+#include "oox_types_chart.h"
 #include "oox_chart_shape.h"
 
 namespace cpdoccore {
@@ -67,7 +63,7 @@ void oox_chart::set_content_series(odf_reader::chart::series & content)
 }
 void oox_chart::set_values_series(int ind, std::vector<std::wstring> & val)
 {
-	if (val.size()<1)return;
+	if (val.empty())return;
 
 	oox_series_ptr & current_ptr = series_.back();
 	current_ptr->setValues (ind, val);
@@ -78,9 +74,11 @@ void oox_chart::set_properties(std::vector<odf_reader::_property> g)
 
 	_CP_OPT(bool) bStacked;
 	_CP_OPT(bool) bPercent;
+	_CP_OPT(int) iGapWidth;
 
-	odf_reader::GetProperty(g, L"stacked",bStacked);
-	odf_reader::GetProperty(g, L"percentage",bPercent);
+	odf_reader::GetProperty(g, L"stacked", bStacked);
+	odf_reader::GetProperty(g, L"percentage", bPercent);
+	odf_reader::GetProperty(g, L"gap-width", iGapWidth);
 
 	if ( (bStacked) && (bStacked.get()))
 	{
@@ -90,6 +88,10 @@ void oox_chart::set_properties(std::vector<odf_reader::_property> g)
 	if ( (bPercent) && (bPercent.get()))
 	{
 		grouping_ = L"percentStacked";	
+	}
+	if (iGapWidth)
+	{
+		dispBlanksAs_ = L"gap";
 	}
 	//solid-type - трехмерные
 }
@@ -104,15 +106,19 @@ void oox_chart::oox_serialize_common(std::wostream & _Wostream)
 				CP_XML_ATTR(L"val", grouping_);
 			}
 		}
-		BOOST_FOREACH(oox_series_ptr const & s, series_)
+		for (size_t i = 0; i < series_.size(); i++)
 		{
-			s->oox_serialize(_Wostream);
+			if (is3D_ || type_ == CHART_TYPE_AREA || type_ == CHART_TYPE_DOUGHNUT || type_ == CHART_TYPE_RADAR)
+			{
+				series_[i]->labelPosEnabled_ = false;
+			}
+			series_[i]->oox_serialize(_Wostream);
 		}
-		BOOST_FOREACH(int const & i, axisId_)
+		for (size_t i = 0; i < axisId_.size(); i++)
 		{
 			CP_XML_NODE(L"c:axId")
 			{	
-				CP_XML_ATTR(L"val", i);
+				CP_XML_ATTR(L"val", axisId_[i]);
 			}
 		}	
 		data_labels_.oox_serialize(_Wostream);
@@ -128,17 +134,15 @@ void oox_bar_chart::set_properties(std::vector<odf_reader::_property> g)
 {
 	oox_chart::set_properties(g);
 
-	odf_reader::GetProperty(g, L"vertical",bVertical);
-	odf_reader::GetProperty(g, L"connect-bars",bConnectBars);
+	odf_reader::GetProperty(g, L"vertical", bVertical);
+	odf_reader::GetProperty(g, L"connect-bars", bConnectBars);
 	
-	odf_reader::GetProperty(g, L"gap-width",iGapWidth);
-	odf_reader::GetProperty(g, L"overlap",iOverlap);
+	odf_reader::GetProperty(g, L"gap-width", iGapWidth);
+	odf_reader::GetProperty(g, L"overlap", iOverlap);
 }
 
 void oox_bar_chart::set_additional_properties(std::vector<odf_reader::_property> g)
 {
-	odf_reader::GetProperty(g, L"gap-width",iGapWidth);
-	odf_reader::GetProperty(g, L"overlap",iOverlap);
 }
 
 void oox_bar_chart::oox_serialize(std::wostream & _Wostream)
@@ -169,13 +173,13 @@ void oox_bar_chart::oox_serialize(std::wostream & _Wostream)
 			}
 			CP_XML_NODE(L"c:overlap")//-100 to 100
 			{
-				CP_XML_ATTR(L"val",Overlap); 
+				CP_XML_ATTR(L"val", Overlap); 
 			}
 			if (iGapWidth)
 			{
 				CP_XML_NODE(L"c:gapWidth")
 				{
-					CP_XML_ATTR(L"val",iGapWidth.get()); 
+					CP_XML_ATTR(L"val", iGapWidth.get()); 
 				}
 			}
 			CP_XML_NODE(L"c:varyColors")
@@ -473,7 +477,7 @@ void oox_stock_chart::oox_serialize(std::wostream & _Wostream)
 			//{
 			//	//shape.oox_serialize(CP_XML_STREAM());
 			//}
-			CP_XML_NODE(L"upDownBars")
+			CP_XML_NODE(L"c:upDownBars")
 			{
 				CP_XML_NODE(L"c:gapWidth")
 				{

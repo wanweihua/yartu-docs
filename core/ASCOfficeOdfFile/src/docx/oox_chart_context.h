@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -63,6 +63,10 @@ public:
 	void serialize(std::wostream & strm);
 	void dump_rels(rels & Rels);
 	
+	void set_pivot_chart(const std::wstring &source)
+	{
+		pivot_source_ = source;
+	}
 	void set_title(odf_reader::chart::title & t)
 	{
 		title_.set_content(t);
@@ -99,7 +103,7 @@ public:
 		reset_fill(l.fill_);
 		//floor_.content_= l;
 	}
-	void set_legend(odf_reader::chart::simple & l)
+	void set_legend(odf_reader::chart::legend & l)
 	{
 		reset_fill(l.fill_);
 		legend_.content_= l;
@@ -129,6 +133,8 @@ private:
 	cpdoccore::oox::oox_title			title_;
 	cpdoccore::oox::oox_plot_area		plot_area_;
 	cpdoccore::oox::oox_chart_legend	legend_;
+
+	std::wstring						pivot_source_;
 
 	std::vector<odf_reader::_property>	graphic_properties_;
 	_oox_fill							fill_;

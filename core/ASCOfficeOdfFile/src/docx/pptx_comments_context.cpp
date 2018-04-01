@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,7 +31,6 @@
  */
 
 #include "pptx_comments_context.h"
-#include <boost/foreach.hpp>
 #include <iostream>
 #include "../odf/datatypes/length.h"
 #include "xlsx_utils.h"

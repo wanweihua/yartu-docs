@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -194,6 +194,18 @@ function CStream(data, size)
 
 function CreateDocumentData(szSrc)
 {
+    var isBase64 = false;
+	if (typeof(szSrc) == "string" || szSrc instanceof String){
+		isBase64 = true;
+	}
+
+	var stream = null;
+	if (!isBase64)
+    {
+		stream = new CStream(szSrc, szSrc.length);
+		return stream;
+    }
+
     var srcLen = szSrc.length;
     var nWritten = 0;
 
@@ -216,7 +228,7 @@ function CreateDocumentData(szSrc)
         return null;
 
     var pointer = g_memory.Alloc(dstLen);
-    var stream = new CStream(pointer.data, dstLen);
+    stream = new CStream(pointer.data, dstLen);
     stream.obj = pointer.obj;
 
     var dstPx = stream.data;

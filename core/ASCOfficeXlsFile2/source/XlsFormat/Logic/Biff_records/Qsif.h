@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,12 +32,12 @@
 #pragma once
 
 #include "BiffRecord.h"
+#include "../Biff_structures/FrtHeaderOld.h"
+#include "../Biff_structures/BiffString.h"
 
 namespace XLS
 {
 
-
-// Logical representation of Qsif record in BIFF8
 class Qsif: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(Qsif)
@@ -47,12 +47,22 @@ public:
 	~Qsif();
 
 	BaseObjectPtr clone();
-
 	
 	void readFields(CFRecord& record);
 
-	static const ElementType	type = typeQsif;
+	static const ElementType type = typeQsif;
 
+	FrtHeaderOld	frtHeaderOld;
+	bool			fUserIns;
+	bool			fFillDown;
+	bool			fSortDes;
+	unsigned char	iSortKey;
+	bool			fRowNums;
+	bool			fSorted;
+	bool			fClipped;
+	_UINT32			idField;
+	_UINT32			idList;
+	XLUnicodeString	rgbTitle;
 };
 
 } // namespace XLS

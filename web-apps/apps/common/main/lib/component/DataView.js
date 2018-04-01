@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  A mechanism for displaying data using custom layout templates and formatting.
  *
  *  Created by Alexander Yuzhin on 1/24/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -718,10 +718,11 @@ define([
             var el = $(this.dataViewItems[0].el),
                 itemW = el.outerWidth() + parseInt(el.css('margin-left')) + parseInt(el.css('margin-right')),
                 offsetLeft = this.$el.offset().left,
+                offsetTop = el.offset().top,
                 prevtop = -1, topIdx = 0, leftIdx = 0;
 
             for (var i=0; i<this.dataViewItems.length; i++) {
-                var top = $(this.dataViewItems[i].el).offset().top;
+                var top = $(this.dataViewItems[i].el).offset().top - offsetTop;
                 leftIdx = Math.floor(($(this.dataViewItems[i].el).offset().left - offsetLeft)/itemW);
                 if (top>prevtop) {
                     prevtop = top;

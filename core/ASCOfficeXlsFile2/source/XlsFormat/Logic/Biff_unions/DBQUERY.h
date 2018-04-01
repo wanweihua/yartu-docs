@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,9 +35,14 @@
 
 namespace XLS
 {
+struct _DbParam
+{
+	std::wstring	string;
+	BaseObjectPtr	param;
+};
 
+class DBQUERYEXT;
 
-// Logical representation of DBQUERY union of records 
 class DBQUERY: public CompositeObject
 {
 	BASE_OBJECT_DEFINE_CLASS_NAME(DBQUERY)
@@ -49,6 +54,22 @@ public:
 
 	virtual const bool loadContent(BinProcessor& proc);
 
+	int serialize(std::wostream & stream);
+	
+	int serialize_connection(std::wstring & name);
+
+	BaseObjectPtr				m_DbQry;
+
+	BaseObjectPtr				m_DbParam;
+	std::vector<_DbParam>		m_arParams;
+	
+	std::vector<std::wstring>	m_arSXString;
+//------------------------------------------------------
+	BaseObjectPtr				m_DBQUERYEXT;
+	BaseObjectPtr				m_Qsi;
+	BaseObjectPtr				m_DConn;
+
+	GlobalWorkbookInfoPtr		global_info;
 };
 
 } // namespace XLS

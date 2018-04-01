@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -45,6 +45,7 @@
 	var c_oAscMaxRowHeight    = 409;
 	var c_nMaxConversionTime  = 900000;//depends on config
 	var c_nMaxDownloadTitleLen= 255;
+	var c_nVersionNoBase64 = 10;
 
 	//files type for Saving & DownloadAs
 	var c_oAscFileType = {
@@ -103,6 +104,8 @@
 			NoSupportClipdoard   : -12,
 			UplImageUrl          : -13,
 
+
+			MaxDataPointsError    : -16,
 			StockChartError       : -17,
 			CoAuthoringDisconnect : -18,
 			ConvertationPassword  : -19,
@@ -168,6 +171,11 @@
 			InvalidReferenceOrName : -310,
 			LockCreateDefName      : -311,
 
+			LockedCellPivot				: -312,
+
+			ForceSaveButton: -331,
+			ForceSaveTimeout: -332,
+
 			OpenWarning : 500
 		}
 	};
@@ -207,9 +215,13 @@
 	};
 
 	var c_oAscRestrictionType = {
-		None : 0,
-		OnlyForms : 1,
-		OnlyComments : 2
+		None           : 0,
+		OnlyForms      : 1,
+		OnlyComments   : 2,
+		OnlySignatures : 3,
+		View           : 0xFF // Отличие данного ограничения от обычного ViewMode в том, что редактор открывается
+		                      // как полноценный редактор, просто мы запрещаем ЛЮБОЕ редактирование. А во ViewMode
+		                      // открывается именно просмотрщик.
 	};
 
 	// Режимы отрисовки
@@ -281,17 +293,18 @@
 	};
 
 	var c_oAscTypeSelectElement = {
-		Paragraph  : 0,
-		Table      : 1,
-		Image      : 2,
-		Header     : 3,
-		Hyperlink  : 4,
-		SpellCheck : 5,
-		Shape      : 6,
-		Slide      : 7,
-		Chart      : 8,
-		Math       : 9,
-		MailMerge  : 10
+		Paragraph      : 0,
+		Table          : 1,
+		Image          : 2,
+		Header         : 3,
+		Hyperlink      : 4,
+		SpellCheck     : 5,
+		Shape          : 6,
+		Slide          : 7,
+		Chart          : 8,
+		Math           : 9,
+		MailMerge      : 10,
+		ContentControl : 11
 	};
 
 	var c_oAscLineDrawingRule = {
@@ -951,6 +964,15 @@
 		Bottom : 1
 	};
 
+	var c_oAscTabLeader = {
+		Dot        : 0x00,
+		Heavy      : 0x01,
+		Hyphen     : 0x02,
+		MiddleDot  : 0x03,
+		None       : 0x04,
+		Underscore : 0x05
+	};
+
 	var c_oAscEncodings    = [
 		[0, 28596, "ISO-8859-6", "Arabic (ISO 8859-6)"],
 		[1, 720, "DOS-720", "Arabic (OEM 720)"],
@@ -1017,17 +1039,23 @@
 		[46, 65001, "UTF-8", "Unicode (UTF-8)"],
 		[47, 65000, "UTF-7", "Unicode (UTF-7)"],
 
-		[48, 1200, "UTF-16", "Unicode (UTF-16)"],
+		[48, 1200, "UTF-16LE", "Unicode (UTF-16)"],
 		[49, 1201, "UTF-16BE", "Unicode (UTF-16 Big Endian)"],
 
-		[50, 12000, "UTF-32", "Unicode (UTF-32)"],
+		[50, 12000, "UTF-32LE", "Unicode (UTF-32)"],
 		[51, 12001, "UTF-32BE", "Unicode (UTF-32 Big Endian)"]
 	];
 	var c_oAscEncodingsMap = {
 		"437"   : 43, "720" : 1, "737" : 21, "775" : 5, "850" : 39, "852" : 15, "855" : 12, "857" : 35, "858" : 40, "860" : 41, "861" : 30, "862" : 25, "863" : 42, "865" : 31, "866" : 13, "869" : 22, "874" : 32, "932" : 27, "936" : 18, "949" : 28, "950" : 17, "1200" : 48, "1201" : 49, "1250" : 16, "1251" : 14, "1252" : 44, "1253" : 23, "1254" : 36, "1255" : 26, "1256" : 2, "1257" : 6, "1258" : 45, "10007" : 11, "12000" : 50, "12001" : 51, "20866" : 9, "21866" : 10, "28591" : 37, "28592" : 19,
 		"28593" : 33, "28594" : 3, "28595" : 8, "28596" : 0, "28597" : 20, "28598" : 24, "28599" : 34, "28603" : 4, "28604" : 7, "28605" : 38, "51949" : 29, "65000" : 47, "65001" : 46
 	};
+	var c_oAscCodePageNone = -1;
+	var c_oAscCodePageUtf7 = 47;//65000
 	var c_oAscCodePageUtf8 = 46;//65001
+	var c_oAscCodePageUtf16 = 48;//1200
+	var c_oAscCodePageUtf16BE = 49;//1201
+	var c_oAscCodePageUtf32 = 50;//12000
+	var c_oAscCodePageUtf32BE = 51;//12001
 
 	// https://support.office.com/en-us/article/Excel-specifications-and-limits-16c69c74-3d6a-4aaf-ba35-e6eb276e8eaa?ui=en-US&rs=en-US&ad=US&fromAR=1
 	var c_oAscMaxTooltipLength       = 256;
@@ -1043,6 +1071,7 @@
 	var changestype_None                      = 0; // Ничего не происходит с выделенным элементом (проверка идет через дополнительный параметр)
 	var changestype_Paragraph_Content         = 1; // Добавление/удаление элементов в параграф
 	var changestype_Paragraph_Properties      = 2; // Изменение свойств параграфа
+	var changestype_Paragraph_AddText         = 3; // Добавление текста
 	var changestype_Document_Content          = 10; // Добавление/удаление элементов в Document или в DocumentContent
 	var changestype_Document_Content_Add      = 11; // Добавление элемента в класс Document или в класс DocumentContent
 	var changestype_Document_SectPr           = 12; // Изменения свойств данной секции (размер страницы, поля и ориентация)
@@ -1052,6 +1081,7 @@
 	var changestype_Image_Properties          = 23; // Изменения настроек картинки
 	var changestype_ContentControl_Remove     = 24; // Удаление контейнера целиком
 	var changestype_ContentControl_Properties = 25; // Изменение свойств контейнера
+	var changestype_ContentControl_Add        = 26; // Добавление контейнера
 	var changestype_HdrFtr                    = 30; // Изменения в колонтитуле (любые изменения)
 	var changestype_Remove                    = 40; // Удаление, через кнопку backspace (Удаление назад)
 	var changestype_Delete                    = 41; // Удаление, через кнопку delete (Удаление вперед)
@@ -1071,6 +1101,7 @@
 	var changestype_AddShape                  = 72;
 	var changestype_AddShapes                 = 73;
 	var changestype_PresDefaultLang           = 74;
+	var changestype_SlideHide                 = 75;
 
 	var changestype_2_InlineObjectMove       = 1; // Передвигаем объект в заданную позцию (проверяем место, в которое пытаемся передвинуть)
 	var changestype_2_HdrFtr                 = 2; // Изменения с колонтитулом
@@ -1084,6 +1115,7 @@
 
 
 	var offlineMode = '_offline_';
+	var chartMode = '_chart_';
 	
 	var c_oSpecialPasteProps = {
 		paste: 0,
@@ -1113,7 +1145,8 @@
 		insertAsNestedTable: 20,
 		uniteIntoTable: 21,
 		insertAsNewRows: 22,
-		keepTextOnly: 23
+		keepTextOnly: 23,
+		overwriteCells : 24
 	};
 	
 	//------------------------------------------------------------export--------------------------------------------------
@@ -1124,6 +1157,7 @@
 	window['Asc']['c_oAscMaxRowHeight'] = window['Asc'].c_oAscMaxRowHeight = c_oAscMaxRowHeight;
     window['Asc']['c_nMaxConversionTime'] = window['Asc'].c_nMaxConversionTime = c_nMaxConversionTime;
 	window['Asc']['c_nMaxDownloadTitleLen'] = window['Asc'].c_nMaxDownloadTitleLen = c_nMaxDownloadTitleLen;
+	window['Asc']['c_nVersionNoBase64'] = window['Asc'].c_nVersionNoBase64 = c_nVersionNoBase64;
 	window['Asc']['c_oAscFileType'] = window['Asc'].c_oAscFileType = c_oAscFileType;
 	prot                         = c_oAscFileType;
 	prot['UNKNOWN']              = prot.UNKNOWN;
@@ -1220,6 +1254,9 @@
 	prot['FrmlWrongReferences']              = prot.FrmlWrongReferences;
 	prot['InvalidReferenceOrName']           = prot.InvalidReferenceOrName;
 	prot['LockCreateDefName']                = prot.LockCreateDefName;
+	prot['LockedCellPivot']                  = prot.LockedCellPivot;
+	prot['ForceSaveButton']                  = prot.ForceSaveButton;
+	prot['ForceSaveTimeout']                 = prot.ForceSaveTimeout;
 	prot['OpenWarning']                      = prot.OpenWarning;
 	window['Asc']['c_oAscAsyncAction']       = window['Asc'].c_oAscAsyncAction = c_oAscAsyncAction;
 	prot                                     = c_oAscAsyncAction;
@@ -1686,10 +1723,20 @@
 	prot['Top']    = c_oAscMathInterfaceGroupCharPos.Top;
 	prot['Bottom'] = c_oAscMathInterfaceGroupCharPos.Bottom;
 
+	prot = window['Asc']['c_oAscTabLeader'] = window['Asc'].c_oAscTabLeader = c_oAscTabLeader;
+	prot["None"]       = c_oAscTabLeader.None;
+	prot["Heavy"]      = c_oAscTabLeader.Heavy;
+	prot["Dot"]        = c_oAscTabLeader.Dot;
+	prot["Hyphen"]     = c_oAscTabLeader.Hyphen;
+	prot["MiddleDot"]  = c_oAscTabLeader.MiddleDot;
+	prot["Underscore"] = c_oAscTabLeader.Underscore;
+
 	prot = window['Asc']['c_oAscRestrictionType'] = window['Asc'].c_oAscRestrictionType = c_oAscRestrictionType;
-	prot['None'] = c_oAscRestrictionType.None;
-	prot['OnlyForms'] = c_oAscRestrictionType.OnlyForms;
-	prot['OnlyComments'] = c_oAscRestrictionType.OnlyComments;
+	prot['None']           = c_oAscRestrictionType.None;
+	prot['OnlyForms']      = c_oAscRestrictionType.OnlyForms;
+	prot['OnlyComments']   = c_oAscRestrictionType.OnlyComments;
+	prot['OnlySignatures'] = c_oAscRestrictionType.OnlySignatures;
+	prot['View']           = c_oAscRestrictionType.View;
 
     window['AscCommon']                             = window['AscCommon'] || {};
 	window["AscCommon"].g_cCharDelimiter            = g_cCharDelimiter;
@@ -1702,10 +1749,6 @@
 	window["AscCommon"].c_oAscChartDefines          = c_oAscChartDefines;
 	window["AscCommon"].c_oAscStyleImage            = c_oAscStyleImage;
 	window["AscCommon"].c_oAscLineDrawingRule       = c_oAscLineDrawingRule;
-	window["AscCommon"].align_Right                 = align_Right;
-	window["AscCommon"].align_Left                  = align_Left;
-	window["AscCommon"].align_Center                = align_Center;
-	window["AscCommon"].align_Justify               = align_Justify;
 	window["AscCommon"].vertalign_Baseline          = vertalign_Baseline;
 	window["AscCommon"].vertalign_SuperScript       = vertalign_SuperScript;
 	window["AscCommon"].vertalign_SubScript         = vertalign_SubScript;
@@ -1730,7 +1773,13 @@
 	window["AscCommon"].c_oNotifyParentType         = c_oNotifyParentType;
 	window["AscCommon"].c_oAscEncodings             = c_oAscEncodings;
 	window["AscCommon"].c_oAscEncodingsMap          = c_oAscEncodingsMap;
+	window["AscCommon"].c_oAscCodePageNone          = c_oAscCodePageNone;
+	window["AscCommon"].c_oAscCodePageUtf7          = c_oAscCodePageUtf7;
 	window["AscCommon"].c_oAscCodePageUtf8          = c_oAscCodePageUtf8;
+	window["AscCommon"].c_oAscCodePageUtf16         = c_oAscCodePageUtf16;
+	window["AscCommon"].c_oAscCodePageUtf16BE       = c_oAscCodePageUtf16BE;
+	window["AscCommon"].c_oAscCodePageUtf32         = c_oAscCodePageUtf32;
+	window["AscCommon"].c_oAscCodePageUtf32BE       = c_oAscCodePageUtf32BE;
 	window["AscCommon"].c_oAscMaxFormulaLength      = c_oAscMaxFormulaLength;
 
 	window["AscCommon"].locktype_None   = locktype_None;
@@ -1742,6 +1791,7 @@
 	window["AscCommon"].changestype_None                      = changestype_None;
 	window["AscCommon"].changestype_Paragraph_Content         = changestype_Paragraph_Content;
 	window["AscCommon"].changestype_Paragraph_Properties      = changestype_Paragraph_Properties;
+	window["AscCommon"].changestype_Paragraph_AddText         = changestype_Paragraph_AddText;
 	window["AscCommon"].changestype_Document_Content          = changestype_Document_Content;
 	window["AscCommon"].changestype_Document_Content_Add      = changestype_Document_Content_Add;
 	window["AscCommon"].changestype_Document_SectPr           = changestype_Document_SectPr;
@@ -1751,6 +1801,7 @@
 	window["AscCommon"].changestype_Image_Properties          = changestype_Image_Properties;
 	window["AscCommon"].changestype_ContentControl_Remove     = changestype_ContentControl_Remove;
 	window["AscCommon"].changestype_ContentControl_Properties = changestype_ContentControl_Properties;
+	window["AscCommon"].changestype_ContentControl_Add        = changestype_ContentControl_Add;
 	window["AscCommon"].changestype_HdrFtr                    = changestype_HdrFtr;
 	window["AscCommon"].changestype_Remove                    = changestype_Remove;
 	window["AscCommon"].changestype_Delete                    = changestype_Delete;
@@ -1768,6 +1819,7 @@
 	window["AscCommon"].changestype_AddShape                  = changestype_AddShape;
 	window["AscCommon"].changestype_AddShapes                 = changestype_AddShapes;
 	window["AscCommon"].changestype_PresDefaultLang           = changestype_PresDefaultLang;
+	window["AscCommon"].changestype_SlideHide                 = changestype_SlideHide;
 	window["AscCommon"].changestype_2_InlineObjectMove        = changestype_2_InlineObjectMove;
 	window["AscCommon"].changestype_2_HdrFtr                  = changestype_2_HdrFtr;
 	window["AscCommon"].changestype_2_Comment                 = changestype_2_Comment;
@@ -1778,6 +1830,12 @@
 	window["AscCommon"].contentchanges_Remove                 = contentchanges_Remove;
 
 	window["AscCommon"].offlineMode = offlineMode;
+	window["AscCommon"].chartMode = chartMode;
+
+	window['AscCommon']['align_Right'] = window['AscCommon'].align_Right = align_Right;
+	window['AscCommon']['align_Left'] = window['AscCommon'].align_Left = align_Left;
+	window['AscCommon']['align_Center'] = window['AscCommon'].align_Center = align_Center;
+	window['AscCommon']['align_Justify'] = window['AscCommon'].align_Justify = align_Justify;
 	
 	window['Asc']['c_oSpecialPasteProps'] = window['Asc'].c_oSpecialPasteProps = c_oSpecialPasteProps;
 	prot = c_oSpecialPasteProps;
@@ -1802,7 +1860,9 @@
 	prot['uniteList'] = prot.uniteList;
 	prot['doNotUniteList'] = prot.doNotUniteList;
 	prot['keepTextOnly'] = prot.keepTextOnly;
-	
+	prot['insertAsNestedTable'] = prot.insertAsNestedTable;
+	prot['overwriteCells'] = prot.overwriteCells;
+
 	// ----------------------------- plugins ------------------------------- //
 	var EPluginDataType =
 		{

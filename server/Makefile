@@ -42,16 +42,19 @@ FILE_CONVERTER_FILES += ../core/build/lib/$(TARGET)/*$(SHARED_EXT)
 ifeq ($(PLATFORM),linux)
 FILE_CONVERTER_FILES += ../core/Common/3dParty/icu/$(TARGET)/build/libicudata$(SHARED_EXT)
 FILE_CONVERTER_FILES += ../core/Common/3dParty/icu/$(TARGET)/build/libicuuc$(SHARED_EXT)
-FILE_CONVERTER_FILES += ../core/Common/3dParty/v8/$(TARGET)/icudtl_dat.S
+FILE_CONVERTER_FILES += ../core/Common/3dParty/v8/v8/out.gn/$(TARGET)/icudtl.dat
 endif
 
 ifeq ($(PLATFORM),win)
 FILE_CONVERTER_FILES += ../core/Common/3dParty/icu/$(TARGET)/build/icudt55$(SHARED_EXT)
 FILE_CONVERTER_FILES += ../core/Common/3dParty/icu/$(TARGET)/build/icuuc55$(SHARED_EXT)
-FILE_CONVERTER_FILES += ../core/Common/3dParty/v8/$(TARGET)/release/icudt.dll
+FILE_CONVERTER_FILES += ../core/Common/3dParty/v8/v8/out.gn/$(TARGET)/release/icudtl.dat
 endif
 
 FILE_CONVERTER_FILES += ../core/build/bin/$(TARGET)/x2t$(EXEC_EXT)
+
+DOC_BUILDER_FILES += ../core/build/bin/$(TARGET)/docbuilder$(EXEC_EXT)
+DOC_BUILDER_FILES += ../core/Common/empty
 
 HTML_FILE_INTERNAL := $(FILE_CONVERTER)/HtmlFileInternal
 HTML_FILE_INTERNAL_FILES += ../core/build/lib/$(TARGET)/HtmlFileInternal$(EXEC_EXT)
@@ -78,10 +81,16 @@ WELCOME_DIR = welcome
 WELCOME_FILES = $(WELCOME_DIR)/**
 WELCOME = $(OUTPUT)/$(WELCOME_DIR)/
 
-.PHONY: all clean install uninstall build-date htmlfileinternal
+CORE_FONTS_DIR = core-fonts
+CORE_FONTS_FILES = ../$(CORE_FONTS_DIR)/**
+CORE_FONTS = $(OUTPUT)/../$(CORE_FONTS_DIR)/
+
+.PHONY: all clean install uninstall build-date htmlfileinternal docbuilder
 
 .NOTPARALLEL:
-all: $(FILE_CONVERTER) $(SPELLCHECKER_DICTIONARIES) $(TOOLS) $(SCHEMA) $(LICENSE) $(WELCOME) build-date
+all: $(FILE_CONVERTER) $(SPELLCHECKER_DICTIONARIES) $(TOOLS) $(SCHEMA) $(CORE_FONTS) $(LICENSE) $(WELCOME) build-date
+
+ext: htmlfileinternal docbuilder
 
 build-date: $(GRUNT_FILES)
 	sed "s|\(const buildVersion = \).*|\1'${PRODUCT_VERSION}';|" -i $(COMMON_DEFINES_JS)
@@ -91,7 +100,10 @@ build-date: $(GRUNT_FILES)
 htmlfileinternal: $(FILE_CONVERTER)
 	mkdir -p $(HTML_FILE_INTERNAL) && \
 		cp -r -t $(HTML_FILE_INTERNAL) $(HTML_FILE_INTERNAL_FILES)
-		
+
+docbuilder: $(FILE_CONVERTER)
+	cp -r -t $(FILE_CONVERTER) $(DOC_BUILDER_FILES)
+
 $(FILE_CONVERTER): $(GRUNT_FILES)
 	mkdir -p $(FILE_CONVERTER) && \
 		cp -r -t $(FILE_CONVERTER) $(FILE_CONVERTER_FILES)
@@ -123,8 +135,12 @@ $(WELCOME):
 	mkdir -p $(WELCOME) && \
 		cp -r -t $(WELCOME) $(WELCOME_FILES)
 
+$(CORE_FONTS):
+	mkdir -p $(CORE_FONTS) && \
+		cp -r -t $(CORE_FONTS) $(CORE_FONTS_FILES)
+		
 clean:
-	rm -rf $(OUTPUT) $(GRUNT_FILES)
+	rm -rf $(CORE_FONTS) $(OUTPUT) $(GRUNT_FILES) 
 
 install:
 	sudo adduser --quiet --home /var/www/onlyoffice --system --group onlyoffice

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -101,7 +101,8 @@ public:
     virtual void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
 public:
-    _CP_OPT(std::wstring) draw_filter_name_;
+    _CP_OPT(std::wstring)		draw_filter_name_;
+	_CP_OPT(odf_types::length)	draw_corner_radius_;
 
 };
 
@@ -542,8 +543,8 @@ public:
 	virtual void docx_convert(oox::docx_conversion_context & Context);
     virtual void pptx_convert(oox::pptx_conversion_context & Context);
 
-    draw_connector_attlist draw_connector_attlist_;
-    draw_line_attlist draw_line_attlist_;
+    draw_connector_attlist	draw_connector_attlist_;
+    draw_line_attlist		draw_line_attlist_;
 
 	void reset_svg_path();
 	void reset_svg_attributes();
@@ -551,5 +552,75 @@ public:
 
 CP_REGISTER_OFFICE_ELEMENT2(draw_connector);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class dr3d_scene : public draw_shape
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+	
+	static const ElementType type = typeDr3dScene;
+	static const xml::NodeType xml_type = xml::typeElement;
+
+	virtual void add_attributes( const xml::attributes_wc_ptr & Attributes );
+	
+	virtual void xlsx_convert(oox::xlsx_conversion_context & Context);
+	virtual void docx_convert(oox::docx_conversion_context & Context);
+    virtual void pptx_convert(oox::pptx_conversion_context & Context);
+
+
+};
+CP_REGISTER_OFFICE_ELEMENT2(dr3d_scene);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class dr3d_extrude : public office_element_impl<dr3d_extrude>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+	
+	static const ElementType type = typeDr3dExtrude;
+	static const xml::NodeType xml_type = xml::typeElement;
+
+	virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name){}
+	virtual void add_attributes( const xml::attributes_wc_ptr & Attributes );
+	
+	virtual void xlsx_convert(oox::xlsx_conversion_context & Context);
+	virtual void docx_convert(oox::docx_conversion_context & Context);
+    virtual void pptx_convert(oox::pptx_conversion_context & Context);
+
+	_CP_OPT(std::wstring) svg_d_;
+	_CP_OPT(std::wstring) svg_viewbox_;
+	
+	void reset_svg_path();
+
+};
+CP_REGISTER_OFFICE_ELEMENT2(dr3d_extrude);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class dr3d_light : public office_element_impl<dr3d_light>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+	
+	static const ElementType type = typeDr3dLight;
+	static const xml::NodeType xml_type = xml::typeElement;
+
+	virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name){}
+	virtual void add_attributes( const xml::attributes_wc_ptr & Attributes );
+	
+	virtual void xlsx_convert(oox::xlsx_conversion_context & Context);
+	virtual void docx_convert(oox::docx_conversion_context & Context);
+    virtual void pptx_convert(oox::pptx_conversion_context & Context);
+
+	_CP_OPT(std::wstring)	dr3d_diffuse_color_;
+	_CP_OPT(std::wstring)	dr3d_direction_;
+	_CP_OPT(std::wstring)	dr3d_specular_;
+	_CP_OPT(odf_types::Bool)dr3d_enabled_;
+
+};
+CP_REGISTER_OFFICE_ELEMENT2(dr3d_light);
+
 }
 }

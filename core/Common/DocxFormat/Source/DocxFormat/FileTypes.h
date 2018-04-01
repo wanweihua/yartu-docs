@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -50,6 +50,10 @@ namespace OOX
 
 		const FileType Document			(L"word", L"document.xml",
 												_T("application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"),
+												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
+
+		const FileType DocumentMacro	(L"word", L"document.xml",
+												_T("application/vnd.ms-word.document.macroEnabled.main+xml"),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
 
 		const FileType Theme			(L"theme", L"theme.xml",
@@ -120,18 +124,6 @@ namespace OOX
 												_T(""), 
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"));
 
-		const FileType ExternalImage	(L"", L"", 
-												_T(""), 
-												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"));
-
-		const FileType ExternalAudio	(L"", L"", 
-												_T(""), 
-												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio"));
-
-		const FileType ExternalVideo	(L"", L"", 
-												_T(""), 
-												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/video"));
-
 		const FileType Image			(L"media", L"image", 
 												_T(""), 
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"));
@@ -172,6 +164,26 @@ namespace OOX
 												_T("application/vnd.openxmlformats-officedocument.drawingml.chart+xml"),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"), true, true);
 		
+		const FileType ActiveX_xml(L"activeX", L"",
+												_T("application/vnd.ms-office.activeX+xml"),
+												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/control"));
+		
+		const FileType ActiveX_bin(L"activeX", L"",
+												_T("application/vnd.ms-office.activeX"),
+												_T("http://schemas.microsoft.com/office/2006/relationships/activeXControlBinary"));
+
+		const FileType VbaProject(L"", L"vbaProject.bin",
+												_T("application/vnd.ms-office.vbaProject"),
+												_T("http://schemas.microsoft.com/office/2006/relationships/vbaProject"));
+
+		const FileType VbaData(L"", L"vbaData.xml",
+												_T("application/vnd.ms-word.vbaData+xml"),
+												_T("http://schemas.microsoft.com/office/2006/relationships/wordVbaData"));
+
+		const FileType JsaProject(L"", L"jsaProject.bin",
+												_T(""),
+												_T("http://schemas.onlyoffice.com/jsaProject"));
+
 		const FileType MicrosoftOfficeUnknown(L"embeddings", L"",
 												_T(""),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"));

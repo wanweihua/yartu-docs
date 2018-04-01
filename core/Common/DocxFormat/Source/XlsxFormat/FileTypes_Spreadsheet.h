@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -44,6 +44,10 @@ namespace OOX
 		{
 			const FileType Workbook			(L"xl", L"workbook.xml",
 												_T("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"),
+												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
+
+			const FileType WorkbookMacro	(L"xl", L"workbook.xml",
+												_T("application/vnd.ms-excel.sheet.macroEnabled.main+xml"),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"));
 
 			const FileType SharedStrings	(L"", L"sharedStrings.xml",
@@ -93,6 +97,11 @@ namespace OOX
 			const FileType PivotCacheRecords(L"", L"pivotCacheRecords.xml",
 												_T("application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"),
 												_T("http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords"), true, true);
+
+			//onlyoffice workbook comments
+			const FileType WorkbookComments(L"", L"workbookComments.bin",
+													_T(""),
+													_T("http://schemas.onlyoffice.com/workbookComments"));
 		
 
 		} // namespace FileTypes

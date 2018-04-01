@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -50,8 +50,7 @@ namespace DocFileFormat
 	void MainDocumentMapping::Apply(IVisitable* visited)
 	{
 		m_document = static_cast<WordDocument*>(visited);
-		m_context->_docx->RegisterDocument();
-
+		
 		// Header
 		m_pXmlWriter->WriteNodeBegin(L"?xml version=\"1.0\" encoding=\"UTF-8\"?");
 		m_pXmlWriter->WriteNodeBegin(L"w:document", TRUE );
@@ -124,11 +123,14 @@ namespace DocFileFormat
 				TableInfo tai(papx);
 				if (tai.fInTable)
 				{
+					int cpStart = cp;
 					//this PAPX is for a table
 					//cp = writeTable( cp, tai.iTap );
 					Table table( this, cp, ( ( tai.iTap > 0 ) ? ( 1 ) : ( 0 ) ) );
 					table.Convert(this);
 					cp = table.GetCPEnd();
+					while (cp <= cpStart)	//conv_eznHsm8em2unSv6_2QE__docx.doc
+						cp++;
 				}
 				else
 				{

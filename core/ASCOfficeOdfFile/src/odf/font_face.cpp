@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -41,9 +41,22 @@
 namespace cpdoccore { 
 namespace odf_reader {
 
+const wchar_t * svg_desc::ns	= L"svg";
+const wchar_t * svg_desc::name	= L"desc";
+
+std::wostream & svg_desc::text_to_stream(std::wostream & _Wostream) const
+{
+    _Wostream <<  text_ ;
+    return _Wostream;
+}
+
+void svg_desc::add_text(const std::wstring & Text) 
+{
+    text_ = Text;
+}
 
 // svg:font-face-uri
-//////////////////////////////////////////////////////////////////////////////////////////////////
+//---------------------------------------------------------------------------------------
 const wchar_t * svg_font_face_uri::ns = L"svg";
 const wchar_t * svg_font_face_uri::name = L"font-face-uri";
 
@@ -244,9 +257,9 @@ xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" \
 xmlns:w14=\"http://schemas.microsoft.com/office/word/2010/wordml\" \
 mc:Ignorable=\"w14\">";
 
-    BOOST_FOREACH(office_element_ptr elm, style_font_face_)
+ 	for (size_t i = 0; i < style_font_face_.size(); i++)
     {
-        elm->docx_convert(Context);        
+        style_font_face_[i]->docx_convert(Context);        
     }
 
     strm << L"</w:fonts>";

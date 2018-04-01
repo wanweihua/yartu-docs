@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,7 +37,7 @@ namespace XLS
 
 Setup::Setup()
 // the following may appear uninitialized but we have to store them
-:	iPaperSize(0), iScale(255), iRes(0), iVRes(0), iCopies(0), fNoOrient(false), fPortrait(false), iPageStart(1)
+:	iPaperSize(0), iScale(255), iRes(0), iVRes(0), iCopies(0), fNoOrient(false), fPortrait(false), iPageStart(1), iErrors(0)
 {
 }
 
@@ -56,16 +56,17 @@ void Setup::readFields(CFRecord& record)
 {
 	unsigned short flags;
 	record >> iPaperSize >> iScale >> iPageStart >> iFitWidth >> iFitHeight >> flags;
+	
 	fLeftToRight = GETBIT(flags, 0);
-	fPortrait = GETBIT(flags, 1);
-	fNoPls = GETBIT(flags, 2);
-	fNoColor = GETBIT(flags, 3);
-	fDraft = GETBIT(flags, 4);
-	fNotes = GETBIT(flags, 5);
-	fNoOrient = GETBIT(flags, 6);
-	fUsePage = GETBIT(flags, 7);
-	fEndNotes = GETBIT(flags, 9);
-	iErrors = GETBITS(flags, 10, 11);
+	fPortrait	= GETBIT(flags, 1);
+	fNoPls		= GETBIT(flags, 2);
+	fNoColor	= GETBIT(flags, 3);
+	fDraft		= GETBIT(flags, 4);
+	fNotes		= GETBIT(flags, 5);
+	fNoOrient	= GETBIT(flags, 6);
+	fUsePage	= GETBIT(flags, 7);
+	fEndNotes	= GETBIT(flags, 9);
+	iErrors		= GETBITS(flags, 10, 11);
 
 	record >> iRes >> iVRes >> numHdr >> numFtr >> iCopies;
 }

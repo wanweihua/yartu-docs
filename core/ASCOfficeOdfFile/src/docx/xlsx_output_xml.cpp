@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -54,11 +54,12 @@ public:
     std::wstringstream	sort_;
     std::wstringstream	autofilter_;
 	std::wstringstream	conditionalFormatting_;
+	std::wstringstream  picture_background_;
+	std::wstringstream  dataValidations_;
 	std::wstringstream	ole_objects_;
 	std::wstringstream	page_props_;
 
-	rels hyperlinks_rels_;
-	rels ole_objects_rels_;
+	rels sheet_rels_;
 
     std::wstring drawingName_;
     std::wstring drawingId_;
@@ -139,16 +140,20 @@ std::wostream & xlsx_xml_worksheet::page_properties()
 {
     return impl_->page_props_;
 }
-
+std::wostream & xlsx_xml_worksheet::picture_background()
+{
+    return impl_->picture_background_;
+}
+std::wostream & xlsx_xml_worksheet::dataValidations()
+{
+    return impl_->dataValidations_;
+}
 //---------------------------------------------------------------------------------------
-rels & xlsx_xml_worksheet::hyperlinks_rels()
+rels & xlsx_xml_worksheet::sheet_rels()
 {
-    return impl_->hyperlinks_rels_;
+    return impl_->sheet_rels_;
 }
-rels & xlsx_xml_worksheet::ole_objects_rels()
-{
-    return impl_->ole_objects_rels_;
-}
+
 void xlsx_xml_worksheet::write_to(std::wostream & strm)
 {
     CP_XML_WRITER(strm)
@@ -182,6 +187,7 @@ void xlsx_xml_worksheet::write_to(std::wostream & strm)
 
 			CP_XML_STREAM() << impl_->conditionalFormatting_.str();
 
+			CP_XML_STREAM() << impl_->dataValidations_.str();
 			if (!impl_->hyperlinks_.str().empty())
             {
                 CP_XML_NODE(L"hyperlinks")
@@ -211,6 +217,7 @@ void xlsx_xml_worksheet::write_to(std::wostream & strm)
 					CP_XML_STREAM() << impl_->ole_objects_.str();
                 }
             }
+			CP_XML_STREAM() << impl_->picture_background_.str();
 
 			//CP_XML_NODE(L"headerFooter){}
 

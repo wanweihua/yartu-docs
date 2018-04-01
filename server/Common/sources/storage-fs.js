@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,12 +33,16 @@
 'use strict';
 
 var fs = require('fs');
+const fse = require('fs-extra')
 var path = require('path');
 var mkdirp = require('mkdirp');
 var utils = require("./utils");
 var crypto = require('crypto');
+const ms = require('ms');
+const commonDefines = require('./../../Common/sources/commondefines');
 
-var configStorage = require('config').get('storage');
+var config = require('config');
+var configStorage = config.get('storage');
 var cfgBucketName = configStorage.get('bucketName');
 var cfgStorageFolderName = configStorage.get('storageFolderName');
 var cfgStorageExternalHost = configStorage.get('externalHost');
@@ -46,6 +50,7 @@ var configFs = configStorage.get('fs');
 var cfgStorageFolderPath = configFs.get('folderPath');
 var cfgStorageSecretString = configFs.get('secretString');
 var cfgStorageUrlExpires = configFs.get('urlExpires');
+const cfgExpSessionAbsolute = ms(config.get('services.CoAuthoring.expire.sessionabsolute'));
 
 function getFilePath(strPath) {
   return path.join(cfgStorageFolderPath, strPath);
@@ -112,6 +117,15 @@ exports.putObject = function(strPath, buffer, contentLength) {
     });
   });
 };
+exports.uploadObject = function(strPath, filePath) {
+  let fsPath = getFilePath(strPath);
+  return fse.copy(filePath, fsPath);
+};
+exports.copyObject = function(sourceKey, destinationKey) {
+  let fsPathSource = getFilePath(sourceKey);
+  let fsPathSestination = getFilePath(destinationKey);
+  return fse.copy(fsPathSource, fsPathSestination);
+};
 exports.listObjects = function(strPath) {
   return utils.listObjects(getFilePath(strPath)).then(function(values) {
     return values.map(function(curvalue) {
@@ -141,7 +155,7 @@ exports.deleteObject = function(strPath) {
 exports.deleteObjects = function(strPaths) {
   return Promise.all(strPaths.map(exports.deleteObject));
 };
-exports.getSignedUrl = function(baseUrl, strPath, optUrlExpires, optFilename, opt_type) {
+exports.getSignedUrl = function(baseUrl, strPath, urlType, optFilename, opt_type) {
   return new Promise(function(resolve, reject) {
     //replace '/' with %2f before encodeURIComponent becase nginx determine %2f as '/' and get wrong system path
     var userFriendlyName = optFilename ? encodeURIComponent(optFilename.replace(/\//g, "%2f")) : path.basename(strPath);
@@ -149,7 +163,8 @@ exports.getSignedUrl = function(baseUrl, strPath, optUrlExpires, optFilename, op
     var url = (cfgStorageExternalHost ? cfgStorageExternalHost : baseUrl) + uri;
 
     var date = new Date();
-    var expires = Math.ceil(date.getTime() / 1000) + (optUrlExpires || cfgStorageUrlExpires || 2592000);
+    var expires = Math.ceil(date.getTime() / 1000);
+    expires += (commonDefines.c_oAscUrlTypes.Session === urlType ? (cfgExpSessionAbsolute / 1000) : cfgStorageUrlExpires) || 31536000;
 
     var md5 = crypto.createHash('md5').update(expires + decodeURIComponent(uri) + cfgStorageSecretString).digest("base64");
     md5 = md5.replace(/\+/g, "-");

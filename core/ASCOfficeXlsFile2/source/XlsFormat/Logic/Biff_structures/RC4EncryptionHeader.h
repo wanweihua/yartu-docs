@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,11 +32,16 @@
 #pragma once
 
 #include "BiffStructure.h"
-#include <Logic/Biff_structures/BitMarkedStructs.h>
+#include "BitMarkedStructs.h"
 #include "../../Crypt/RC4Crypt.h"
 
 namespace CRYPTO
 {
+struct Version : public XLS::BiffStructure_NoVtbl
+{
+	unsigned short vMajor;
+	unsigned short vMinor;
+};
 class RC4EncryptionHeader : public XLS::BiffStructure
 {
 	BASE_STRUCTURE_DEFINE_CLASS_NAME(RC4EncryptionHeader)

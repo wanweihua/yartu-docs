@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  ExternalDiagramEditor.js
  *
  *  Created by Julia Radzhabova on 4/08/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -111,15 +111,18 @@ define([
         },
 
         onDlgBtnClick: function(event) {
-            var state = event.currentTarget.attributes['result'].value;
-            if ( this.handler && this.handler.call(this, state) )
+            if ( this.handler ) {
+                this.handler.call(this, event.currentTarget.attributes['result'].value);
                 return;
+            }
             this.hide();
         },
 
         onToolClose: function() {
-            if ( this.handler && this.handler.call(this, 'cancel') )
+            if ( this.handler ) {
+                this.handler.call(this, 'cancel');
                 return;
+            }
             this.hide();
         },
 
@@ -134,7 +137,7 @@ define([
                 this.$window.find('> .body').css('height', height-header_height);
                 this.$window.find('> .body > .box').css('height', height-85);
 
-                var top  = ((Common.Utils.innerHeight() - parseInt(height)) / 2) * 0.9;
+                var top  = (Common.Utils.innerHeight() - parseInt(height)) / 2;
                 var left = (Common.Utils.innerWidth() - parseInt(this.initConfig.width)) / 2;
 
                 this.$window.css('left',left);

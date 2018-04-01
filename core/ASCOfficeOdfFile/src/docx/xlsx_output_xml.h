@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -49,8 +49,8 @@ class xlsx_xml_worksheet: noncopyable
 public:
     xlsx_xml_worksheet(std::wstring const & name);
     ~xlsx_xml_worksheet();
-public:
-    std::wstring name() const;
+
+	std::wstring name() const;
    
 	std::wostream & cols();
     std::wostream & sheetFormat();
@@ -61,13 +61,14 @@ public:
     std::wostream & comments();
 	std::wostream & autofilter();
 	std::wostream & conditionalFormatting();
+	std::wostream & picture_background();
+	std::wostream & dataValidations();
 	std::wostream & sort();
 	std::wostream & ole_objects();
 	std::wostream & page_properties();
 	
-	rels & hyperlinks_rels();
-	rels & ole_objects_rels();
-
+	rels & sheet_rels();			//hyperlink, background image, external, media ...
+	
     void write_to(std::wostream & strm);
 
     void set_drawing_link		(std::wstring const & fileName, std::wstring const & id);

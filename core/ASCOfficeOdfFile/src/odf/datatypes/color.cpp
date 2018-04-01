@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -86,7 +86,8 @@ const std::wstring color::get_hex_value() const
     {
         boost::algorithm::trim(tmp);
         boost::algorithm::trim_left_if(tmp, boost::algorithm::is_any_of("#"));     
-        return tmp;
+
+        return XmlUtils::GetUpper(tmp);
     }
     else if (tmp.size() == 6)
     {
@@ -96,7 +97,7 @@ const std::wstring color::get_hex_value() const
             unsigned int t = 0;
             if ((s << tmp) && (s >> std::hex >> t) && (s >> std::ws).eof())
             {
-                return tmp;
+                return XmlUtils::GetUpper(tmp);
             }
         }
         catch(...)

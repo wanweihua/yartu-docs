@@ -29,7 +29,7 @@
             {
                 if(Fill && Fill.fill && Fill.fill.type === Asc.c_oAscFill.FILL_TYPE_BLIP && typeof Fill.fill.RasterImageId === "string" && Fill.fill.RasterImageId.length > 0)
                 {
-                    AscCommon.CollaborativeEditing.Add_NewImage(AscCommon.getFullImageSrc2(Fill.fill.RasterImageId));
+                    AscCommon.CollaborativeEditing.Add_NewImage(Fill.fill.RasterImageId);
                 }
             }
         }
@@ -52,13 +52,21 @@
         this.kind = AscFormat.TYPE_KIND.NOTES_MASTER;
         this.notesLst = [];
 
+
+        this.m_oContentChanges = new AscCommon.CContentChanges(); // список изменений(добавление/удаление элементов)
         this.Id = AscCommon.g_oIdCounter.Get_NewId();
         AscCommon.g_oTableId.Add(this, this.Id);
     }
 
 
+
     CNotesMaster.prototype.getObjectType = function(){
         return AscDFH.historyitem_type_NotesMaster;
+    };
+
+
+    CNotesMaster.prototype.Get_Id = function(){
+        return this.Id;
     };
 
 
@@ -148,6 +156,70 @@
         }
     };
 
+    CNotesMaster.prototype.createDuplicate = function(IdMap){
+        var oIdMap = IdMap || {};
+        var i;
+        var copy = new CNotesMaster();
+       // if(this.clrMap){
+       //     this.setClrMap(this.clrMap.createDuplicate());
+       // }
+        if(typeof this.cSld.name === "string" && this.cSld.name.length > 0)
+        {
+            copy.setCSldName(this.cSld.name);
+        }
+        if(this.cSld.Bg)
+        {
+            copy.changeBackground(this.cSld.Bg.createFullCopy());
+        }
+        for(i = 0; i < this.cSld.spTree.length; ++i)
+        {
+            var _copy;
+
+            if(this.cSld.spTree[i].getObjectType() === AscDFH.historyitem_type_GroupShape){
+                _copy = this.cSld.spTree[i].copy(oIdMap);
+            }
+            else{
+                _copy = this.cSld.spTree[i].copy();
+            }
+            if(AscCommon.isRealObject(oIdMap)){
+                oIdMap[this.cSld.spTree[i].Id] = _copy.Id;
+            }
+            copy.addToSpTreeToPos(copy.cSld.spTree.length, _copy);
+            copy.cSld.spTree[copy.cSld.spTree.length - 1].setParent2(copy);
+        }
+        if(this.hf)
+        {
+            copy.setHF(this.hf.createDuplicate());
+        }
+        if(this.txStyles)
+        {
+            copy.setNotesStyle(this.txStyles.createDuplicate());
+        }
+        return copy;
+    };
+
+
+ 
+    CNotesMaster.prototype.Clear_ContentChanges = function()
+    {
+        this.m_oContentChanges.Clear();
+    };
+
+    CNotesMaster.prototype.Add_ContentChanges = function(Changes)
+    {
+        this.m_oContentChanges.Add( Changes );
+    };
+
+    CNotesMaster.prototype.Refresh_ContentChanges = function()
+    {
+        this.m_oContentChanges.Refresh();
+    };
+
+    CNotesMaster.prototype.Refresh_RecalcData = function()
+    {
+    };
+
+
     function CreateNotesMaster(){
         var oNM = new CNotesMaster();
         var oBG = new AscFormat.CBg();
@@ -161,6 +233,7 @@
         oNM.changeBackground(oBG);
 
         var oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         var oNvSpPr = new AscFormat.UniNvPr();
         var oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(2);
@@ -173,8 +246,8 @@
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(0);
         oSp.spPr.xfrm.setOffY(0);
         oSp.spPr.xfrm.setExtX(2971800/36000);
@@ -202,20 +275,21 @@
         //endParaPr
 
         oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         oNvSpPr = new AscFormat.UniNvPr();
         oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(3);
         oCNvPr.setName("Date Placeholder 2");
         oPh = new AscFormat.Ph();
         oPh.setType(AscFormat.phType_dt);
-        oPh.setIdx(1);
+        oPh.setIdx(2 + "");
         oNvSpPr.nvPr.setPh(oPh);
         oSp.setNvSpPr(oNvSpPr);
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(3884613/36000);
         oSp.spPr.xfrm.setOffY(0);
         oSp.spPr.xfrm.setExtX(2971800/36000);
@@ -243,20 +317,21 @@
         oNM.addToSpTreeToPos(1, oSp);
 
         oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         oNvSpPr = new AscFormat.UniNvPr();
         oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(3);
         oCNvPr.setName("Date Placeholder 2");
         oPh = new AscFormat.Ph();
         oPh.setType(AscFormat.phType_dt);
-        oPh.setIdx(1);
+        oPh.setIdx(3 + "");
         oNvSpPr.nvPr.setPh(oPh);
         oSp.setNvSpPr(oNvSpPr);
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(3884613/36000);
         oSp.spPr.xfrm.setOffY(0);
         oSp.spPr.xfrm.setExtX(2971800/36000);
@@ -284,21 +359,22 @@
         oNM.addToSpTreeToPos(2, oSp);
 
         oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         oNvSpPr = new AscFormat.UniNvPr();
         oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(5);
         oCNvPr.setName("Notes Placeholder 4");
         oPh = new AscFormat.Ph();
         oPh.setType(AscFormat.phType_body);
-        oPh.setIdx(1);
+        oPh.setIdx(1 + "");
         oPh.setSz(2);
         oNvSpPr.nvPr.setPh(oPh);
         oSp.setNvSpPr(oNvSpPr);
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(685800/36000);
         oSp.spPr.xfrm.setOffY(4400550/36000);
         oSp.spPr.xfrm.setExtX(5486400/36000);
@@ -322,21 +398,22 @@
         oNM.addToSpTreeToPos(3, oSp);
 
         oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         oNvSpPr = new AscFormat.UniNvPr();
         oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(6);
         oCNvPr.setName("Footer Placeholder 5");
         oPh = new AscFormat.Ph();
         oPh.setType(AscFormat.phType_ftr);
-        oPh.setIdx(4);
+        oPh.setIdx(4 + "");
         oPh.setSz(2);
         oNvSpPr.nvPr.setPh(oPh);
         oSp.setNvSpPr(oNvSpPr);
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(0);
         oSp.spPr.xfrm.setOffY(8685213/36000);
         oSp.spPr.xfrm.setExtX(2971800/36000);
@@ -364,21 +441,22 @@
         oNM.addToSpTreeToPos(4, oSp);
 
         oSp = new AscFormat.CShape();
+        oSp.setBDeleted(false);
         oNvSpPr = new AscFormat.UniNvPr();
         oCNvPr = oNvSpPr.cNvPr;
         oCNvPr.setId(7);
         oCNvPr.setName("Slide Number Placeholder 6");
         oPh = new AscFormat.Ph();
         oPh.setType(AscFormat.phType_sldNum);
-        oPh.setIdx(5);
+        oPh.setIdx(10 + "");
         oPh.setSz(2);
         oNvSpPr.nvPr.setPh(oPh);
         oSp.setNvSpPr(oNvSpPr);
         oSp.setLockValue(AscFormat.LOCKS_MASKS.noGrp, true);
         oSp.setSpPr(new AscFormat.CSpPr());
         oSp.spPr.setParent(oSp);
-        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.setXfrm(new AscFormat.CXfrm());
+        oSp.spPr.xfrm.setParent(oSp.spPr);
         oSp.spPr.xfrm.setOffX(3884613/36000);
         oSp.spPr.xfrm.setOffY(8685213/36000);
         oSp.spPr.xfrm.setExtX(2971800/36000);
@@ -430,9 +508,9 @@
         oTxLstStyle.levels[0].DefaultRunPr.FontSize = 12;
         oTxLstStyle.levels[0].DefaultRunPr.Unifill = AscFormat.CreateUniFillSchemeColorWidthTint(15, 0);
 
-        oTxLstStyle.levels[0].DefaultRunPr.RFonts.Ascii.Name = "+mn-lt";
-        oTxLstStyle.levels[0].DefaultRunPr.RFonts.EastAsia.Name = "+mn-ea";
-        oTxLstStyle.levels[0].DefaultRunPr.RFonts.CS.Name = "+mn-cd";
+        oTxLstStyle.levels[0].DefaultRunPr.RFonts.Ascii = {Name :"+mn-lt", Index: -1};
+        oTxLstStyle.levels[0].DefaultRunPr.RFonts.EastAsia =  {Name :"+mn-ea", Index: -1};
+        oTxLstStyle.levels[0].DefaultRunPr.RFonts.CS  = {Name :"+mn-cs", Index: -1};
 
         oTxLstStyle.levels[1] = oTxLstStyle.levels[0].Copy();
         oTxLstStyle.levels[1].Ind.Left = 457200/36000;

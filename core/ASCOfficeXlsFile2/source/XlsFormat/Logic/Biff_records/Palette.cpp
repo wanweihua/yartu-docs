@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -103,7 +103,7 @@ int Palette::serialize(std::wostream & stream)
 				}
 			}
 
-			for(int i = 0; i < rgColor.size(); ++i)
+			for(size_t i = 0; i < rgColor.size(); ++i)
 			{		
 				LongRGB * rgb = dynamic_cast<LongRGB *>(rgColor[i].get());
 				CP_XML_NODE(L"rgbColor")

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -181,7 +181,7 @@ IRecord* CreateByType(SRecordHeader oHeader)
 	//CREATE_BY_TYPE(RECORD_TYPE_VIEWINFO_ATOM				, CRecordNoZoomViewInfoAtom)
 	CREATE_BY_TYPE(RECORD_TYPE_VIEWINFO_ATOM				, CRecordViewInfoAtom)
 	CREATE_BY_TYPE(RECORD_TYPE_SLIDE_VIEWINFO_ATOM			, CRecordSlideViewInfoAtom)
-	//CREATE_BY_TYPE(RECORD_TYPE_VBAINFO_ATOM				, CRecordVBAInfoAtom)
+	CREATE_BY_TYPE(RECORD_TYPE_VBAINFO_ATOM					, CRecordVBAInfoAtom)
 	//CREATE_BY_TYPE(RECORD_TYPE_SSDOCINFO_ATOM				, CRecordSSDocInfoAtom)
 	//CREATE_BY_TYPE(RECORD_TYPE_DOC_ROUTING_SLIP			, CRecordDocRoutingSlipAtom)
 	CREATE_BY_TYPE(RECORD_TYPE_EXOBJLIST_ATOM				, CRecordExObjListAtom)
@@ -263,11 +263,10 @@ IRecord* CreateByType(SRecordHeader oHeader)
 	//CREATE_BY_TYPE(RECORD_TYPE_UNKNOWN					, CRecordRecolorInfoAtom)
 	//CREATE_BY_TYPE(RECORD_TYPE_UNKNOWN					, CRecordAnimationInfoAtom)
 
-
 	CREATE_BY_TYPE(RECORD_TYPE_EX_VIDEOCONTAINER			, CRecordExVideoContainer)
 	CREATE_BY_TYPE(RECORD_TYPE_EX_OBJREF_ATOM				, CRecordExObjRefAtom)
 	CREATE_BY_TYPE(RECORD_TYPE_EX_MEDIA_ATOM				, CRecordExMediaAtom)
-	//CREATE_BY_TYPE(RECORD_TYPE_EXCONTROL_ATOM				, CRecordExControlAtom)
+	CREATE_BY_TYPE(RECORD_TYPE_EXCONTROL_ATOM				, CRecordExControlAtom)
 	CREATE_BY_TYPE(RECORD_TYPE_ESCHER_BSTORE_CONTAINER		, CRecordBlipStoreContainer)
 	CREATE_BY_TYPE(RECORD_TYPE_ESCHER_BSE					, CRecordBlipStoreEntry)
 

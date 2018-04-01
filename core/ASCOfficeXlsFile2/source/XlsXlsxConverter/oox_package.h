@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -57,8 +57,6 @@ typedef std::vector<element_ptr>	element_ptr_array;
 
 class document;
 
-
-/// \class  element
 class element
 {
 public:
@@ -66,7 +64,6 @@ public:
     void set_main_document(document * _document) { document_ = _document; }
     document * get_main_document() { return document_; }
 
-public:
     virtual void write(const std::wstring & RootPath) = 0;
 
 private:
@@ -80,8 +77,10 @@ class content_types_file : public element
 {
 public:
     content_types_file();
-    virtual void write(const std::wstring & RootPath);
+    
+	virtual void write(const std::wstring & RootPath);
     content_type & get_content_type() { return content_type_; }
+	
 	bool add_or_find_default(const std::wstring & extension);
 	void set_media(external_items & _Mediaitems);
 
@@ -92,26 +91,31 @@ private:
     std::wstring filename_;
 };
 
+
+class simple_element;
+typedef boost::shared_ptr<simple_element> simple_element_ptr;
 class simple_element : public element
 {
 public:
-    simple_element(const std::wstring & FileName, const std::wstring & Content);
-    static element_ptr create(const std::wstring & FileName, const std::wstring & Content);
+    simple_element(const std::wstring & FileName, const std::string & contentUtf8);
+    static simple_element_ptr create(const std::wstring & FileName, const std::string & contentUtf8);
 
-public:
-    virtual void write(const std::wstring & RootPath);
+	simple_element(const std::wstring & FileName, const std::wstring & content);
+    static simple_element_ptr create(const std::wstring & FileName, const std::wstring & content);
+	
+	virtual void write(const std::wstring & RootPath);
+	std::wstring get_filename() {return filename_;}
 
 private:
-    std::wstring file_name_;
-    //std::string content_utf8_;
-    std::wstring content;
-
+    std::wstring	filename_;
+    std::wstring	content_;
+    std::string		content_utf8_;
 };
 
 class rels_file;
 typedef boost::shared_ptr<rels_file> rels_file_ptr;
 
-/// \class rels_file
+//------------------------------------------------------------------------
 class rels_file : public element
 {
 public:
@@ -119,7 +123,6 @@ public:
     void set_file_name(std::wstring const & fileName) { filename_ = fileName;} 
     static rels_file_ptr create(std::wstring const & FileName);
 
-public:
     virtual void write(const std::wstring & RootPath);
 
     rels & get_rels() { return rels_; }
@@ -132,7 +135,7 @@ private:
     rels rels_;
 };
 
-/// \class rels_files
+//------------------------------------------------------------------------
 class rels_files : public element
 {
 public:
@@ -150,9 +153,7 @@ private:
     rels_file_ptr rels_file_;
 };
 
-
-////////////////////////////////////////
-///\class chart_files
+//------------------------------------------------------------------------
 class chart_content;
 typedef _CP_PTR(chart_content) chart_content_ptr;
 
@@ -163,7 +164,7 @@ public:
     static _CP_PTR(chart_content) create();
 
     std::wostream	& content() { return content_; }
-    rels			& get_rels()	{ return rels_file_->get_rels(); }
+    rels			& get_rels(){ return rels_file_->get_rels(); }
 
     std::wstring	str() { return content_.str(); }
 	
@@ -172,9 +173,64 @@ private:
     std::wstringstream	content_;
 	rels_file_ptr		rels_file_;
 };
+//------------------------------------------------------------------------
+class activeX_content;
+typedef _CP_PTR(activeX_content) activeX_content_ptr;
 
-//---------------------------------------------------------------------------------------------
+class activeX_content : boost::noncopyable
+{
+public:
+    activeX_content();
+    static _CP_PTR(activeX_content) create();
 
+    std::wostream	& content() { return content_; }
+    rels			& get_rels(){ return rels_file_->get_rels(); }
+
+    std::wstring	str() { return content_.str(); }
+	
+	friend class	xl_activeX_files;
+private:
+    std::wstringstream	content_;
+	rels_file_ptr		rels_file_;
+};
+//------------------------------------------------------------------------
+class customXml_content;
+typedef _CP_PTR(customXml_content) customXml_content_ptr;
+
+class customXml_content : boost::noncopyable
+{
+public:
+    customXml_content();
+    static _CP_PTR(customXml_content) create();
+
+	void set_item (char* data, size_t size) {content_item = std::string(data, size);}
+ 	void set_props (char* data, size_t size) {content_props = std::string(data, size);}
+
+    std::string	item()	{ return content_item; }
+    std::string	props() { return content_props; }
+	
+	friend class	xl_customXml_files;
+private:
+    std::string	content_item;
+    std::string	content_props;
+};
+//------------------------------------------------------------------------
+class theme_content;
+typedef _CP_PTR(theme_content) theme_content_ptr;
+
+class theme_content : boost::noncopyable
+{
+public:
+    theme_content(char* data, size_t size);
+    static _CP_PTR(theme_content) create(char* data, size_t size);
+
+	std::string	content()	{ return content_; }
+	
+	friend class	xl_theme_files;
+private:
+    std::string	content_;
+};
+//------------------------------------------------------------------------
 class document : public element
 {
 public:
@@ -210,26 +266,11 @@ private:
 class media : public element
 {
 public:
-    media(external_items & _Mediaitems);
-
-public:
+    media(external_items & _items);
     virtual void write(const std::wstring & RootPath);
 
 private:
-    external_items			& mediaitems_;
-        
-};
-
-class charts : public element
-{
-public:
-    charts(external_items & _ChartsItems);
-
-public:
-    virtual void write(const std::wstring & RootPath);
-
-private:
-    external_items & chartsitems_;
+    external_items & items_;
         
 };
 

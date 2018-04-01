@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,7 +31,7 @@
  */
 #pragma once
 
-#include "../../../DesktopEditor/common/ASCVariant.h"
+#include "../../DesktopEditor/common/ASCVariant.h"
 
 #include <vector>
 
@@ -66,8 +66,10 @@ public:
 		return m_strTempDirectory;
 	}
 
-    HRESULT LoadFromFile(std::wstring sSrcFileName, std::wstring sDstPath, std::wstring password);
-
+    HRESULT LoadFromFile(std::wstring sSrcFileName, std::wstring sDstPath, std::wstring password, bool &bMacros);
+   
+	long OpenFile(const std::wstring & fileName, const std::wstring & password, bool &bMacros);
+    bool CloseFile();
 private:
 
 	int							m_Status;
@@ -76,8 +78,7 @@ private:
     std::wstring				m_strTempDirectory;
 	std::wstring				m_sTempDecryptFileName;
 	
-    long OpenFile(const std::wstring & fileName, const std::wstring & password);
-    bool CloseFile();
+
 
 	std::wstring GetDirectory(std::wstring strFileName);
 };

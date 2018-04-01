@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,6 +30,7 @@
  *
  */
 
+#include <boost/foreach.hpp>
 
 #include "docx_package.h"
 #include "docx_conversion_context.h"
@@ -218,26 +219,25 @@ void docx_charts_files::write(const std::wstring & RootPath)
 
     size_t count = 0;
 
-    BOOST_FOREACH(const chart_content_ptr & item, charts_)
+	for (int i = 0 ; i < charts_.size(); i++)
     {
-        if (item)
-        {
-            count++;
-            const std::wstring fileName = std::wstring(L"chart") + std::to_wstring(count) + L".xml";
-			const std::wstring kWSConType = L"application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
-           
-			content_type_content * contentTypes = get_main_document()->get_content_types_file().content();           
-            contentTypes->add_override(std::wstring(L"/word/charts/") + fileName, kWSConType);
+        if (!charts_[i]) continue;
+        
+		count++;
+        const std::wstring fileName = std::wstring(L"chart") + std::to_wstring(count) + L".xml";
+		const std::wstring kWSConType = L"application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
+       
+		content_type_content * contentTypes = get_main_document()->get_content_types_file().content();           
+        contentTypes->add_override(std::wstring(L"/word/charts/") + fileName, kWSConType);
 
-            package::simple_element(fileName, item->str()).write(path);
-			
-			rels_files relFiles;
+        package::simple_element(fileName, charts_[i]->str()).write(path);
+		
+		rels_files relFiles;
 
-			item->get_rel_file()->set_file_name(fileName + L".rels");
-			    
-			relFiles.add_rel_file(item->get_rel_file());
-			relFiles.write(path);
-        }
+		charts_[i]->get_rel_file()->set_file_name(fileName + L".rels");
+		    
+		relFiles.add_rel_file(charts_[i]->get_rel_file());
+		relFiles.write(path);
     }
 }
 ///////////////////////////
@@ -319,6 +319,7 @@ namespace
 								xmlns:wpc=\"http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas\" \
 								xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" \
 								xmlns:wne=\"http://schemas.microsoft.com/office/word/2006/wordml\" \
+								xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\" \
 								xmlns:a14=\"http://schemas.microsoft.com/office/drawing/2010/main\" >";
 
 							//mc:Ignorable=\"w14 wp14\" 

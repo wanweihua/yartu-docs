@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,6 @@
 
 #include <boost/make_shared.hpp>
 #include <cpdoccore/xml/xmlchar.h>
-#include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/attributes.h>
 
 #include "serialize_elements.h"
@@ -172,7 +171,7 @@ void table_table::add_child_element( xml::sax * Reader, const std::wstring & Ns,
         CP_CREATE_ELEMENT(table_shapes_);    
     }
 	else if (	CP_CHECK_NAME(L"table", L"named-expressions") || 
-				CP_CHECK_NAME(L"table", L"named-range") )
+				CP_CHECK_NAME(L"table", L"named-range") )		//???
 	{
         CP_CREATE_ELEMENT(table_named_);    
 	}
@@ -337,26 +336,8 @@ void table_columns_and_groups::add_child_element( xml::sax * Reader, const std::
     }
     else
         not_applicable_element(L"table-columns-and-groups", Reader, Ns, Name);
-    /*
-    if (CP_CHECK_NAME(L"table", L"table-column-group") && type_ != 1)
-    {
-        type_ = 0;
-        CP_CREATE_ELEMENT_SIMPLE(table_table_column_group_);
-    } 
-    else if ((  CP_CHECK_NAME(L"table", L"table-columns") ||
-                CP_CHECK_NAME(L"table", L"table-column") ||
-                CP_CHECK_NAME(L"table", L"table-header-columns") ) 
-                && type_ != 0)
-    {
-        type_ = 1;
-        table_columns_no_group_.add_child_element(Reader, Ns, Name, Context);
-    }
-    else
-        not_applicable_element(L"table-columns-and-groups", Reader, Ns, Name);
-    */
 }
 
-// table-table-cell-content
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::wostream & table_table_cell_content::text_to_stream(std::wostream & _Wostream) const
@@ -376,48 +357,59 @@ const wchar_t * table_table_cell::name = L"table-cell";
 
 std::wostream & table_table_cell::text_to_stream(std::wostream & _Wostream) const
 {
-    return table_table_cell_content_.text_to_stream(_Wostream);
+    return content_.text_to_stream(_Wostream);
 }
 
 void table_table_cell::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    table_table_cell_attlist_.add_attributes(Attributes);
-    table_table_cell_attlist_extra_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
+    attlist_extra_.add_attributes(Attributes);
 }
 
 void table_table_cell::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
 {
-    table_table_cell_content_.add_child_element(Reader, Ns, Name, getContext());
+    content_.add_child_element(Reader, Ns, Name, getContext());
 }
 
 void table_table_cell::add_text(const std::wstring & Text)
 {
 }
+bool table_table_cell::empty()
+{
+	if (!content_.elements_.empty()) return false;
+	if (attlist_.table_formula_) return false;
 
+	return true;
+}
 // table:covered-table-cell
-// table-covered-table-cell
 //////////////////////////////////////////////////////////////////////////////////////////////////
 const wchar_t * table_covered_table_cell::ns = L"table";
 const wchar_t * table_covered_table_cell::name = L"covered-table-cell";
 
 std::wostream & table_covered_table_cell::text_to_stream(std::wostream & _Wostream) const
 {
-    return table_table_cell_content_.text_to_stream(_Wostream);
+    return content_.text_to_stream(_Wostream);
 }
 
 void table_covered_table_cell::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    table_table_cell_attlist_.add_attributes(Attributes);
+    attlist_.add_attributes(Attributes);
 }
 
 void table_covered_table_cell::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
 {
-	empty_ = false;
-    table_table_cell_content_.add_child_element(Reader, Ns, Name, getContext());
+    content_.add_child_element(Reader, Ns, Name, getContext());
 }
 
 void table_covered_table_cell::add_text(const std::wstring & Text)
 {
+}
+bool table_covered_table_cell::empty()
+{
+	if (!content_.elements_.empty()) return false;
+	if (attlist_.table_formula_) return false;
+
+	return true;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -432,7 +424,7 @@ std::wostream & table_table_row::text_to_stream(std::wostream & _Wostream) const
 
 void table_table_row::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-    table_table_row_attlist_.add_attributes( Attributes );
+    attlist_.add_attributes( Attributes );
 }
 
 void table_table_row::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
@@ -445,7 +437,38 @@ void table_table_row::add_child_element( xml::sax * Reader, const std::wstring &
     else
         CP_NOT_APPLICABLE_ELM();    
 }
+bool table_table_row::empty()
+{
+	if (content_.empty() && !attlist_.table_style_name_ && !attlist_.table_default_cell_style_name_) return true;
 
+	return false;
+}
+bool table_table_row::empty_content_cells()
+{
+	bool res = true;
+	
+	for (size_t i = 0 ; i < content_.size(); i++)
+    {
+		table_table_cell			*cell		= dynamic_cast<table_table_cell*>(content_[i].get());
+		table_covered_table_cell	*cover_cell = dynamic_cast<table_covered_table_cell*>(content_[i].get());
+		if (!cell && !cover_cell)
+		{
+			res = false;
+			break;
+		}
+		if (cell && cell->empty() == false)
+		{
+			res = false;
+			break;
+		}
+		if (cover_cell && cover_cell->empty() == false)
+		{
+			res = false;
+			break;
+		}
+	}
+	return res;
+}
 // table:table-rows
 //////////////////////////////////////////////////////////////////////////////////////////////////
 const wchar_t * table_table_rows::ns = L"table";
@@ -519,6 +542,42 @@ void table_rows::add_child_element( xml::sax * Reader, const std::wstring & Ns, 
         not_applicable_element(L"table-rows", Reader, Ns, Name);        
     }
 }
+void table_rows::remove_equals_empty()
+{
+	if (table_table_row_.empty()) return;
+
+	while(true)
+	{
+		size_t i = table_table_row_.size() - 1;
+
+		if (i == 0) break;
+
+		if (table_table_row_[i]->get_type() != typeTableTableRow)
+			break;
+		if (table_table_row_[i-1]->get_type() != typeTableTableRow)
+			break;
+
+		table_table_row *prev = dynamic_cast<table_table_row*>(table_table_row_[i-1].get());
+		table_table_row *next = dynamic_cast<table_table_row*>(table_table_row_[i].get());
+
+		if (prev->content_.size() > 1 || next->content_.size() > 1) break;
+
+		if (prev->attlist_.table_style_name_.get_value_or(L"") != next->attlist_.table_style_name_.get_value_or(L"")) break;
+
+		table_table_cell *prev_cell = dynamic_cast<table_table_cell*>(prev->content_[0].get());
+		table_table_cell *next_cell = dynamic_cast<table_table_cell*>(next->content_[0].get());
+
+		if (!prev_cell || !next_cell) break;
+
+		if (!prev_cell->content_.elements_.empty() || !next_cell->content_.elements_.empty()) break;
+
+		if (prev_cell->attlist_.table_style_name_.get_value_or(L"") != next_cell->attlist_.table_style_name_.get_value_or(L"")) break;
+
+		prev->attlist_.table_number_rows_repeated_ += next->attlist_.table_number_rows_repeated_;
+		table_table_row_.pop_back();
+	}
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // table:rows-no-group
@@ -561,7 +620,6 @@ void table_rows_no_group::add_child_element( xml::sax * Reader, const std::wstri
     else
         not_applicable_element(L"table-rows-no-group", Reader, Ns, Name);
 }
-
 // table-rows-and-groups
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -670,7 +728,61 @@ void table_shapes::add_child_element( xml::sax * Reader, const std::wstring & Ns
     CP_CREATE_ELEMENT(content_);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// table:content-validations
+const wchar_t * table_content_validations::ns = L"table";
+const wchar_t * table_content_validations::name = L"content-validations";
 
+void table_content_validations::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
+{
+    CP_CREATE_ELEMENT(content_);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// table:content-validation
+const wchar_t * table_content_validation::ns = L"table";
+const wchar_t * table_content_validation::name = L"content-validation";
 
+void table_content_validation::add_attributes(xml::attributes_wc_ptr const & Attributes)
+{
+    CP_APPLY_ATTR(L"table:name",				table_name_);
+    CP_APPLY_ATTR(L"table:condition",			table_condition_);
+	CP_APPLY_ATTR(L"table:display-list",		table_display_list_);
+	CP_APPLY_ATTR(L"table:allowempty-cell",		table_allowempty_cell_);
+	CP_APPLY_ATTR(L"table:base-cell-address",	table_base_cell_address_);
+}
+void table_content_validation::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
+{
+    CP_CREATE_ELEMENT(content_);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// table:content-validation
+const wchar_t * table_error_message::ns = L"table";
+const wchar_t * table_error_message::name = L"error-message";
+
+void table_error_message::add_attributes(xml::attributes_wc_ptr const & Attributes)
+{
+    CP_APPLY_ATTR(L"table:title",			table_title_);
+    CP_APPLY_ATTR(L"table:message-type",	table_message_type_);
+	CP_APPLY_ATTR(L"table:display",			table_display_);
+}
+void table_error_message::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
+{
+    CP_CREATE_ELEMENT(content_);
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// table:content-validation
+const wchar_t * table_help_message::ns = L"table";
+const wchar_t * table_help_message::name = L"help-message";
+
+void table_help_message::add_attributes(xml::attributes_wc_ptr const & Attributes)
+{
+    CP_APPLY_ATTR(L"table:title",			table_title_);
+    CP_APPLY_ATTR(L"table:message-type",	table_message_type_);
+	CP_APPLY_ATTR(L"table:display",			table_display_);
+}
+void table_help_message::add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name)
+{
+    CP_CREATE_ELEMENT(content_);
+}
 }
 }

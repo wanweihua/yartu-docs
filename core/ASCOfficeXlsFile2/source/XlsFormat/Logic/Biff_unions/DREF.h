@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,13 +31,11 @@
  */
 #pragma once
 
-#include <Logic/CompositeObject.h>
+#include "../CompositeObject.h"
 
 namespace XLS
 {
 
-
-// Logical representation of DREF union of records 
 class DREF: public CompositeObject
 {
 	BASE_OBJECT_DEFINE_CLASS_NAME(DREF)
@@ -49,7 +47,11 @@ public:
 
 	virtual const bool loadContent(BinProcessor& proc);
 
-	static const ElementType	type = typeDREF;
+	int serialize(std::wostream & stream);
+
+	static const ElementType type = typeDREF;
+
+	BaseObjectPtr	m_DCon;
 };
 
 } // namespace XLS

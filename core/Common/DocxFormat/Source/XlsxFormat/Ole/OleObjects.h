@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -40,14 +40,14 @@ namespace OOX
 {
 	namespace Spreadsheet
 	{
-		class COleObjectAnchor : public WritingElement
+		class CExtAnchor : public WritingElement
 		{
 		public:
-			WritingElement_AdditionConstructors(COleObjectAnchor)
-			COleObjectAnchor()
+			WritingElement_AdditionConstructors(CExtAnchor)
+			CExtAnchor()
 			{
 			}
-			virtual ~COleObjectAnchor()
+			virtual ~CExtAnchor()
 			{
 			}
 
@@ -100,7 +100,7 @@ namespace OOX
 
 			virtual EElementType getType () const
 			{
-				return et_x_OleObjectAnchor;
+				return et_x_ExtAnchor;
 			}
 
 		private:
@@ -219,7 +219,7 @@ namespace OOX
 			nullable<SimpleTypes::COnOff<>>		m_oPrint;
 			nullable<SimpleTypes::COnOff<>>		m_oUiObject;
 
-			nullable<COleObjectAnchor>			m_oAnchor;
+			nullable<CExtAnchor>			m_oAnchor;
 		};
 
 		class COleObject : public WritingElement
@@ -255,7 +255,7 @@ namespace OOX
 					toXML2(writer, true);
 				}
 			}
-			virtual void toXML2(NSStringUtils::CStringBuilder& writer, bool ObjectPr) const
+			virtual void toXML2(NSStringUtils::CStringBuilder& writer, bool bObjectPr) const
 			{
 				writer.WriteString(L"<oleObject");
 				WritingStringNullableAttrEncodeXmlString(L"progId", m_oProgId, m_oProgId.get());
@@ -265,7 +265,7 @@ namespace OOX
 				WritingStringNullableAttrBool(L"autoLoad", m_oAutoLoad);
 				WritingStringNullableAttrInt(L"shapeId", m_oShapeId, m_oShapeId->GetValue());
 				WritingStringNullableAttrString(L"r:id", m_oRid, m_oRid->ToString());
-				if (ObjectPr && m_oObjectPr.IsInit())
+				if (bObjectPr && m_oObjectPr.IsInit())
 				{
 					writer.WriteString(L">");
 					m_oObjectPr->toXML(writer);
@@ -372,7 +372,7 @@ namespace OOX
 			}
 			virtual ~COleObjects()
 			{
-				for(std::map<int, COleObject*>::const_iterator it = m_mapOleObjects.begin(); it != m_mapOleObjects.end(); it++)
+                for(boost::unordered_map<int, COleObject*>::const_iterator it = m_mapOleObjects.begin(); it != m_mapOleObjects.end(); ++it)
 				{
 					delete it->second;
 				}
@@ -390,7 +390,7 @@ namespace OOX
 				if(m_mapOleObjects.size() > 0)
 				{
 					writer.WriteString(L"<oleObjects>");
-					for(std::map<int, COleObject*>::const_iterator it = m_mapOleObjects.begin(); it != m_mapOleObjects.end(); it++)
+                    for(boost::unordered_map<int, COleObject*>::const_iterator it = m_mapOleObjects.begin(); it != m_mapOleObjects.end(); ++it)
 					{
 						it->second->toXML(writer);
 					}
@@ -469,7 +469,7 @@ namespace OOX
 			{
 			}
 		public:
-			std::map<int, COleObject*> m_mapOleObjects;
+            boost::unordered_map<int, COleObject*> m_mapOleObjects;
 		};
 	} //Spreadsheet
 } // namespace OOX

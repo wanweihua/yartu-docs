@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -55,7 +55,8 @@ void ScenMan::readFields(CFRecord& record)
 {
 #pragma message("####################### ScenMan record is not implemented")
 	Log::error("ScenMan record is not implemented.");
-	//record >> some_value;
+
+	record.skipNunBytes(record.getDataSize() - record.getRdPtr());
 }
 
 } // namespace XLS

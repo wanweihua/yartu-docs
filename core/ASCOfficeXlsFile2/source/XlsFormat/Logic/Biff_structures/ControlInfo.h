@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,13 +31,10 @@
  */
 #pragma once
 
-#include <Logic/Biff_records/BiffRecord.h>
-#include <Logic/Biff_structures/BiffString.h>
+#include "BiffString.h"
 
 namespace XLS
 {
-
-class CFRecord;
 
 class ControlInfo : public BiffStructure
 {
@@ -49,11 +46,12 @@ public:
 	
 	virtual void load(CFRecord& record);
 
-	unsigned char	fDefault;
-	unsigned char	fHelp;
-	unsigned char	fCancel;
-	unsigned char	fDismiss;
-	_UINT16			accel1;
+	bool	fDefault;
+	bool	fHelp;
+	bool	fCancel;
+	bool	fDismiss;
+
+	_UINT16	accel1;
 };
 
 } // namespace XLS

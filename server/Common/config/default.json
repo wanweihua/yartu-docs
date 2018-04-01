@@ -17,7 +17,7 @@
 		"name": "storage-fs",
 		"fs": {
 			"folderPath": "",
-			"urlExpires": 2592000,
+			"urlExpires": 900,
 			"secretString": "onlyoffice"
 		},
 		"region": "",
@@ -51,7 +51,6 @@
 				"port": 8000,
 				"workerpercpu": 1,
 				"mode": "development",
-				"fonts_route": "fonts/",
 				"sockjsUrl": "",
 				"limits_tempfile_upload": 104857600,
 				"limits_image_size": 26214400,
@@ -60,7 +59,16 @@
 				"callbackRequestTimeout": 120,
 				"healthcheckfilepath": "../public/healthcheck.docx",
 				"savetimeoutdelay": 5000,
-				"edit_singleton": false
+				"edit_singleton": false,
+				"forgottenfiles": "forgotten",
+				"forgottenfilesname": "output",
+				"maxRequestChanges": 20000
+			},
+			"requestDefaults": {
+				"headers": {
+					"userAgent": "Node.js/6.13"
+				},
+				"rejectUnauthorized": true
 			},
 			"autoAssembly": {
 				"enable": false,
@@ -102,7 +110,7 @@
 				"presence": 300,
 				"locks": 604800,
 				"changeindex": 86400,
-				"lockDoc": 60,
+				"lockDoc": 30,
 				"message": 86400,
 				"lastsave": 604800,
 				"forcesave": 604800,
@@ -112,10 +120,11 @@
 				"filesCron": "00 00 */1 * * *",
 				"filesremovedatonce": 100,
 				"sessionidle": "0",
-				"sessionabsolute": "0",
+				"sessionabsolute": "30d",
 				"sessionclosecommand": "2m",
 				"pemStdTTL": "1h",
-				"pemCheckPeriod": "10m"
+				"pemCheckPeriod": "10m",
+				"updateVersionStatus": "5m"
 			},
 			"ipfilter": {
 				"rules": [{"address": "*", "allowed": true}],
@@ -123,6 +132,7 @@
 				"errorcode": 401
 			},
 			"secret": {
+				"browser": {"string": "secret", "file": "", "tenants": {}},
 				"inbox": {"string": "secret", "file": "", "tenants": {}},
 				"outbox": {"string": "secret", "file": ""},
 				"session": {"string": "secret", "file": ""}
@@ -135,23 +145,29 @@
 						"outbox": false
 					}
 				},
+				"browser": {
+					"secretFromInbox": true
+				},
 				"inbox": {
 					"header": "Authorization",
-					"prefix": "Bearer "
+					"prefix": "Bearer ",
+					"inBody": false
 				},
 				"outbox": {
 					"header": "Authorization",
 					"prefix": "Bearer ",
 					"algorithm": "HS256",
-					"expires": "5m"
+					"expires": "5m",
+					"inBody": false
 				},
 				"session": {
 					"algorithm": "HS256",
-					"expires": "10m"
+					"expires": "30d"
 				}
 			},
 			"plugins": {
-				"uri": "/sdkjs-plugins"
+				"uri": "/sdkjs-plugins",
+				"autostart": []
 			}
 		}
 	},
@@ -167,9 +183,36 @@
 			"maxprocesscount": 1,
 			"fontDir": "null",
 			"presentationThemesDir": "null",
-			"filePath": "null",
+			"x2tPath": "null",
+			"docbuilderPath": "null",
+			"docbuilderAllFontsPath": "null",
 			"args": "",
-			"errorfiles": ""
+			"errorfiles": "",
+			"streamWriterBufferSize": 8388608,
+			"maxRedeliveredCount": 2,
+			"inputLimits": [
+				{
+				"type": "docx;dotx;docm;dotm",
+				"zip": {
+					"uncompressed": "50MB",
+					"template": "*.xml"
+				}
+				},
+				{
+				"type": "xlsx;xltx;xlsm;xltm",
+				"zip": {
+					"uncompressed": "300MB",
+					"template": "*.xml"
+				}
+				},
+				{
+				"type": "pptx;ppsx;potx;pptm;ppsm;potm",
+				"zip": {
+					"uncompressed": "50MB",
+					"template": "*.xml"
+				}
+				}
+			]
 		}
 	},
 	"FileStorage": {

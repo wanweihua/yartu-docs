@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,12 +31,11 @@
  */
 
 #include "PIVOTIVD.h"
-#include <Logic/Biff_records/SxIvd.h>
-#include <Logic/Biff_records/Continue.h>
+#include "../Biff_records/SxIvd.h"
+#include "../Biff_records/Continue.h"
 
 namespace XLS
 {
-
 
 PIVOTIVD::PIVOTIVD()
 {
@@ -53,7 +52,6 @@ BaseObjectPtr PIVOTIVD::clone()
 	return BaseObjectPtr(new PIVOTIVD(*this));
 }
 
-
 // PIVOTIVD = SxIvd *Continue
 const bool PIVOTIVD::loadContent(BinProcessor& proc)
 {
@@ -68,6 +66,21 @@ const bool PIVOTIVD::loadContent(BinProcessor& proc)
 
 	return true;
 }
+int PIVOTIVD::serialize(std::wostream & strm)
+{
+	SxIvd* vd = dynamic_cast<SxIvd*>(m_SxIvd.get());
 
+	CP_XML_WRITER(strm)
+	{
+		for (size_t i = 0; i < vd->rgSxivd.size(); i++)
+		{
+			CP_XML_NODE(L"field")
+			{ 
+				CP_XML_ATTR(L"x", vd->rgSxivd[i]); 
+			}
+		}
+	}
+	return 0;
+}
 } // namespace XLS
 

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -51,6 +51,7 @@ var c_oMainTables = {
     VmlDrawing		: 5,
     TableStyles		: 6,
     PresProps		: 7,
+	JsaProject		: 8,
 
     Themes			: 20,
     ThemeOverride	: 21,
@@ -307,11 +308,11 @@ function CBinaryFileWriter()
         this.pos += lCount;
     };
 
-    this.WriteMainPart = function()
+    this.WriteMainPart = function(startPos)
     {
         var _pos = this.pos;
 
-        this.pos = 0;
+        this.pos = startPos;
         var _count = this.m_arMainTables.length;
 
         for (var i = 0; i < _count; i++)
@@ -466,6 +467,7 @@ function CBinaryFileWriter()
         this.font_map = {};
         this.image_map = {};
 
+        var startPos = this.GetCurPosition();
         this.WriteReserved(5 * 30);
 
         // main
@@ -507,6 +509,10 @@ function CBinaryFileWriter()
         for (var i = 0; i < _slide_count; i++)
         {
             _dst_slides[i] = _slides[i];
+            if(_slides[i].notes && !_slides[i].notes.isEmptyBody())
+            {
+                _dst_notes.push(_slides[i].notes);
+            }
             var _m = _slides[i].Layout.Master;
 
             var is_found = false;
@@ -545,6 +551,22 @@ function CBinaryFileWriter()
                 {
                     _slides_rels[i] = ii;
                 }
+            }
+        }
+
+
+        for(var i = 0; i < _dst_notes.length; ++i)
+        {
+            for(var j = 0; j < _dst_notesMasters.length; ++j)
+            {
+                if(_dst_notesMasters[j] === _dst_notes[i].Master)
+                {
+                    break;
+                }
+            }
+            if(j === _dst_notesMasters.length)
+            {
+                _dst_notesMasters.push(_dst_notes[i].Master);
             }
         }
 
@@ -589,6 +611,18 @@ function CBinaryFileWriter()
             {
                 _dst_themes[_len_dst] = _t;
                 _master_rels[i].ThemeIndex = _len_dst;
+            }
+        }
+
+        var i, j;
+        for(i = 0; i < _dst_notesMasters.length; ++i){
+            for(j = 0; j < _dst_themes.length; ++j){
+                if(_dst_themes[j] === _dst_notesMasters[i].Theme){
+                    break;
+                }
+            }
+            if(j === _dst_themes.length){
+                _dst_themes.push(_dst_notesMasters[i].Theme);
             }
         }
 
@@ -658,6 +692,72 @@ function CBinaryFileWriter()
         this.WriteUChar(g_nodeAttributeEnd);
         this.EndRecord();
 
+        this.StartMainRecord(c_oMainTables.SlideNotesRels);
+        this.StartRecord(c_oMainTables.SlideNotesRels);
+        this.WriteUChar(g_nodeAttributeStart);
+        var _rels, slideNotes, i, j;
+        var _notes = _dst_notes;
+        var _notes_count = _notes.length;
+        for(var  i = 0; i < _slide_count; ++i){
+            slideNotes = presentation.Slides[i].notes;
+            _rels = -1;
+            if(slideNotes){
+                for(j = 0; j < _notes_count; ++j){
+                    if(_notes[j] === slideNotes){
+                        _rels = j;
+                        break;
+                    }
+                }
+            }
+            this._WriteInt1(0, _rels);
+        }
+        this.WriteUChar(g_nodeAttributeEnd);
+        this.EndRecord();
+
+
+        this.StartMainRecord(c_oMainTables.NotesMastersRels);
+        this.StartRecord(c_oMainTables.NotesMastersRels);
+        this.WriteUChar(g_nodeAttributeStart);
+        var _notes_masters = _dst_notesMasters;
+        var _notes_masters_count = _notes_masters.length;
+        var _themes = _dst_themes;
+        var _thems_count = _themes.length;
+        var _theme;
+        for(i = 0; i < _notes_masters_count; ++i){
+            _theme = _notes_masters[i].Theme;
+            _rels = -1;
+            for(j = 0; j < _thems_count; ++j){
+                if(_theme === _themes[j]){
+                    _rels = j;
+                    break;
+                }
+            }
+            this._WriteInt1(0, _rels);
+        }
+        this.WriteUChar(g_nodeAttributeEnd);
+        this.EndRecord();
+
+        this.StartMainRecord(c_oMainTables.NotesRels);
+        this.StartRecord(c_oMainTables.NotesRels);
+        this.WriteUChar(g_nodeAttributeStart);
+        var _notes_count = _notes.length;
+        for(i = 0; i < _notes_count; ++i){
+            slideNotes = _notes[i];
+            _rels = -1;
+            for(j = 0; j < _notes_masters_count; ++j){
+                if(slideNotes.Master === _notes_masters[j]){
+                    _rels = j;
+                    break;
+                }
+            }
+            this._WriteInt1(0, _rels);
+        }
+        this.WriteUChar(g_nodeAttributeEnd);
+        this.EndRecord();
+
+
+
+
         this.StartMainRecord(c_oMainTables.ThemeRels);
         this.StartRecord(c_oMainTables.ThemeRels);
         var _master_count = _dst_masters.length;
@@ -691,6 +791,7 @@ function CBinaryFileWriter()
             this.EndRecord();
         }
         this.EndRecord();
+
 
         var _count_arr = 0;
 
@@ -760,7 +861,7 @@ function CBinaryFileWriter()
         this.EndRecord();
 
         // теперь запишем информацию о главных таблицах
-        this.WriteMainPart();
+        this.WriteMainPart(startPos);
     }
 
     this.WriteDocument = function(presentation)
@@ -771,6 +872,44 @@ function CBinaryFileWriter()
         var ret = "PPTY;v1;" + this.pos + ";";
         return ret + this.GetBase64Memory();
     }
+	
+	this.WriteDocument3 = function(presentation) {
+		var _memory = new AscCommon.CMemory(true);
+		_memory.ImData = this.ImData;
+		_memory.data = this.data;
+		_memory.len = this.len;
+		_memory.pos = this.pos;
+
+		_memory.WriteXmlString("PPTY;v" + Asc.c_nVersionNoBase64 + ";0;");
+
+		this.ImData = _memory.ImData;
+		this.data = _memory.data;
+		this.len = _memory.len;
+		this.pos = _memory.pos;
+		
+		this.WriteDocument2(presentation);
+		
+		_memory.ImData = this.ImData;
+		_memory.data = this.data;
+		_memory.len = this.len;
+		_memory.pos = this.pos;
+		
+		return _memory.GetData();
+	}
+	this.WriteByMemory = function(callback) {
+		var _memory = new AscCommon.CMemory(true);
+		_memory.ImData = this.ImData;
+		_memory.data = this.data;
+		_memory.len = this.len;
+		_memory.pos = this.pos;
+
+		callback(_memory);
+
+		this.ImData = _memory.ImData;
+		this.data = _memory.data;
+		this.len = _memory.len;
+		this.pos = _memory.pos;
+	};
 
     this.WriteApp = function(app)
     {
@@ -976,6 +1115,17 @@ function CBinaryFileWriter()
                 this.EndRecord();
             }
         }
+		var macros = presentation.Api.macros.GetData();
+		if (macros) {
+			this.StartRecord(9);
+			this.WriteByMemory(function(_memory){
+				_memory.WriteXmlString(macros);
+			});
+			this.EndRecord();
+		}
+        if (presentation.writecomments) {
+            this.WriteComments(10, presentation.writecomments);
+        }
 
         this.EndRecord();
     }
@@ -1051,55 +1201,58 @@ function CBinaryFileWriter()
         this.WriteRecord1(0, _slide.cSld, this.WriteCSld);
         this.WriteRecord2(1, _slide.clrMap, this.WriteClrMapOvr);
         this.WriteRecord1(2, _slide.timing, this.WriteSlideTransition);
+        this.WriteComments(4, _slide.writecomments);
 
+        this.EndRecord();
+    }
+    this.WriteComments = function(type, comments)
+    {
         var _countComments = 0;
 
-        if (!this.IsUseFullUrl)
+       // if (!oThis.IsUseFullUrl)
         {
-            for (var i in _slide.writecomments)
+            for (var i in comments)
                 ++_countComments;
         }
 
         if (_countComments > 0)
         {
-            this.StartRecord(4);
-            this.StartRecord(0);
+            oThis.StartRecord(type);
+            oThis.StartRecord(0);
 
-            this.WriteULong(_countComments);
+            oThis.WriteULong(_countComments);
 
-            for (var i in _slide.writecomments)
+            for (var i in comments)
             {
-                var _comment = _slide.writecomments[i];
+                var _comment = comments[i];
 
-                this.StartRecord(0);
+                oThis.StartRecord(0);
 
-                this.WriteUChar(g_nodeAttributeStart);
+                oThis.WriteUChar(g_nodeAttributeStart);
 
-                this._WriteInt1(0, _comment.WriteAuthorId);
-                this._WriteString1(1, _comment.WriteTime);
-                this._WriteInt1(2, _comment.WriteCommentId);
-                this._WriteInt1(3, (_comment.x * 25.4) >> 0);
-                this._WriteInt1(4, (_comment.y * 25.4) >> 0);
-                this._WriteString1(5, _comment.Data.m_sText);
+                oThis._WriteInt1(0, _comment.WriteAuthorId);
+                oThis._WriteString1(1, _comment.WriteTime);
+                oThis._WriteInt1(2, _comment.WriteCommentId);
+                oThis._WriteInt1(3, (22.66*_comment.x) >> 0);
+                oThis._WriteInt1(4, (22.66*_comment.y) >> 0);
+                oThis._WriteString1(5, _comment.Data.m_sText);
 
                 if (0 != _comment.WriteParentAuthorId)
                 {
-                    this._WriteInt1(6, _comment.WriteParentAuthorId);
-                    this._WriteInt1(7, _comment.WriteParentCommentId);
+                    oThis._WriteInt1(6, _comment.WriteParentAuthorId);
+                    oThis._WriteInt1(7, _comment.WriteParentCommentId);
                 }
 
-                this._WriteString1(8, _comment.AdditionalData);
+                oThis._WriteString1(8, _comment.AdditionalData);
 
-                this.WriteUChar(g_nodeAttributeEnd);
+                oThis.WriteUChar(g_nodeAttributeEnd);
 
-                this.EndRecord();
+                oThis.EndRecord();
             }
 
-            this.EndRecord();
-            this.EndRecord();
+            oThis.EndRecord();
+            oThis.EndRecord();
         }
-
-        this.EndRecord();
     }
 
     this.WriteSlideTransition = function(_timing)
@@ -1458,7 +1611,7 @@ function CBinaryFileWriter()
         this.WriteRecord1(0, _master.cSld, this.WriteCSld);
         this.WriteRecord1(1, _master.clrMap, this.WriteClrMap);
         this.WriteRecord2(2, _master.hf, this.WriteHF);
-        this.WriteRecord2(3, _master.notesStyle, this.WriteTextListStyle);
+        this.WriteRecord2(3, _master.txStyles, this.WriteTextListStyle);
 
         this.EndRecord();
     }
@@ -1966,6 +2119,8 @@ function CBinaryFileWriter()
                 oThis.WriteRecord2(3, rPr.RFonts.Ascii, oThis.WriteTextFontTypeface);
             if (rPr.RFonts.EastAsia)
                 oThis.WriteRecord2(4, rPr.RFonts.EastAsia, oThis.WriteTextFontTypeface);
+            if (rPr.RFonts.CS)
+                oThis.WriteRecord2(5, rPr.RFonts.CS, oThis.WriteTextFontTypeface);
         }
 
         if (hlinkObj != null && hlinkObj !== undefined)
@@ -2617,7 +2772,7 @@ function CBinaryFileWriter()
                         {
                             case para_Text:
                             {
-                                _run_text += String.fromCharCode(_elem.Content[j].Value);
+                                _run_text += AscCommon.encodeSurrogateChar(_elem.Content[j].Value);
                                 break;
                             }
                             case para_Space :
@@ -2665,7 +2820,7 @@ function CBinaryFileWriter()
                 }
                 case para_Hyperlink:
                 {
-                    var _hObj = { Value : _elem.Value, tooltip: _elem.Get_ToolTip()};
+                    var _hObj = { Value : _elem.GetValue(), tooltip: _elem.GetToolTip()};
                     var _content_len_h = _elem.Content.length;
 
                     for (var hi = 0; hi < _content_len_h; hi++)
@@ -2683,7 +2838,7 @@ function CBinaryFileWriter()
                                     {
                                         case para_Text:
                                         {
-                                            _run_text += String.fromCharCode(_elem_h.Content[j].Value);
+                                            _run_text += AscCommon.encodeSurrogateChar(_elem_h.Content[j].Value);
                                             break;
                                         }
                                         case para_Space :
@@ -2728,6 +2883,39 @@ function CBinaryFileWriter()
                                     _count++;
                                 }
                                 break;
+                            }
+                            case para_Math:
+                            {
+                                if (null != _elem_h.Root)
+                                {
+                                    oThis.StartRecord(0); // subtype
+                                    oThis.StartRecord(AscFormat.PARRUN_TYPE_MATHPARA);
+                                    var _memory = new AscCommon.CMemory(true);
+                                    _memory.ImData = oThis.ImData;
+                                    _memory.data = oThis.data;
+                                    _memory.len = oThis.len;
+                                    _memory.pos = oThis.pos;
+                                    oThis.UseContinueWriter = true;
+
+                                    if (!oThis.DocSaveParams) {
+                                        oThis.DocSaveParams = new AscCommonWord.DocSaveParams(false, false);
+                                    }
+                                    var boMaths = new Binary_oMathWriter(_memory, null, oThis.DocSaveParams);
+                                    boMaths.bs.WriteItemWithLength(function(){boMaths.WriteOMathPara(_elem_h)});
+
+                                    oThis.ImData = _memory.ImData;
+                                    oThis.data = _memory.data;
+                                    oThis.len = _memory.len;
+                                    oThis.pos = _memory.pos;
+                                    oThis.UseContinueWriter = false;
+
+                                    _memory.ImData = null;
+                                    _memory.data = null;
+
+                                    oThis.EndRecord();
+                                    oThis.EndRecord();
+                                    _count++;
+                                }
                             }
                             default:
                                 break;
@@ -2943,7 +3131,26 @@ function CBinaryFileWriter()
             //важно писать в начале
             oThis.WriteRecord1(4, image, oThis.WriteOleInfo);
         } else {
-            oThis.StartRecord(2);
+            var _type;
+            var bMedia = false, _fileMask;
+            if(image.nvPicPr && image.nvPicPr.nvPr && image.nvPicPr.nvPr.unimedia && image.nvPicPr.nvPr.unimedia.type !== null
+                && typeof image.nvPicPr.nvPr.unimedia.media === "string" && image.nvPicPr.nvPr.unimedia.media.length > 0){
+                _type = image.nvPicPr.nvPr.unimedia.type;
+                _fileMask = image.nvPicPr.nvPr.unimedia.media;
+                bMedia = true;
+            }
+            else{
+                _type = 2;
+            }
+            oThis.StartRecord(_type);
+            if(bMedia){
+                oThis.WriteRecord1(5, null, function(){
+                    oThis.WriteUChar(g_nodeAttributeStart);
+                    oThis._WriteString1(0, _fileMask);
+                    oThis.WriteUChar(g_nodeAttributeEnd);
+                });
+            }
+
         }
 
 
@@ -3352,6 +3559,36 @@ function CBinaryFileWriter()
             oThis._WriteInt1(3, (tableMar.Bottom.W * 36000) >> 0);
         }
 
+
+        if(AscFormat.isRealNumber(cell.Pr.TextDirection))
+        {
+            switch (cell.Pr.TextDirection)
+            {
+                case Asc.c_oAscCellTextDirection.LRTB:
+                {
+
+                    oThis._WriteUChar1(5, 1);
+                    break;
+                }
+                case Asc.c_oAscCellTextDirection.TBRL:
+                {
+
+                    oThis._WriteUChar1(5, 0);
+                    break;
+                }
+                case Asc.c_oAscCellTextDirection.BTLR:
+                {
+
+                    oThis._WriteUChar1(5, 4);
+                    break;
+                }
+                default:
+                {
+                    oThis._WriteUChar1(5, 1);
+                    break;
+                }
+            }
+        }
         if(AscFormat.isRealNumber(cell.Pr.VAlign))
         {
             switch(cell.Pr.VAlign)
@@ -3823,7 +4060,63 @@ function CBinaryFileWriter()
 		oThis._WriteString2(3, cNvPr.title);
 		oThis._WriteString2(4, cNvPr.descr);
         oThis.WriteUChar(g_nodeAttributeEnd);
+        oThis.WriteRecord2(0, cNvPr.hlinkClick, oThis.Write_Hyperlink2);
+        oThis.WriteRecord2(1, cNvPr.hlinkHover, oThis.Write_Hyperlink2);
     }
+
+    this.Write_Hyperlink2 = function(hyper)
+    {
+        oThis.WriteUChar(g_nodeAttributeStart);
+
+
+        var id = hyper.id;
+        var action = hyper.action;
+
+        if (id === "ppaction://hlinkshowjump?jump=firstslide")
+        {
+            action = id;
+            id = "";
+        }
+        else if (id === "ppaction://hlinkshowjump?jump=lastslide")
+        {
+            action = id;
+            id = "";
+        }
+        else if (id === "ppaction://hlinkshowjump?jump=nextslide")
+        {
+            action = id;
+            id = "";
+        }
+        else if (id === "ppaction://hlinkshowjump?jump=previousslide")
+        {
+            action = id;
+            id = "";
+        }
+        else
+        {
+            if(typeof id === "string")
+            {
+                var mask = "ppaction://hlinksldjumpslide";
+                var indSlide = id.indexOf(mask);
+                if (0 === indSlide)
+                {
+                    var slideNum = parseInt(id.substring(mask.length));
+                    id = "slide" + (slideNum + 1) + ".xml";
+                    action = "ppaction://hlinksldjump";
+                }
+            }
+        }
+
+        oThis._WriteString2(0, id);
+        oThis._WriteString2(1, hyper.invalidUrl);
+        oThis._WriteString2(2, action);
+        oThis._WriteString2(3, hyper.tgtFrame);
+        oThis._WriteString2(4, hyper.tooltip);
+        oThis._WriteBool2(5, hyper.history);
+        oThis._WriteBool2(6, hyper.highlightClick);
+        oThis._WriteBool2(7, hyper.endSnd);
+        oThis.WriteUChar(g_nodeAttributeEnd);
+    };
 
     this.Write_nvPr = function(nvPr)
     {
@@ -4619,6 +4912,46 @@ function CBinaryFileWriter()
                 this.arrayStackStarts.splice(this.arrayStackStarts.length - 1, 1);
             }
         }
+        this.WriteClrMapOverride = function(memory, clrMapOverride)
+        {
+            if (this.BinaryFileWriter.UseContinueWriter)
+            {
+                this.BinaryFileWriter.ImData = memory.ImData;
+                this.BinaryFileWriter.data = memory.data;
+                this.BinaryFileWriter.len = memory.len;
+                this.BinaryFileWriter.pos = memory.pos;
+            }
+            else
+            {
+                this.TreeDrawingIndex++;
+                this.arrayStackStarts.push(this.BinaryFileWriter.pos);
+            }
+
+            var _writer = this.BinaryFileWriter;
+            _writer.StartRecord(0);
+            _writer.StartRecord(0);
+            _writer.WriteClrMapOvr(clrMapOverride);
+            _writer.EndRecord();
+            _writer.EndRecord();
+
+            if (this.BinaryFileWriter.UseContinueWriter)
+            {
+                memory.ImData = this.BinaryFileWriter.ImData;
+                memory.data = this.BinaryFileWriter.data;
+                memory.len = this.BinaryFileWriter.len;
+                memory.pos = this.BinaryFileWriter.pos;
+            }
+            else
+            {
+                this.TreeDrawingIndex--;
+
+                var oldPos = this.arrayStackStarts[this.arrayStackStarts.length - 1];
+                memory.WriteBuffer(this.BinaryFileWriter.data, oldPos, this.BinaryFileWriter.pos - oldPos);
+                this.BinaryFileWriter.pos = oldPos;
+
+                this.arrayStackStarts.splice(this.arrayStackStarts.length - 1, 1);
+            }
+        }
         this.WriteSpPr = function(memory, spPr, type)
         {
             if (this.BinaryFileWriter.UseContinueWriter)
@@ -4847,12 +5180,31 @@ function CBinaryFileWriter()
             var _writer = this.BinaryFileWriter;
 
             var isOle = AscDFH.historyitem_type_OleObject == image.getObjectType();
+            var _type, _fileMask;
             if(isOle){
                 _writer.StartRecord(6);
                 //важно писать в начале
                 _writer.WriteRecord1(4, image, _writer.WriteOleInfo);
             } else {
-                _writer.StartRecord(2);
+                var _type;
+                var bMedia = false;
+                if(image.nvPicPr && image.nvPicPr.nvPr && image.nvPicPr.nvPr.unimedia && image.nvPicPr.nvPr.unimedia.type !== null
+                && typeof image.nvPicPr.nvPr.unimedia.media === "string" && image.nvPicPr.nvPr.unimedia.media.length > 0){
+                    _type = image.nvPicPr.nvPr.unimedia.type;
+                    _fileMask = image.nvPicPr.nvPr.unimedia.media;
+                    bMedia = true;
+                }
+                else{
+                    _type = 2;
+                }
+                _writer.StartRecord(_type);
+                if(bMedia){
+                    _writer.WriteRecord1(5, null, function(){
+                        _writer.WriteUChar(g_nodeAttributeStart);
+                        _writer._WriteString2(0, _fileMask);
+                        _writer.WriteUChar(g_nodeAttributeEnd);
+                    });
+                }
             }
             _writer.WriteRecord1(0, {locks: image.locks, objectType: image.getObjectType()}, _writer.WriteUniNvPr);
 

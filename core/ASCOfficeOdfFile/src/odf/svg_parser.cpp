@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -790,7 +790,7 @@ namespace svg_path
             }
         }
 
-        if ((aCurrPoly.points.size() > 0 || !bIsClosed) && !aCurrPoly.command.empty() && aCurrPoly.command != L"a:cubicBezTo")
+        if ((aCurrPoly.points.size() > 0/* || !bIsClosed*/) && !aCurrPoly.command.empty() && aCurrPoly.command != L"a:cubicBezTo")
         {
             // end-process last poly
 

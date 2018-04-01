@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  ReviewChanges.js
  *
  *  Created by Julia.Radzhabova on 05.08.15
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -125,7 +125,7 @@ define([
                         changes = this.readSDKChange(sdkchange),
                         posX = sdkchange[0].get_X(),
                         posY = sdkchange[0].get_Y(),
-                        animate = ( Math.abs(this._state.posx-posX)>0.001 || Math.abs(this._state.posy-posY)>0.001),
+                        animate = ( Math.abs(this._state.posx-posX)>0.001 || Math.abs(this._state.posy-posY)>0.001) || (sdkchange.length !== this._state.changes_length),
                         lock = (sdkchange[0].get_LockUserId()!==null),
                         lockUser = this.getUserName(sdkchange[0].get_LockUserId());
 
@@ -145,9 +145,11 @@ define([
                     }
                     this._state.posx = posX;
                     this._state.posy = posY;
+                    this._state.changes_length = sdkchange.length;
                     this._state.popoverVisible = true;
                 } else if (this._state.popoverVisible){
                     this._state.posx = this._state.posy = -1000;
+                    this._state.changes_length = 0;
                     this._state.popoverVisible = false;
                     this.getPopover().hide();
                     this.popoverChanges.reset();

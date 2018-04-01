@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -71,12 +71,12 @@ void Dv::readFields(CFRecord& record)
 	record >> flags;
 
 	valType		= static_cast<_valTypeDv>(GETBITS(flags, 0, 3));
-	errStyle	= static_cast<unsigned char>(GETBITS(flags, 4, 6));
+	errStyle	= GETBITS(flags, 4, 6);
 	
 	fStrLookup		= GETBIT(flags, 7);
 	fAllowBlank		= GETBIT(flags, 8);
 	fSuppressCombo	= GETBIT(flags, 9);
-	mdImeMode		= static_cast<unsigned char>(GETBITS(flags, 10, 17));
+	mdImeMode		= GETBITS(flags, 10, 17);
 	fShowInputMsg	= GETBIT(flags, 18);
 	fShowErrorMsg	= GETBIT(flags, 19);
 	typOperator		= static_cast<_typOperatorDv>(GETBITS(flags, 20, 23));
@@ -122,19 +122,19 @@ int Dv::serialize(std::wostream & stream)
 				case typeDvTime:		CP_XML_ATTR(L"type", L"time");		break;
 				case typeDvWhole:		CP_XML_ATTR(L"type", L"whole");		break;
 			}
-			if (!PromptTitle.value().empty())
+			if (PromptTitle.value().size() > 1)
 			{
 				CP_XML_ATTR(L"promtTitle", PromptTitle.value());
 			}
-			if (!Prompt.value().empty())
+			if (Prompt.value().size() > 1)
 			{
 				CP_XML_ATTR(L"promt", Prompt.value());
 			}
-			if (!ErrorTitle.value().empty())
+			if (ErrorTitle.value().size() > 1)
 			{
 				CP_XML_ATTR(L"errorTitle", ErrorTitle.value());
 			}
-			if (!Error.value().empty())
+			if (Error.value().size() > 1)
 			{
 				CP_XML_ATTR(L"error", Error.value());
 			}

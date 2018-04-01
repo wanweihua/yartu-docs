@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Spreadsheet Editor
  *
  *  Created by Maxim Kadushkin on 11/15/16
- *  Copyright (c) 2016 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -86,6 +86,7 @@ define([
                 this.api.asc_registerCallback('asc_onWorkbookLocked', _.bind(this.onApiWorkbookLocked, this));
                 this.api.asc_registerCallback('asc_onWorksheetLocked', _.bind(this.onApiWorksheetLocked, this));
                 this.api.asc_registerCallback('asc_onActiveSheetChanged', _.bind(this.onApiActiveSheetChanged, this));
+                Common.NotificationCenter.on('api:disconnect',      _.bind(this.onCoAuthoringDisconnect, this));
 
                 Common.NotificationCenter.on('sheet:active', this.onApiActiveSheetChanged.bind(this));
             },
@@ -159,6 +160,8 @@ define([
             },
 
             onApiCanRevert: function(which, can) {
+                if (this.isDisconnected) return;
+
                 if (which == 'undo') {
                     $('#toolbar-undo').toggleClass('disabled', !can);
                 } else {
@@ -167,6 +170,8 @@ define([
             },
 
             onApiSelectionChanged: function(info) {
+                if (this.isDisconnected) return;
+
                 if ( !info ) info = this.api.asc_getCellInfo();
                 var islocked = false;
 
@@ -189,6 +194,22 @@ define([
                 }
 
                 this.getView('Toolbar').disableControl(['add', 'edit'], islocked);
+            },
+
+            activateControls: function() {
+                $('#toolbar-settings, #toolbar-search, #document-back').removeClass('disabled');
+            },
+
+            activateViewControls: function() {
+                $('#toolbar-search, #document-back').removeClass('disabled');
+            },
+
+            deactivateEditControls: function() {
+                $('#toolbar-edit, #toolbar-add, #toolbar-settings').addClass('disabled');
+            },
+
+            onCoAuthoringDisconnect: function() {
+                this.isDisconnected = true;
             },
 
             dlgLeaveTitleText   : 'You leave the application',

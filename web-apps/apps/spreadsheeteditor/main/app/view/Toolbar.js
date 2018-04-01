@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  Toolbar.js
  *
  *  Created by Alexander Yuzhin on 3/31/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -63,6 +63,7 @@ define([
         editCell:       'cell-editing',
         editFormula:    'is-formula',
         editText:       'is-text',
+        editPivot:      'is-pivot',
         selImage:       'sel-image',
         selShape:       'sel-shape',
         selShapeText:   'sel-shape-txt',
@@ -203,7 +204,8 @@ define([
             me.btnSave = new Common.UI.Button({
                 id          : 'id-toolbar-btn-save',
                 cls         : 'btn-toolbar',
-                iconCls     : me.btnSaveCls
+                iconCls     : me.btnSaveCls,
+                lock        : [_set.lostConnect]
             });
 
             me.btnCopy = new Common.UI.Button({
@@ -375,7 +377,7 @@ define([
                 enableToggle: true,
                 allowDepress: true,
                 split       : true,
-                lock        : [_set.editCell, _set.selShape, _set.selShapeText, _set.selChart, _set.selChartText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleMerge],
+                lock        : [_set.editCell, _set.selShape, _set.selShapeText, _set.selChart, _set.selChartText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleMerge, _set.editPivot],
                 menu        : new Common.UI.Menu({
                     items: [
                         {
@@ -497,7 +499,7 @@ define([
                 id          : 'id-toolbar-btn-inserthyperlink',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-inserthyperlink',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selImage, _set.selShape, _set.cantHyperlink, _set.multiselect, _set.lostConnect, _set.coAuth]
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selImage, _set.selShape, _set.cantHyperlink, _set.multiselect, _set.lostConnect, _set.coAuth, _set.editPivot]
             });
 
             me.btnInsertChart = new Common.UI.Button({
@@ -568,21 +570,21 @@ define([
                 id          : 'id-toolbar-btn-sort-down',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-sort-down',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter]
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter, _set.editPivot]
             });
 
             me.btnSortUp = new Common.UI.Button({
                 id          : 'id-toolbar-btn-sort-up',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-sort-up',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter]
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter, _set.editPivot]
             });
 
             me.btnSetAutofilter = new Common.UI.Button({
                 id          : 'id-toolbar-btn-setautofilter',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-autofilter',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter],
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter, _set.editPivot],
                 enableToggle: true
             });
 
@@ -590,7 +592,7 @@ define([
                 id          : 'id-toolbar-btn-clearfilter',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-clear-filter',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleDelFilter]
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleDelFilter, _set.editPivot]
             });
             
             me.btnSearch = new Common.UI.Button({
@@ -964,7 +966,7 @@ define([
                             allowDepress: true,
                             toggleGroup : 'halignGroup',
                             checked     : true,
-                            value       : 'left'
+                            value       : AscCommon.align_Left
                         },
                         {
                             caption     : me.tipAlignCenter,
@@ -973,7 +975,7 @@ define([
                             checkable   : true,
                             allowDepress: true,
                             toggleGroup : 'halignGroup',
-                            value       : 'center'
+                            value       : AscCommon.align_Center
                         },
                         {
                             caption     : me.tipAlignRight,
@@ -982,7 +984,7 @@ define([
                             checkable   : true,
                             allowDepress: true,
                             toggleGroup : 'halignGroup',
-                            value       : 'right'
+                            value       : AscCommon.align_Right
                         },
                         {
                             caption     : me.tipAlignJust,
@@ -991,7 +993,7 @@ define([
                             checkable   : true,
                             allowDepress: true,
                             toggleGroup : 'halignGroup',
-                            value       : 'justify'
+                            value       : AscCommon.align_Justify
                         }
                     ]
                 })
@@ -1012,7 +1014,7 @@ define([
                             checkable   : true,
                             allowDepress: true,
                             toggleGroup : 'valignGroup',
-                            value       : 'top'
+                            value       : Asc.c_oAscVAlign.Top
                         },
                         {
                             caption     : me.tipAlignMiddle,
@@ -1021,7 +1023,7 @@ define([
                             checkable   : true,
                             allowDepress: true,
                             toggleGroup : 'valignGroup',
-                            value       : 'center'
+                            value       : Asc.c_oAscVAlign.Center
                         },
                         {
                             caption     : me.tipAlignBottom,
@@ -1031,7 +1033,7 @@ define([
                             allowDepress: true,
                             checked     : true,
                             toggleGroup : 'valignGroup',
-                            value       : 'bottom'
+                            value       : Asc.c_oAscVAlign.Bottom
                         }
                     ]
                 })
@@ -1041,7 +1043,7 @@ define([
                 id          : 'id-toolbar-btn-autofilter',
                 cls         : 'btn-toolbar',
                 iconCls     : 'btn-autofilter',
-                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter],
+                lock        : [_set.editCell, _set.selChart, _set.selChartText, _set.selShape, _set.selShapeText, _set.selImage, _set.lostConnect, _set.coAuth, _set.ruleFilter, _set.editPivot],
                 menu        : new Common.UI.Menu({
                     items : [
                         me.mnuitemSortAZ = new Common.UI.MenuItem({
@@ -1902,7 +1904,7 @@ define([
         textDelLeft:        'Shift Cells Left',
         textDelUp:          'Shift Cells Up',
         textZoom:           'Zoom',
-        textCompactToolbar: 'Compact Toolbar',
+        textCompactToolbar: 'View Compact Toolbar',
         textHideTBar:       'Hide Title Bar',
         textHideFBar:       'Hide Formula Bar',
         textHideHeadings:   'Hide Headings',

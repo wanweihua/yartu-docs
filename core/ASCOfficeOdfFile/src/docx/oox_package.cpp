@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,7 +32,6 @@
 
 #include "oox_package.h"
 
-#include <boost/foreach.hpp>
 #include <boost/ref.hpp>
 
 #include <cpdoccore/utf8cpp/utf8.h>
@@ -41,6 +40,7 @@
 #include "../../DesktopEditor/common/File.h"
 #include "../../DesktopEditor/raster/Metafile/MetaFile.h"
 #include "../../DesktopEditor/raster/ImageFileFormatChecker.h"
+#include "../../Common/DocxFormat/Source/Base/Base.h"
 
 namespace cpdoccore { 
 namespace oox {
@@ -71,17 +71,19 @@ static std::wstring get_mime_type(const std::wstring & extension)
    	else if (L"tif" == extension)	return  L"image/x-tiff";
  	else if (L"tiff" == extension)	return  L"image/x-tiff";
 	else if (L"pdf" == extension)	return  L"application/pdf";
+	else if (L"bmp" == extension)	return  L"image/bmp";
 
 	else if (L"wav" == extension)	return  L"audio/wav";
 	else if (L"mp3" == extension)	return  L"audio/mpeg";
 	else if (L"wma" == extension)	return  L"audio/x-ms-wma";
 	else if (L"m4a" == extension)	return  L"audio/unknown";
 
-	else if (L"avi" == extension)	return  L"video/avi";
+	else if (L"avi" == extension)	return  L"video/x-msvideo";
 	else if (L"wmv" == extension)	return  L"video/x-ms-wmv";
 	else if (L"mov" == extension)	return  L"video/unknown";
 	else if (L"mp4" == extension)	return  L"video/unknown";
 	else if (L"m4v" == extension)	return  L"video/unknown";
+	else if (L"mkv" == extension)	return  L"video/unknown";
 
 	else if (L"bin" == extension)	return  L"application/vnd.openxmlformats-officedocument.oleObject";
 	else if (L"xlsx" == extension)	return  L"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -283,8 +285,8 @@ void core_file::write(const std::wstring & RootPath)
     L"xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" "
     L"xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" >";
 
-	//resStream << L"<dc:creator>ONLYOFFICE Online Editor</dc:creator>";
-	//resStream << L"<cp:lastModifiedBy>ONLYOFFICE Online Editor</cp:lastModifiedBy>";
+	//resStream << L"<dc:creator>ONLYOFFICE</dc:creator>";
+	//resStream << L"<cp:lastModifiedBy>ONLYOFFICE</cp:lastModifiedBy>";
 	resStream << L"<cp:revision>1</cp:revision>";
     resStream << L"</cp:coreProperties>";
 
@@ -299,8 +301,12 @@ void app_file::write(const std::wstring & RootPath)
     resStream << L"<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" "
         L"xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\" >";
    
-	resStream << L"<Application>OnlyOffice</Application>"; 
-    resStream << L"</Properties>";
+	resStream << L"<Application>ONLYOFFICE"; 
+#if defined(INTVER)
+	std::string s = VALUE2STR(INTVER);
+	resStream << L"/" << std::wstring(s.begin(), s.end()) ;
+#endif	
+	resStream << L"</Application></Properties>";
     
     simple_element elm(L"app.xml", resStream.str());
     elm.write(RootPath);

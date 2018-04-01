@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -96,7 +96,7 @@ void text_tracked_context::start_change (std::wstring id)
 {
 	current_state_.clear();
 
-	current_state_.id	= id;
+	current_state_.id = id;
 }
 void text_tracked_context::end_change ()
 {
@@ -146,6 +146,7 @@ docx_conversion_context::docx_conversion_context(odf_reader::odf_document * OdfD
 	output_document_			(NULL),
 	process_note_				(noNote),
 	new_list_style_number_		(0),
+	current_margin_left_		(0),
 	is_rtl_						(false),
 	is_paragraph_keep_			(false),
 	is_delete_text_				(false),
@@ -378,7 +379,8 @@ void docx_conversion_context::start_document()
 	output_stream() << L"xmlns:wpg=\"http://schemas.microsoft.com/office/word/2010/wordprocessingGroup\" "; 
 	output_stream() << L"xmlns:wpi=\"http://schemas.microsoft.com/office/word/2010/wordprocessingInk\" "; 
 	output_stream() << L"xmlns:wne=\"http://schemas.microsoft.com/office/word/2006/wordml\" "; 
-	output_stream() << L"xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\" "; 
+	output_stream() << L"xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\" ";
+	output_stream() << L"xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" ";
 	output_stream() << L"mc:Ignorable=\"w14 wp14\">";
 
 
@@ -406,14 +408,12 @@ void docx_conversion_context::end_document()
    
 	output_document_->get_word_files().set_notes(notes_context_);
 ////////////////////////	
-	int count = 0;
-    BOOST_FOREACH(const oox_chart_context_ptr& chart, charts_)
+	for (size_t i = 0; i < charts_.size(); i++)
     {
-		count++;
 		package::chart_content_ptr content = package::chart_content::create();
 
-		chart->serialize(content->content());
-		chart->dump_rels(content->get_rel_file()->get_rels());
+		charts_[i]->serialize(content->content());
+		charts_[i]->dump_rels(content->get_rel_file()->get_rels());
 
 		output_document_->get_word_files().add_charts(content);
 	
@@ -580,10 +580,10 @@ mc:Ignorable=\"w14 wp14\">";
         strm << L"</w:abstractNum>";
     }
 
-    BOOST_FOREACH(int numId, numIds)
+	for (size_t i = 0; i < numIds.size(); i++)
     {
-        strm << L"<w:num w:numId=\"" << numId << L"\" >";
-        strm << L"<w:abstractNumId w:val=\"" << numId << "\" />";
+        strm << L"<w:num w:numId=\"" << numIds[i] << L"\" >";
+        strm << L"<w:abstractNumId w:val=\"" << numIds[i] << "\" />";
         strm << L"</w:num>";    
     }
 
@@ -733,16 +733,38 @@ void docx_conversion_context::start_process_style_content()
     styles_context_.start();
 }
 
-void docx_conversion_context::process_section(std::wostream & strm, odf_reader::style_columns * columns)
+void docx_conversion_context::process_section(std::wostream & strm, odf_reader::style_columns * columns)//from page layout
 {
 	int count_columns = 1;
 	bool sep_columns = false;
 
 	oox::section_context::_section & section = get_section_context().get();
+
+	if (!columns)
+	{
+		if (const odf_reader::style_instance * secStyle = root()->odf_context().styleContainer().style_by_name(section.style_, odf_types::style_family::Section, process_headers_footers_))
+		{
+			if (const odf_reader::style_content * content = secStyle->content())
+			{
+				if (odf_reader::style_section_properties * sectPr = content->get_style_section_properties())
+				{
+					columns = dynamic_cast<odf_reader::style_columns *>( sectPr->style_columns_.get());
+					
+					section.margin_left_	= sectPr->common_horizontal_margin_attlist_.fo_margin_left_;
+					section.margin_right_	= sectPr->common_horizontal_margin_attlist_.fo_margin_right_;		
+				}
+			}
+			if (section.is_dump_)
+			{
+				get_section_context().remove_section();				
+			}
+		}
+	}
 	
+	std::vector<std::pair<double, double>> width_space;
 	if (columns)
 	{
-		if ((columns->fo_column_count_) && (*columns->fo_column_count_ > 1))
+		if (columns->fo_column_count_)
 		{
 			count_columns =  *columns->fo_column_count_;
 		}
@@ -751,44 +773,64 @@ void docx_conversion_context::process_section(std::wostream & strm, odf_reader::
 			if (columns_sep->style_style_ != _T("none"))
 				sep_columns = true;
 		}
-	}
-	if (const odf_reader::style_instance * secStyle = root()->odf_context().styleContainer().style_by_name(section.style_, odf_types::style_family::Section, process_headers_footers_))
-	{
-		if (const odf_reader::style_content * content = secStyle->content())
-		{
-			if (odf_reader::style_section_properties * sectPr = content->get_style_section_properties())
-			{
-				if (odf_reader::style_columns * columns = dynamic_cast<odf_reader::style_columns *>( sectPr->style_columns_.get() ))
-				{
-					if (columns->fo_column_count_)
-					{
-						count_columns =  *columns->fo_column_count_;
-					}
-					if (odf_reader::style_column_sep * columns_sep = dynamic_cast<odf_reader::style_column_sep *>( columns->style_column_sep_.get() ))
-					{
-						if (columns_sep->style_style_ != _T("none"))
-							sep_columns = true;
-					}
-				}
 
-				section.margin_left_	= sectPr->common_horizontal_margin_attlist_.fo_margin_left_;
-				section.margin_right_	= sectPr->common_horizontal_margin_attlist_.fo_margin_right_;
+		if (!columns->style_columns_.empty())
+		{
+			double page_width = 0;
+			const odf_reader::page_layout_instance * pp = root()->odf_context().pageLayoutContainer().page_layout_first();
+			
+			if ((pp) && (pp->properties()))
+			{
+				odf_reader::style_page_layout_properties_attlist & attr_page = pp->properties()->attlist_;
+				if (attr_page.fo_page_width_)
+				{
+					page_width = attr_page.fo_page_width_->get_value_unit(odf_types::length::pt);
+				}
+				if (attr_page.common_horizontal_margin_attlist_.fo_margin_left_)
+				{
+					page_width -= attr_page.common_horizontal_margin_attlist_.fo_margin_left_->get_length().get_value_unit(odf_types::length::pt);
+				}
+				if (attr_page.common_horizontal_margin_attlist_.fo_margin_right_)
+				{
+					page_width -= attr_page.common_horizontal_margin_attlist_.fo_margin_right_->get_length().get_value_unit(odf_types::length::pt);
+				}
+			}		
+			for (size_t i = 0; page_width > 0, i < columns->style_columns_.size(); i++)
+			{
+				odf_reader::style_column * col = dynamic_cast<odf_reader::style_column*>( columns->style_columns_[i].get());
+				if (!col) continue;
+
+				double width = page_width * (col->style_rel_width_ ? col->style_rel_width_->get_value() / 65535. : 0);
+
+				double space = col->fo_end_indent_ ? col->fo_end_indent_->get_value_unit(odf_types::length::pt) : 0;
+
+				if (i < columns->style_columns_.size() - 1)
+				{
+					col = dynamic_cast<odf_reader::style_column*>( columns->style_columns_[i + 1].get());
+					space += col->fo_start_indent_ ? col->fo_start_indent_->get_value_unit(odf_types::length::pt) : 0;
+				}
+				
+				width_space.push_back(std::make_pair(width, space));
 			}
 		}
-		if (section.is_dump_)
-		{
-			get_section_context().remove_section();				
-		}
 	}
-
 	CP_XML_WRITER(strm)
 	{
 		CP_XML_NODE(L"w:cols")
 		{
-			CP_XML_ATTR(L"w:equalWidth", L"true");
+			CP_XML_ATTR(L"w:equalWidth", width_space.empty());
 			CP_XML_ATTR(L"w:num", count_columns);
 			CP_XML_ATTR(L"w:sep", sep_columns);
-			CP_XML_ATTR(L"w:space",0);
+			CP_XML_ATTR(L"w:space", 708);
+
+			for (size_t i = 0; i < width_space.size(); i++)
+			{
+				CP_XML_NODE(L"w:col")
+				{
+					CP_XML_ATTR(L"w:w", (int)(width_space[i].first * 20));	
+					CP_XML_ATTR(L"w:space", (int)(width_space[i].second * 20));	
+				}
+			}
 		}
 	}
 }
@@ -801,7 +843,7 @@ bool docx_conversion_context::process_page_properties(std::wostream & strm)
 
 		if (page_layout_instance_) 
 		{
-				page_layout_instance_->docx_convert_serialize(strm, *this);
+				page_layout_instance_->docx_serialize(strm, *this);
 		}
 		else
 		{
@@ -847,18 +889,18 @@ void docx_conversion_context::docx_serialize_paragraph_style(std::wostream & str
    
 	CP_XML_WRITER(strm)
 	{
-		//Tutor_Charlotte_Tutor_the_Entire_World_.odt
-		if (get_section_context().dump_.empty() == false && (!ParentId.empty() || get_section_context().get().is_dump_ || in_header_) 
-			 && !get_table_context().in_table() && !in_drawing)
-		{//две подряд секции или если стиль определен и в заголовки нельзя пихать !!!
-			CP_XML_NODE(L"w:pPr")
-			{
-				CP_XML_STREAM() << get_section_context().dump_;
-				get_section_context().dump_.clear();
-			}
-			finish_paragraph();
-			start_paragraph();
-		}
+		////Tutor_Charlotte_Tutor_the_Entire_World_.odt
+		//if (get_section_context().dump_.empty() == false && (!ParentId.empty() || get_section_context().get().is_dump_ || in_header_) 
+		//	 && !get_table_context().in_table() && !in_drawing)
+		//{//две подряд секции или если стиль определен и в заголовки нельзя пихать !!!
+		//	CP_XML_NODE(L"w:pPr")
+		//	{
+		//		CP_XML_STREAM() << get_section_context().dump_;
+		//		get_section_context().dump_.clear();
+		//	}
+		//	finish_paragraph();
+		//	start_paragraph();
+		//}
 
 		if (!paragraph_style.str().empty() || !ParentId.empty())
 		{		
@@ -1129,7 +1171,7 @@ void docx_conversion_context::docx_convert_delayed()
     {
         odf_reader::office_element * elm = delayed_elements_.front();
         elm->docx_convert(*this);
-		delayed_elements_.pop_front();
+		delayed_elements_.erase(delayed_elements_.begin(), delayed_elements_.begin() + 1);
     }
 	delayed_converting_=false;
 }
@@ -1286,7 +1328,8 @@ void docx_conversion_context::start_text_changes (std::wstring id)
 										L" w:author=\""	+ state.author	+ L"\"" ;
 
 		finish_run();
-		state.active = true;
+		state.active		= true;
+		state.in_drawing	= get_drawing_state_content();
 		
 		if (state.type	== 1)
 		{
@@ -1320,7 +1363,7 @@ void docx_conversion_context::start_changes()
 	text_tracked_context_.dumpTcPr_.clear();
 	text_tracked_context_.dumpTblPr_.clear();
 
-	for (map_changes_iterator it = map_current_changes_.begin(); it != map_current_changes_.end(); it++)
+	for (map_changes_iterator it = map_current_changes_.begin(); it != map_current_changes_.end(); ++it)
 	{
 		text_tracked_context::_state  &state = it->second;
 
@@ -1413,13 +1456,16 @@ void docx_conversion_context::end_changes()
 {
 	if (process_comment_) return;
 
-	for (map_changes_iterator it = map_current_changes_.begin(); it != map_current_changes_.end(); it++)
+	for (map_changes_iterator it = map_current_changes_.begin(); it != map_current_changes_.end(); ++it)
 	{
 		text_tracked_context::_state  &state = it->second;
 
 		if (state.type	== 0)	continue; //unknown change ... libra format change skip
 		if (state.type	== 3)	continue;
 		if (!state.active)		continue;
+		
+		if (state.in_drawing != get_drawing_state_content())
+			continue;
 
 		if (state.type	== 1)	output_stream() << L"</w:ins>";
 		if (state.type	== 2)	output_stream() << L"</w:del>";
@@ -1453,6 +1499,16 @@ void docx_conversion_context::end_text_changes (std::wstring id)
 	}
 
 	map_current_changes_.erase(it);
+}
+void docx_conversion_context::add_user_field(const std::wstring & name, const std::wstring & value)
+{
+	map_user_fields.insert(std::make_pair(name, value));
+}
+std::wstring docx_conversion_context::get_user_field(const std::wstring & name)
+{
+	std::map<std::wstring, std::wstring>::iterator pFind = map_user_fields.find(name);
+
+	return pFind != map_user_fields.end() ? pFind->second : L"";
 }
 
 }

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,16 +35,6 @@
 namespace XLS
 {
 
-Fbi2::Fbi2()
-{
-}
-
-
-Fbi2::~Fbi2()
-{
-}
-
-
 BaseObjectPtr Fbi2::clone()
 {
 	return BaseObjectPtr(new Fbi2(*this));
@@ -52,9 +42,9 @@ BaseObjectPtr Fbi2::clone()
 
 void Fbi2::readFields(CFRecord& record)
 {
-#pragma message("####################### Fbi2 record is not implemented")
-	Log::error("Fbi2 record is not implemented.");
-	//record >> some_value;
+	unsigned short	val;
+	record >> dmixBasis >> dmiyBasis >> twpHeightBasis >> val >> ifnt;
+	scab = (val != 0);
 }
 
 } // namespace XLS

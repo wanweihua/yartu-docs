@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -45,13 +45,14 @@ typedef bool (*progress_operation)		(void*, long, long);
 
 namespace PPTX
 {
-	class Folder;
+	class Document;
 }
 
 class CPPTXFile : public PPTX::IPPTXEvent
 {
 private:
-	PPTX::Folder*		m_pFolder;
+	PPTX::Document*		m_pPptxDocument;
+
     std::wstring		m_strTempDir;
     std::wstring		m_strDirectory;
 
@@ -61,6 +62,7 @@ private:
 	std::wstring		m_strEmbeddedFontsDirectory;
 
 	std::wstring		m_strFolderThemes;
+	bool				m_bIsNoBase64;
 
     extract_to_directory    m_fCallbackExtract;
 	compress_from_directory m_fCallbackCompress;
@@ -93,6 +95,7 @@ public:
     HRESULT SetFontDir			(std::wstring bsFontDir);
     HRESULT SetThemesDir		(std::wstring bsDir);
     HRESULT SetUseSystemFonts	(bool useSystemFonts);
+    void SetIsNoBase64			(bool bIsNoBase64);
     HRESULT OpenFileToPPTY		(std::wstring bsInput, std::wstring bsOutput);
     HRESULT OpenDirectoryToPPTY	(std::wstring bsInput, std::wstring bsOutput);
     HRESULT ConvertPPTYToPPTX	(std::wstring bsInput, std::wstring bsOutput, std::wstring bsThemesFolder);

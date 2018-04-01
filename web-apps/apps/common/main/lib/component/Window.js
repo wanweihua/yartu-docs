@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *    Window.js
  *
  *    Created by Maxim Kadushkin on 24 January 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -224,7 +224,7 @@ define([
 
             var win_width = (this.initConfig.width=='auto') ? parseInt(this.$window.find('.body').css('width')) : this.initConfig.width;
             
-            var top  = Math.floor(((parseInt(main_height) - parseInt(win_height)) / 2) * 0.9);
+            var top  = Math.floor((parseInt(main_height) - parseInt(win_height)) / 2);
             var left = Math.floor((parseInt(main_width) - parseInt(win_width)) / 2);
 
             this.$window.css('left',left);
@@ -846,9 +846,9 @@ define([
                             '<div class="resize-border bottom" style="left: 4px; right: 4px; width: auto; z-index: 2; border-top-style: solid; cursor: s-resize;"></div>' +
                             '<div class="resize-border right bottom" style="border-bottom-right-radius: 5px; cursor: se-resize;"></div>' +
                             '<div class="resize-border right" style="top:' + ((this.initConfig.header) ? '33' : '5') + 'px; bottom: 5px; height: auto; border-left-style: solid; cursor: w-resize;"></div>' +
-                            '<div class="resize-border left top" style="border-top-left-radius: 5px; cursor: se-resize;"></div>' +
+                            '<div class="resize-border left top" style="border-top-left-radius: 5px; cursor: nw-resize;"></div>' +
                             '<div class="resize-border top" style="left: 4px; right: 4px; width: auto; z-index: 2; border-bottom-style:' + ((this.initConfig.header) ? "none" : "solid") + '; cursor: s-resize;"></div>' +
-                            '<div class="resize-border right top" style="border-top-right-radius: 5px; cursor: sw-resize;"></div>';
+                            '<div class="resize-border right top" style="border-top-right-radius: 5px; cursor: ne-resize;"></div>';
                         if (this.initConfig.header)
                             bordersTemplate += '<div class="resize-border left" style="top: 5px; height: 28px; cursor: e-resize;"></div>' +
                                                '<div class="resize-border right" style="top: 5px; height: 28px; cursor: w-resize;"></div>';

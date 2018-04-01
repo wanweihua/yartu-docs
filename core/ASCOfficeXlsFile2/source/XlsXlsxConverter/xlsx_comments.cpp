@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,8 +34,6 @@
 
 #include <vector>
 
-#include <boost/foreach.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
 
 #include <simple_xml_writer.h>
@@ -114,14 +112,14 @@ public:
 			if (c.author_ == author_list_[i])
 			{
 				find = true;
-				c.author_ = boost::lexical_cast<std::wstring>(i);
+				c.author_ = std::to_wstring(i);
 				break;
 			}
 		}
 		if (!find)
 		{
 			author_list_.push_back(c.author_);
-			c.author_ = boost::lexical_cast<std::wstring>(author_list_.size()-1);
+			c.author_ = std::to_wstring(author_list_.size()-1);
 		}
 		xlsx_comment_.push_back(c);
 	}

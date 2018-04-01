@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,8 +31,6 @@
  */
 
 #include "list.h"
-
-#include <boost/foreach.hpp>
 
 #include <cpdoccore/xml/xmlchar.h>
 
@@ -80,9 +78,9 @@ void text_list_item::serialize(std::wostream & _Wostream)
         {
 			if (text_number_)text_number_->serialize(CP_XML_STREAM());
 
-			BOOST_FOREACH(const office_element_ptr & parElement, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				parElement->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -129,9 +127,9 @@ void text_list_header::serialize(std::wostream & _Wostream)
         {
 			if (text_number_)text_number_->serialize(CP_XML_STREAM());
 			
-			BOOST_FOREACH(const office_element_ptr & parElement, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				parElement->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -76,7 +76,7 @@ namespace BinDocxRW
 }
 namespace NSShapeImageGen
 {
-	class CImageManager;
+	class CMediaManager;
 }
 namespace NSFontCutter
 {
@@ -159,7 +159,7 @@ namespace NSBinPptxRW
 		std::vector<LONG>				m_oNote_Rels;
 		std::vector<LONG>				m_oNotesMasters_Rels;
 
-		NSShapeImageGen::CImageManager*	m_pImageManager;
+		NSShapeImageGen::CMediaManager*	m_pMediaManager;
 		
 		NSFontCutter::CFontDstManager*	m_pNativePicker;
 		COfficeFontPicker*				m_pFontPicker;
@@ -178,8 +178,10 @@ namespace NSBinPptxRW
         std::map<std::wstring, _imageManager2Info>	m_mapImages;
 		_INT32										m_lIndexNextImage;
 		_INT32										m_lIndexCounter;
+		
 		std::wstring								m_strDstMedia;
 		std::wstring								m_strDstEmbed;
+		std::wstring								m_strDstFolder;
 	public:
         int 										m_nDocumentType;
 		OOX::CContentTypes*							m_pContentTypes;
@@ -194,9 +196,15 @@ namespace NSBinPptxRW
 		void			SetDstEmbed(const std::wstring& strDst);
 		std::wstring	GetDstEmbed();
 		
+		void			SetDstFolder(const std::wstring& strDst);
+		std::wstring	GetDstFolder();
+
 		int IsDisplayedImage(const std::wstring& strInput);
 
+		_imageManager2Info GenerateMedia(const std::wstring& strInput);
 		_imageManager2Info GenerateImage(const std::wstring& strInput, NSCommon::smart_ptr<OOX::File> & additionalFile, const std::wstring& oleData, std::wstring strBase64Image);
+		
+		_imageManager2Info GenerateMediaExec(const std::wstring& strInput);
 		_imageManager2Info GenerateImageExec(const std::wstring& strInput, const std::wstring& strExts, const std::wstring& strAdditionalImage, int nAdditionalType, const std::wstring& oleData);
 
 		void SaveImageAsPng(const std::wstring& strFileSrc, const std::wstring& strFileDst);
@@ -292,6 +300,7 @@ namespace NSBinPptxRW
 		void WriteStringW3	(const std::wstring& sBuffer);
 		
 		void WriteStringW4	(const std::wstring& sBuffer);
+		void WriteStringUtf8(const std::wstring& sBuffer);
 		// --------------------------------------------------------
 		void WriteLONG64	(const _INT64& lValue);
 		void WriteDouble64	(const double& dValue);
@@ -306,7 +315,7 @@ namespace NSBinPptxRW
 		void StartMainRecord(_INT32 lType);
 		void WriteReserved(size_t lCount);
 
-		void WriteMainPart();
+		void WriteMainPart(_UINT32 nStartPos);
 		
 		void WriteString1	(int type, const std::wstring& val);
 		void WriteString2	(int type, const NSCommon::nullable_string& val);
@@ -415,11 +424,12 @@ namespace NSBinPptxRW
 		void WriteThemes (int nCount);
 		void WriteSlides (int nCount);
 		void WriteSlideComments	(int nComment);
+		void WritePresentationComments	(int nComment);
 		int WriteChart (int nChartNumber, _INT32 lDocType);
 		int WriteRels (const std::wstring& bsType, const std::wstring& bsTarget, const std::wstring& bsTargetMode);
 		int WriteHyperlink	(const std::wstring& strLink, const bool& bIsActionInit);		
-		
-		void EndPresentationRels (const bool& bIsCommentsAuthors, const bool& bIsNotesMaster = false);
+	
+		void EndPresentationRels (bool bIsCommentsAuthors = false, bool bIsNotesMaster = false, bool bIsVbaProject = false, bool bIsJsaProject = false  );
 		int GetNextId ();
 		void CloseRels ();
 
@@ -427,6 +437,7 @@ namespace NSBinPptxRW
 		void SaveRels (const std::wstring& strFile);
 
 		_relsGeneratorInfo WriteImage (const std::wstring& strImage, NSCommon::smart_ptr<OOX::File>& additionalFile, const std::wstring& oleData, std::wstring strBase64Image);
+		_relsGeneratorInfo WriteMedia (const std::wstring& strMedia, int type = 0);
 	};
 
 	class CBinaryFileReader

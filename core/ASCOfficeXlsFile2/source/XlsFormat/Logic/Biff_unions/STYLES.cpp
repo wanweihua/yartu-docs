@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,8 +31,10 @@
  */
 
 #include "STYLES.h"
-#include <Logic/Biff_records/Style.h>
-#include <Logic/Biff_records/StyleExt.h>
+
+#include "../Biff_records/Style.h"
+#include "../Biff_records/StyleExt.h"
+#include "../../../../../Common/DocxFormat/Source/XML/Utils.h"
 
 namespace XLS
 {
@@ -84,6 +86,17 @@ const bool STYLES::loadContent(BinProcessor& proc)
 {
 	styles_count = proc.repeated<Parenthesis_STYLES_1>(0, 0);
 	
+	for (std::list<XLS::BaseObjectPtr>::iterator it = elements_.begin(); it != elements_.end(); ++it)
+	{
+		Parenthesis_STYLES_1 * style_1 = dynamic_cast<Parenthesis_STYLES_1*>(it->get());
+
+		if (style_1)
+		{		
+			m_arStyles.push_back(std::make_pair(style_1->m_Style, style_1->m_StyleEx));
+		}
+	}
+	elements_.clear();
+
 	if (styles_count > 0)	return true;
 	else					return false;
 }
@@ -98,56 +111,57 @@ int STYLES::serialize(std::wostream & stream)
 			{
 				CP_XML_ATTR(L"count", styles_count);
 
-				for (std::list<XLS::BaseObjectPtr>::iterator it = elements_.begin(); it != elements_.end(); it++)
+				for (size_t i = 0; i < m_arStyles.size(); i++)
 				{
-					Parenthesis_STYLES_1 * style_1 = dynamic_cast<Parenthesis_STYLES_1*>(it->get());
-
-					if (style_1)
+					CP_XML_NODE(L"cellStyle")
 					{
-						CP_XML_NODE(L"cellStyle")
+						XLS::Style		* style		= dynamic_cast<Style*> (m_arStyles[i].first.get());
+						XLS::StyleExt	* styleExt	= dynamic_cast<StyleExt*> (m_arStyles[i].second.get());
+						
+						if (styleExt)
 						{
-							XLS::Style		* style		= dynamic_cast<Style*>	(style_1->m_Style.get());
-							XLS::StyleExt	* styleExt	= dynamic_cast<StyleExt*>(style_1->m_StyleEx.get());
-							
-							if (styleExt)
+							CP_XML_ATTR(L"name", styleExt->stName.value());
+						
+							if (styleExt->fBuiltIn)
 							{
-								CP_XML_ATTR(L"name", styleExt->stName.value());
-							
-								if (styleExt->fBuiltIn)
+								CP_XML_ATTR(L"builtinId", styleExt->builtInData.istyBuiltIn);
+								
+								if (styleExt->builtInData.iLevel > 0 && styleExt->builtInData.iLevel < 255)
 								{
-									CP_XML_ATTR(L"builtinId", styleExt->builtInData.istyBuiltIn);
-									
-									if (styleExt->builtInData.iLevel > 0 && styleExt->builtInData.iLevel < 255)
-									{
-										CP_XML_ATTR(L"iLevel", styleExt->builtInData.iLevel);
-									}
-								}
-
-        //                        for (int i = 0; i < styleExt->xfProps.xfPropArray.size(); i++)
-								//{
-								//}
-							}
-							else if (style)
-							{
-								CP_XML_ATTR(L"name", style->user.value());
-									
-								if (style->fBuiltIn)
-								{
-									CP_XML_ATTR(L"builtinId", style->builtInData.istyBuiltIn);
-									if (style->builtInData.iLevel > 0 && style->builtInData.iLevel < 255)
-									{
-										CP_XML_ATTR(L"iLevel", style->builtInData.iLevel);
-									}
+									CP_XML_ATTR(L"iLevel", styleExt->builtInData.iLevel);
 								}
 							}
 
-							if (style)
+    //                        for (size_t i = 0; i < styleExt->xfProps.xfPropArray.size(); i++)
+							//{
+							//}
+						}
+						else if (style)
+						{
+							std::wstring name = style->user.value();
+							
+							XmlUtils::replace_all(name, L"\x01", L"_x0001_");
+							XmlUtils::replace_all(name, L"\x0d", L"_x000d_");
+							XmlUtils::replace_all(name, L"\x0a", L"_x000a_");
+
+							CP_XML_ATTR(L"name", name);
+								
+							if (style->fBuiltIn)
 							{
-								int xfId = style->ixfe - 1;
-								if (xfId < 0) xfId = 0;
-									
-								CP_XML_ATTR(L"xfId", xfId);
+								CP_XML_ATTR(L"builtinId", style->builtInData.istyBuiltIn);
+								if (style->builtInData.iLevel > 0 && style->builtInData.iLevel < 255)
+								{
+									CP_XML_ATTR(L"iLevel", style->builtInData.iLevel);
+								}
 							}
+						}
+
+						if (style)
+						{
+							int xfId = style->ixfe - 1;
+							if (xfId < 0) xfId = 0;
+								
+							CP_XML_ATTR(L"xfId", xfId);
 						}
 					}
 				}

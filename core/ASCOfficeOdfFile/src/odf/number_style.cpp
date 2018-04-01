@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,7 +37,6 @@
 
 #include <cpdoccore/xml/xmlchar.h>
 #include <cpdoccore/xml/utils.h>
-#include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/CPColorUtils.h>
 
@@ -411,9 +410,9 @@ void number_text::oox_convert(oox::num_format_context & Context)
 {
 	std::wstringstream strm;
 
-    BOOST_FOREACH(const office_element_ptr & elm, text_)
+    for (size_t i = 0; i < text_.size(); i++)
     {
-        elm->text_to_stream(strm);
+        text_[i]->text_to_stream(strm);
     }
 
 	std::wstring text_ = strm.str();

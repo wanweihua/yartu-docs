@@ -43,10 +43,11 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="../../DesktopEditor/xml/build/vs2005;../../DesktopEditor/xml/libxml2/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_UNICODE;UNICODE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
@@ -67,6 +68,7 @@
 				ShowProgress="0"
 				Version=""
 				LinkIncremental="2"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -336,6 +338,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath="..\..\Common\OfficeFileFormatChecker.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Common\OfficeFileFormatChecker2.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Common\3dParty\pole\pole.cpp"
 				>
 				<FileConfiguration
@@ -346,6 +356,10 @@
 						UsePrecompiledHeader="0"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\Common\DocxFormat\Source\Base\unicode_util.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\..\UnicodeConverter\UnicodeConverter.cpp"

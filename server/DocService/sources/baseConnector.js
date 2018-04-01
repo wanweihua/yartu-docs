@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -185,11 +185,17 @@ exports.getChangesIndexPromise = function(docId) {
     });
   });
 };
-exports.getChangesPromise = function (docId, optStartIndex, optEndIndex) {
+exports.getChangesPromise = function (docId, optStartIndex, optEndIndex, opt_time) {
   return new Promise(function(resolve, reject) {
     var getCondition = 'id='+baseConnector.sqlEscape(docId);
-    if (null != optStartIndex && null != optEndIndex) {
-      getCondition += ' AND change_id>=' + optStartIndex + ' AND change_id<' + optEndIndex;
+    if (null != optStartIndex) {
+      getCondition += ' AND change_id>=' + optStartIndex;
+    }
+    if (null != optEndIndex) {
+      getCondition += ' AND change_id<' + optEndIndex;
+    }
+    if (null != opt_time) {
+      getCondition += ' AND change_date<=' + baseConnector.sqlEscape(_getDateTime(opt_time));
     }
     getCondition += ' ORDER BY change_id ASC';
     getDataFromTable(c_oTableId.changes, "*", getCondition, function(error, result) {
@@ -201,22 +207,8 @@ exports.getChangesPromise = function (docId, optStartIndex, optEndIndex) {
     });
   });
 };
-exports.getChanges = function (docId, opt_time, opt_index, callback) {
-	lockCriticalSection(docId, function () {_getChanges(docId, opt_time, opt_index, callback);});
-};
-function _getChanges (docId, opt_time, opt_index, callback) {
-  var getCondition = "id='" + docId + "'";
-  if (null != opt_time && null != opt_index) {
-    getCondition += " AND change_date<=" + baseConnector.sqlEscape(_getDateTime(opt_time));
-    getCondition += " AND change_id<" + baseConnector.sqlEscape(opt_index);
-  }
-  getCondition += " ORDER BY change_id ASC";
-	getDataFromTable(c_oTableId.changes, "*", getCondition,
-		function (error, result) {unLockCriticalSection(docId); if (callback) callback(error, result);});
-}
-
 exports.checkStatusFile = function (docId, callbackFunction) {
-	var sqlCommand = "SELECT status FROM " + tableResult + " WHERE id='" + docId + "';";
+	var sqlCommand = "SELECT status, status_info FROM " + tableResult + " WHERE id='" + docId + "';";
 	baseConnector.sqlQuery(sqlCommand, callbackFunction);
 };
 exports.checkStatusFilePromise = function (docId) {

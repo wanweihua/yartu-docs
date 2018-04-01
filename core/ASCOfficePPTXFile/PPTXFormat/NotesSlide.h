@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,26 +37,23 @@
 #include "FileContainer.h"
 #include "FileTypes.h"
 
-#include "Logic/ClrMapOvr.h"
-#include "Logic/CSld.h"
+#include "NotesMaster.h"
 
 namespace PPTX
 {
 	class NotesSlide : public WrapperFile, public FileContainer
 	{
 	public:
-		NotesSlide()
+		NotesSlide(OOX::Document* pMain) : WrapperFile(pMain), FileContainer(pMain)
 		{
 		}
-		NotesSlide(const OOX::CPath& filename, FileMap& map)
+		NotesSlide(OOX::Document* pMain, const OOX::CPath& filename, FileMap& map) : WrapperFile(pMain), FileContainer(pMain)
 		{
 			read(filename, map);
 		}
 		virtual ~NotesSlide()
 		{
 		}
-
-	public:
 		virtual void read(const OOX::CPath& filename, FileMap& map)
 		{
 			//FileContainer::read(filename, map);
@@ -79,8 +76,6 @@ namespace PPTX
 			WrapperFile::write(filename, directory, content);
 			FileContainer::write(filename, directory, content);
 		}
-
-	public:
 		virtual const OOX::FileType type() const
 		{
 			return OOX::Presentation::FileTypes::NotesSlide;
@@ -93,7 +88,6 @@ namespace PPTX
 		{
 			return type().DefaultFileName();
 		}
-
 		virtual void toPPTY(NSBinPptxRW::CBinaryFileWriter* pWriter) const
 		{
 			pWriter->StartRecord(NSBinPptxRW::NSMainTables::NotesSlides);
@@ -127,7 +121,6 @@ namespace PPTX
 
 			pWriter->EndNode(_T("p:notes"));
 		}
-
 		virtual void fromPPTY(NSBinPptxRW::CBinaryFileReader* pReader)
 		{
 			pReader->Skip(1); // type
@@ -145,7 +138,6 @@ namespace PPTX
 				else if (1 == _at)
 					showMasterSp = pReader->GetBool();
 			}
-
 			while (pReader->GetPos() < end)
 			{
 				BYTE _rec = pReader->GetUChar();
@@ -173,13 +165,25 @@ namespace PPTX
 
 			pReader->Seek(end);
 		}
+		void ApplyRels()
+		{
+			smart_ptr<OOX::File> pFile = FileContainer::Get(OOX::Presentation::FileTypes::NotesMaster);
 
-	public:
+			master_ = pFile.smart_dynamic_cast<PPTX::NotesMaster>();
+
+			if (master_.IsInit())
+			{
+				theme_ = master_->theme_;
+			}
+		}
 		Logic::CSld					cSld;
 		nullable<Logic::ClrMapOvr>	clrMapOvr;
 
 		nullable_bool				showMasterPhAnim;
 		nullable_bool				showMasterSp;
+
+		smart_ptr<NotesMaster>		master_;
+		smart_ptr<Theme>			theme_;
 	};
 } // namespace PPTX
 

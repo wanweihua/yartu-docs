@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,6 +37,132 @@
 #include "../fontengine/ApplicationFonts.h"
 #include <iostream>
 #include "../../graphics/Timer.h"
+#include "../../common/Directory.h"
+#include "../../../../OfficeUtils/src/OfficeUtils.h"
+#include "../../fontengine/application_generate_fonts_common.h"
+
+class CZipWorker
+{
+public:
+    std::wstring m_sTmpFolder;
+
+    std::vector<std::wstring> m_arFiles;
+
+    std::wstring m_sWorkerFolder;
+
+public:
+
+    CZipWorker()
+    {
+        m_sWorkerFolder = L"";
+    }
+
+    ~CZipWorker()
+    {
+        Close();
+    }
+
+    void Close()
+    {
+        if (!m_sTmpFolder.empty())
+            NSDirectory::DeleteDirectory(m_sTmpFolder);
+
+        m_sTmpFolder = L"";
+
+        m_arFiles.clear();
+    }
+
+    bool Open(const std::wstring& sFile)
+    {
+        m_sTmpFolder = m_sWorkerFolder + L"/nativeZip";
+        COfficeUtils oUtils;
+        NSDirectory::CreateDirectory(m_sTmpFolder);
+        if (S_OK != oUtils.ExtractToDirectory(sFile, m_sTmpFolder, NULL, 0))
+            return false;
+
+        CheckDirectory();
+        return true;
+    }
+
+    bool OpenBase64(const std::string& sData)
+    {
+        BYTE* pRawData = NULL;
+        int nRawSize = 0;
+        if (true != NSFile::CBase64Converter::Decode(sData.c_str(), (int)sData.length(), pRawData, nRawSize))
+            return false;
+
+        std::wstring sTmpFile = NSFile::CFileBinary::CreateTempFileWithUniqueName(NSDirectory::GetTempPath(), L"ZIP");
+        if (NSFile::CFileBinary::Exists(sTmpFile))
+            NSFile::CFileBinary::Remove(sTmpFile);
+
+        NSFile::CFileBinary oFile;
+        oFile.CreateFileW(sTmpFile);
+        oFile.WriteFile(pRawData, (DWORD)nRawSize);
+        oFile.CloseFile();
+
+        m_sTmpFolder = m_sWorkerFolder + L"/nativeZip";
+
+        COfficeUtils oUtils;
+        NSDirectory::CreateDirectory(m_sTmpFolder);
+        if (S_OK != oUtils.ExtractToDirectory(sTmpFile, m_sTmpFolder, NULL, 0))
+        {
+            NSFile::CFileBinary::Remove(sTmpFile);
+            return false;
+        }
+
+        NSFile::CFileBinary::Remove(sTmpFile);
+        CheckDirectory();
+        return true;
+    }
+
+    void CheckDirectory()
+    {
+        std::vector<std::wstring> arFiles = NSDirectory::GetFiles(m_sTmpFolder, true);
+
+        url_correct2(m_sTmpFolder);
+        int nStart = m_sTmpFolder.length();
+        for (std::vector<std::wstring>::iterator i = arFiles.begin(); i != arFiles.end(); i++)
+        {
+            std::wstring sTmp = *i;
+            url_correct2(sTmp);
+
+            m_arFiles.push_back(sTmp.substr(nStart + 1));
+        }
+    }
+
+    void GetFileData(const std::wstring& strFile, BYTE*& pData, DWORD& dwLen)
+    {
+        NSFile::CFileBinary oFile;
+        oFile.OpenFile(m_sTmpFolder + L"/" + strFile);
+        dwLen = (DWORD)oFile.GetFileSize();
+        pData = (BYTE*)malloc((size_t)dwLen);
+        DWORD dwSizeRead = 0;
+        oFile.ReadFile(pData, dwLen, dwSizeRead);
+        oFile.CloseFile();
+    }
+
+private:
+
+    void url_correct2(std::wstring& url)
+    {
+        NSCommon::string_replace(url, L"/./", L"/");
+
+        size_t posn = 0;
+        while (std::wstring::npos != (posn = url.find(L"/../")))
+        {
+            std::wstring::size_type pos2 = url.rfind(L"/", posn - 1);
+
+            if (std::wstring::npos != pos2)
+            {
+                url.erase(pos2, posn - pos2 + 3);
+            }
+        }
+
+        NSCommon::string_replace(url, L"\\\\", L"\\");
+        NSCommon::string_replace(url, L"//", L"/");
+        NSCommon::string_replace(url, L"\\", L"/");
+    }
+};
 
 // string convert
 std::wstring to_cstring(v8::Local<v8::Value> v);
@@ -75,6 +201,8 @@ public:
 
     std::wstring m_sChangesBuilderPath;
     int m_nCurrentChangesBuilderIndex;
+
+    CZipWorker m_oZipWorker;
 
 public:
     CMemoryStream* m_pStream;
@@ -152,6 +280,8 @@ public:
     void SetFilePath(const std::wstring& strPath)
     {
         m_strFilePath = strPath;
+
+        m_oZipWorker.m_sWorkerFolder = NSCommon::GetDirectoryName(strPath);
     }
     std::wstring GetFilePath()
     {
@@ -324,31 +454,19 @@ void _ConsoleLog(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 void _SaveChanges(const v8::FunctionCallbackInfo<v8::Value>& args);
 
+/// ZIP -----
+void _zipOpenFile(const v8::FunctionCallbackInfo<v8::Value>& args);
+void _zipOpenFileBase64(const v8::FunctionCallbackInfo<v8::Value>& args);
+void _zipGetFileAsString(const v8::FunctionCallbackInfo<v8::Value>& args);
+void _zipGetFileAsBinary(const v8::FunctionCallbackInfo<v8::Value>& args);
+void _zipCloseFile(const v8::FunctionCallbackInfo<v8::Value>& args);
+/// ---------
+
 void _AddImageInChanges(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 v8::Handle<v8::ObjectTemplate> CreateNativeControlTemplate(v8::Isolate* isolate);
 v8::Handle<v8::ObjectTemplate> CreateNativeControlTemplateBuilder(v8::Isolate* isolate);
 // --------------------------
-
-// create work with arraytypes
-class MallocArrayBufferAllocator : public v8::ArrayBuffer::Allocator
-{
-public:
-    virtual void* Allocate(size_t length)
-    {
-        void* ret = malloc(length);
-        memset(ret, 0, length);
-        return ret;
-    }
-    virtual void* AllocateUninitialized(size_t length)
-    {
-        return malloc(length);
-    }
-    virtual void Free(void* data, size_t length)
-    {
-        free(data);
-    }
-};
 
 class CChangesWorker
 {
@@ -674,12 +792,20 @@ public:
 
         m_nLen = read_int2(pData, nCur, nLen);
 
-        m_pData = new BYTE[m_nLen];
-        m_pDataCur = m_pData;
+        if (nVersion < 10)
+        {
+            m_pData = new BYTE[m_nLen];
+            m_pDataCur = m_pData;
+            read_base64_2(pData, nCur, nLen);
 
-        read_base64_2(pData, nCur, nLen);
-
-        delete[]pData;
+            delete[]pData;
+        }
+        else
+        {
+            m_nLen = nLen;
+            m_pData = (BYTE*)pData;
+            m_pDataCur = m_pData + m_nLen;
+        }
 
         return nVersion;
     }
@@ -911,46 +1037,147 @@ public:
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+#if 0
+class CSnapshotScript
+{
+public:
+    bool m_bIsExist;
+    v8::StartupData m_oStartupData;
+
+    CSnapshotScript(const std::wstring& sDir = L"")
+    {
+        m_bIsExist = false;
+        m_oStartupData.data = NULL;
+        m_oStartupData.raw_size = 0;
+
+        std::wstring sFile = sDir + L"/heap_snapshot.bin";
+        if (NSFile::CFileBinary::Exists(sFile))
+        {
+            m_bIsExist = true;
+
+            NSFile::CFileBinary oFile;
+            oFile.OpenFile(sFile);
+            m_oStartupData.raw_size = (int)oFile.GetFileSize();
+            m_oStartupData.data = new char[m_oStartupData.raw_size];
+
+            DWORD dwRead = 0;
+            oFile.ReadFile((BYTE*)m_oStartupData.data, (DWORD)m_oStartupData.raw_size, dwRead);
+            oFile.CloseFile();
+        }
+    }
+
+    bool Generate(const std::string& sScript)
+    {
+        m_oStartupData = {NULL, 0};
+        {
+            v8::SnapshotCreator snapshot_creator;
+            // Obtain an isolate provided by SnapshotCreator.
+            v8::Isolate* isolate = snapshot_creator.GetIsolate();
+            {
+                v8::HandleScope scope(isolate);
+                // Create a new context and optionally run some script.
+                v8::Local<v8::Context> context = v8::Context::New(isolate);
+                //v8::Context::Scope context_scope(context);
+
+                if (!RunExtraCode(isolate, context, sScript.c_str(), "<embedded>"))
+                    return false;
+
+                // Add the possibly customized context to the SnapshotCreator.
+                snapshot_creator.SetDefaultContext(context);
+            }
+            // Use the SnapshotCreator to create the snapshot blob.
+            m_oStartupData = snapshot_creator.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kClear);
+        }
+        return true;
+    }
+
+    void Save(const std::wstring& sDir)
+    {
+        if (m_oStartupData.data == NULL)
+            return;
+
+        std::wstring sFile = sDir + L"/heap_snapshot.bin";
+        NSFile::CFileBinary oFile;
+        oFile.CreateFile(sFile);
+        oFile.WriteFile((BYTE*)m_oStartupData.data, (DWORD)m_oStartupData.raw_size);
+        oFile.CloseFile();
+    }
+
+    bool RunExtraCode(v8::Isolate* isolate, v8::Local<v8::Context> context, const char* utf8_source, const char* name)
+    {
+        // Run custom script if provided.
+        v8::TryCatch try_catch(isolate);
+
+        v8::Local<v8::String> source_string;
+        if (!v8::String::NewFromUtf8(isolate, utf8_source, v8::NewStringType::kNormal).ToLocal(&source_string))
+            return false;
+
+        v8::Local<v8::String> resource_name = v8::String::NewFromUtf8(isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
+
+        v8::ScriptOrigin origin(resource_name);
+        v8::ScriptCompiler::Source source(source_string, origin);
+        v8::Local<v8::Script> script;
+
+        bool bRet = v8::ScriptCompiler::Compile(context, &source).ToLocal(&script);
+
+        if (try_catch.HasCaught())
+        {
+            std::string strCode        = to_cstringA(try_catch.Message()->GetSourceLine());
+            std::string strException   = to_cstringA(try_catch.Message()->Get());
+            return false;
+        }
+
+        script->Run();
+
+        if (try_catch.HasCaught())
+        {
+            std::string strCode        = to_cstringA(try_catch.Message()->GetSourceLine());
+            std::string strException   = to_cstringA(try_catch.Message()->Get());
+            return false;
+        }
+        return true;
+    }
+};
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 class CV8Initializer
 {
 private:
     v8::Platform* m_platform;
-    MallocArrayBufferAllocator m_oAllocator;
+    v8::ArrayBuffer::Allocator* m_pAllocator;
 
 public:
-    CV8Initializer() : m_oAllocator()
+    CV8Initializer()
     {
+        std::wstring sPrW = NSFile::GetProcessPath();
+        std::string sPrA = U_TO_UTF8(sPrW);
+
+        v8::V8::InitializeICUDefaultLocation(sPrA.c_str());
+        v8::V8::InitializeExternalStartupData(sPrA.c_str());
         m_platform = v8::platform::CreateDefaultPlatform();
         v8::V8::InitializePlatform(m_platform);
-
         v8::V8::Initialize();
-        v8::V8::InitializeICU();
-
-#ifndef NEW_V8_ENGINE
-        v8::V8::SetArrayBufferAllocator(&m_oAllocator);
-#endif
     }
     ~CV8Initializer()
     {
         v8::V8::Dispose();
         v8::V8::ShutdownPlatform();
         delete m_platform;
+        delete m_pAllocator;
     }
 
     v8::ArrayBuffer::Allocator* getAllocator()
     {
-        return &m_oAllocator;
+        return m_pAllocator;
     }
 
     v8::Isolate* CreateNew()
     {
-#ifdef NEW_V8_ENGINE
         v8::Isolate::CreateParams create_params;
-        create_params.array_buffer_allocator = &m_oAllocator;
+        m_pAllocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+        create_params.array_buffer_allocator = m_pAllocator;
         return v8::Isolate::New(create_params);
-#else
-        return v8::Isolate::New();
-#endif
     }
 };
 

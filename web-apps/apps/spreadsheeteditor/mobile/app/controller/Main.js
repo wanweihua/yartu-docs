@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Spreadsheet Editor
  *
  *  Created by Maxim Kadushkin on 11/15/16
- *  Copyright (c) 2016 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -174,7 +174,7 @@ define([
                     Common.Gateway.on('init',           _.bind(me.loadConfig, me));
                     Common.Gateway.on('showmessage',    _.bind(me.onExternalMessage, me));
                     Common.Gateway.on('opendocument',   _.bind(me.loadDocument, me));
-                    Common.Gateway.ready();
+                    Common.Gateway.appReady();
                 }
             },
 
@@ -220,7 +220,8 @@ define([
                 if ( data.doc ) {
                     this.permissions = $.extend(this.permissions, data.doc.permissions);
 
-                    var _user = new Asc.asc_CUserInfo();
+                    var _permissions = $.extend({}, data.doc.permissions),
+                        _user = new Asc.asc_CUserInfo();
                     _user.put_Id(this.appOptions.user.id);
                     _user.put_FullName(this.appOptions.user.fullname);
 
@@ -234,9 +235,11 @@ define([
                     docInfo.put_UserInfo(_user);
                     docInfo.put_CallbackUrl(this.editorConfig.callbackUrl);
                     docInfo.put_Token(data.doc.token);
+                    docInfo.put_Permissions(_permissions);
                 }
 
                 this.api.asc_registerCallback('asc_onGetEditorPermissions', _.bind(this.onEditorPermissions, this));
+                this.api.asc_registerCallback('asc_onLicenseChanged',       _.bind(this.onLicenseChanged, this));
                 this.api.asc_setDocInfo(docInfo);
                 this.api.asc_getEditorPermissions(this.editorConfig.licenseUrl, this.editorConfig.customerId);
 
@@ -437,6 +440,12 @@ define([
                         title   = me.loadingDocumentTitleText;
                         text    = me.loadingDocumentTextText;
                         break;
+                    default:
+                        if (typeof action.id == 'string'){
+                            title   = action.id;
+                            text    = action.id;
+                        }
+                        break;
                 }
 
                 if (action.type == Asc.c_oAscAsyncActionType.BlockInteraction) {
@@ -454,6 +463,11 @@ define([
             onDocumentContentReady: function() {
                 if (this._isDocReady)
                     return;
+
+                Common.Gateway.documentReady();
+
+                if (this._state.openDlg)
+                    uiApp.closeModal(this._state.openDlg);
 
                 var me = this,
                     value;
@@ -527,9 +541,33 @@ define([
                     mode: me.appOptions.isEdit ? 'edit' : 'view'
                 });
 
+                me.applyLicense();
 
+                $('.view-main').on('click', function (e) {
+                    uiApp.closeModal('.document-menu.modal-in');
+                })
+            },
+
+            onLicenseChanged: function(params) {
+                if (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) return;
+
+                var licType = params.asc_getLicenseType();
+                if (licType !== undefined && (licType===Asc.c_oLicenseResult.Connections || licType===Asc.c_oLicenseResult.UsersCount) && this.appOptions.canEdit && this.editorConfig.mode !== 'view') {
+                    this._state.licenseWarning = (licType===Asc.c_oLicenseResult.Connections) ? this.warnNoLicense : this.warnNoLicenseUsers;
+                }
+
+                if (this._isDocReady && this._state.licenseWarning)
+                    this.applyLicense();
+            },
+
+            applyLicense: function() {
+                var me = this;
                 if (me._state.licenseWarning) {
-                    value = Common.localStorage.getItem("sse-license-warning");
+                    SSE.getController('Toolbar').activateViewControls();
+                    SSE.getController('Toolbar').deactivateEditControls();
+                    Common.NotificationCenter.trigger('api:disconnect');
+
+                    var value = Common.localStorage.getItem("sse-license-warning");
                     value = (value!==null) ? parseInt(value) : 0;
                     var now = (new Date).getTime();
 
@@ -537,13 +575,13 @@ define([
                         Common.localStorage.setItem("sse-license-warning", now);
                         uiApp.modal({
                             title: me.textNoLicenseTitle,
-                            text : me.warnNoLicense,
+                            text : me._state.licenseWarning,
                             buttons: [
                                 {
                                     text: me.textBuyNow,
                                     bold: true,
                                     onClick: function() {
-                                        window.open('http://www.onlyoffice.com/enterprise-edition.aspx', "_blank");
+                                        window.open('https://www.onlyoffice.com', "_blank");
                                     }
                                 },
                                 {
@@ -552,14 +590,11 @@ define([
                                         window.open('mailto:sales@onlyoffice.com', "_blank");
                                     }
                                 }
-                            ],
+                            ]
                         });
                     }
-                }
-
-                $('.view-main').on('click', function (e) {
-                    uiApp.closeModal('.document-menu.modal-in');
-                })
+                } else
+                    SSE.getController('Toolbar').activateControls();
             },
 
             onOpenDocument: function(progress) {
@@ -616,13 +651,11 @@ define([
                 me.appOptions.canDownload    = !me.appOptions.nativeApp && (me.permissions.download !== false);
                 me.appOptions.canPrint       = (me.permissions.print !== false);
 
-                me._state.licenseWarning = !(me.appOptions.isEditDiagram || me.appOptions.isEditMailMerge) && (licType===Asc.c_oLicenseResult.Connections) && me.appOptions.canEdit && me.editorConfig.mode !== 'view';
-
                 me.applyModeCommonElements();
                 me.applyModeEditorElements();
 
                 me.api.asc_setViewMode(!me.appOptions.isEdit);
-                (me.appOptions.isEditMailMerge || me.appOptions.isEditDiagram) ? me.api.asc_LoadEmptyDocument() : me.api.asc_LoadDocument();
+                me.api.asc_LoadDocument();
 
                 if (!me.appOptions.isEdit) {
                     me.hidePreloader();
@@ -792,6 +825,10 @@ define([
 
                     case Asc.c_oAscError.ID.DataRangeError:
                         config.msg = this.errorDataRange;
+                        break;
+
+                    case Asc.c_oAscError.ID.MaxDataPointsError:
+                        config.msg = this.errorMaxPoints;
                         break;
 
                     case Asc.c_oAscError.ID.FrmlOperandExpected:
@@ -1098,8 +1135,10 @@ define([
             },
 
             onAdvancedOptions: function(advOptions) {
+                if (this._state.openDlg) return;
+
                 var type = advOptions.asc_getOptionId(),
-                    me = this, modal;
+                    me = this;
                 if (type == Asc.c_oAscAdvancedOptionsID.CSV) {
                     var picker,
                         pages = [],
@@ -1114,7 +1153,7 @@ define([
 
                     me.onLongActionEnd(Asc.c_oAscAsyncActionType.BlockInteraction, LoadingDocument);
 
-                    modal = uiApp.modal({
+                    me._state.openDlg = uiApp.modal({
                         title: me.advCSVOptions,
                         text: '',
                         afterText:
@@ -1140,6 +1179,7 @@ define([
                                             me.onLongActionBegin(Asc.c_oAscAsyncActionType.BlockInteraction, LoadingDocument);
                                         }
                                     }
+                                    me._state.openDlg = null;
                                 }
                             }
                         ]
@@ -1168,11 +1208,15 @@ define([
                     });
 
                     // Vertical align
-                    $$(modal).css({
-                        marginTop: - Math.round($$(modal).outerHeight() / 2) + 'px'
+                    $$(me._state.openDlg).css({
+                        marginTop: - Math.round($$(me._state.openDlg).outerHeight() / 2) + 'px'
                     });
                 } else if (type == Asc.c_oAscAdvancedOptionsID.DRM) {
-                    modal = uiApp.modal({
+                    $(me.loadMask).hasClass('modal-in') && uiApp.closeModal(me.loadMask);
+
+                    me.onLongActionEnd(Asc.c_oAscAsyncActionType.BlockInteraction, LoadingDocument);
+
+                    me._state.openDlg = uiApp.modal({
                         title: me.advDRMOptions,
                         text: me.advDRMEnterPassword,
                         afterText: '<div class="input-field"><input type="password" name="modal-password" placeholder="' + me.advDRMPassword + '" class="modal-text-input"></div>',
@@ -1181,15 +1225,21 @@ define([
                                 text: 'OK',
                                 bold: true,
                                 onClick: function () {
-                                    var password = $(modal).find('.modal-text-input[name="modal-password"]').val();
+                                    var password = $(me._state.openDlg).find('.modal-text-input[name="modal-password"]').val();
                                     me.api.asc_setAdvancedOptions(type, new Asc.asc_CDRMAdvancedOptions(password));
 
                                     if (!me._isDocReady) {
                                         me.onLongActionBegin(Asc.c_oAscAsyncActionType.BlockInteraction, LoadingDocument);
                                     }
+                                    me._state.openDlg = null;
                                 }
                             }
                         ]
+                    });
+
+                    // Vertical align
+                    $$(me._state.openDlg).css({
+                        marginTop: - Math.round($$(me._state.openDlg).outerHeight() / 2) + 'px'
                     });
                 }
             },
@@ -1344,7 +1394,7 @@ define([
             txtErrorLoadHistory: 'Loading history failed',
             textBuyNow: 'Visit website',
             textNoLicenseTitle: 'ONLYOFFICE open source version',
-            warnNoLicense: 'You are using an open source version of ONLYOFFICE. The version has limitations for concurrent connections to the document server (20 connections at a time).<br>If you need more please consider purchasing a commercial license.',
+            warnNoLicense: 'This version of ONLYOFFICE Editors has certain limitations for concurrent connections to the document server.<br>If you need more please consider upgrading your current license or purchasing a commercial one.',
             textContactUs: 'Contact sales',
             errorViewerDisconnect: 'Connection is lost. You can still view the document,<br>but will not be able to download until the connection is restored.',
             warnLicenseExp: 'Your license has expired.<br>Please update your license and refresh the page.',
@@ -1396,7 +1446,9 @@ define([
             txtStyle_Total: 'Total',
             txtStyle_Currency: 'Currency',
             txtStyle_Percent: 'Percent',
-            txtStyle_Comma: 'Comma'
+            txtStyle_Comma: 'Comma',
+            warnNoLicenseUsers: 'This version of ONLYOFFICE Editors has certain limitations for concurrent users.<br>If you need more please consider upgrading your current license or purchasing a commercial one.',
+            errorMaxPoints: 'The maximum number of points in series per chart is 4096.'
         }
     })(), SSE.Controllers.Main || {}))
 });

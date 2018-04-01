@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -41,6 +41,8 @@ namespace NSBinPptxRW
 
 	const BYTE g_nodeAttributeStart = 0xFA;
 	const BYTE g_nodeAttributeEnd	= 0xFB;
+
+	const int g_nFormatVersionNoBase64 = 10;
 
 	namespace NSSerFormat
 	{

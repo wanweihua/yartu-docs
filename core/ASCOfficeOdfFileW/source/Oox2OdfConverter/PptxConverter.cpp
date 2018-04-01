@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -42,6 +42,8 @@
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Timing/Seq.h"
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Timing/CTn.h"
 
+#include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/CxnSp.h"
+
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/EmptyTransition.h"
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/OrientationTransition.h"
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/EightDirectionTransition.h"
@@ -51,8 +53,6 @@
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/WheelTransition.h"
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/SplitTransition.h"
 #include "../../../ASCOfficePPTXFile/PPTXFormat/Logic/Transitions/ZoomTransition.h"
-
-#include <boost/lexical_cast.hpp>
 
 #include "../OdfFormat/odp_conversion_context.h"
 
@@ -88,7 +88,7 @@ PptxConverter::PptxConverter(const std::wstring & path, const ProgressCallback* 
 
 	const OOX::CPath oox_path(std::wstring(path.c_str()));
 
-	pptx_document = new PPTX::Folder();
+	pptx_document = new PPTX::Document();
 	if (!pptx_document->isValid(oox_path.GetPath())) // true ???
 	{
 		delete pptx_document;
@@ -449,25 +449,21 @@ void PptxConverter::convert(PPTX::NotesSlide *oox_notes)
 
 	PPTX::Theme*			old_theme	= current_theme;
 	PPTX::Logic::ClrMap*	old_clrMap	= current_clrMap;
-
-	smart_ptr<PPTX::NotesMaster> notes_master;
-	if (!presentation->notesMasterIdLst.empty())
-	{
-		std::wstring rId = presentation->notesMasterIdLst[0].rid.get();
-		notes_master = ((*presentation)[rId]).smart_dynamic_cast<PPTX::NotesMaster>();
-	}	
+	
 	odp_context->start_note();
 	
-	if (notes_master.IsInit())
+	if (oox_notes->master_.IsInit())
 	{
-		current_theme	= notes_master->theme_.operator->();
-		current_clrMap	= &notes_master->clrMap;
+		current_theme	= oox_notes->master_->theme_.operator->();
+		current_clrMap	= &oox_notes->master_->clrMap;
 	}
 
 	current_slide	= dynamic_cast<OOX::IFileContainer*>(oox_notes);
 
 	if (oox_notes->clrMapOvr.IsInit() && oox_notes->clrMapOvr->overrideClrMapping.IsInit())
+	{
 		current_clrMap	= oox_notes->clrMapOvr->overrideClrMapping.GetPointer();
+	}
 	
 	convert_slide(&oox_notes->cSld, NULL, true, true, Notes);
 	
@@ -931,8 +927,9 @@ void PptxConverter::convert(PPTX::Logic::Table *oox_table)
 }
 void PptxConverter::convert(PPTX::Logic::TableRow *oox_table_row)
 {
-	odp_context->slide_context()->start_table_row(oox_table_row->Height.IsInit());
 	if (!oox_table_row) return;
+
+	odp_context->slide_context()->start_table_row(oox_table_row->Height.IsInit());
 
 	if (oox_table_row->Height.IsInit())
 	{
@@ -1042,10 +1039,10 @@ bool PptxConverter::convert(PPTX::Logic::TableCellProperties *oox_table_cell_pr,
 		//если нет убрать, если да - добавить
 		if (border_inside_h)
 		{
-			int del_border = border_inside_h->find(L"none");
+			bool del_border = (std::wstring::npos != border_inside_h->find(L"none"));
 			if (row != 1)
 			{
-				if (cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_top_ && del_border>=0)
+				if (cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_top_ && del_border)
 					cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_top_ = boost::none;
 
 				else if (border_inside_h && del_border<0)
@@ -1062,10 +1059,10 @@ bool PptxConverter::convert(PPTX::Logic::TableCellProperties *oox_table_cell_pr,
 		}
 		if (border_inside_v)
 		{
-			int del_border = border_inside_v->find(L"none");
+			bool del_border = (std::wstring::npos != border_inside_v->find(L"none"));
 			if (col != 1)
 			{
-				if (cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_left_ && del_border>=0)
+				if (cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_left_ && del_border)
 					cell_properties->style_table_cell_properties_attlist_.common_border_attlist_.fo_border_left_ = boost::none;
 
 				else if (border_inside_h && del_border<0)
@@ -1240,6 +1237,8 @@ bool PptxConverter::convert(PPTX::Logic::TableCellProperties *oox_table_cell_pr)
 	{
 		switch(oox_table_cell_pr->Vert->GetBYTECode())
 		{
+		default:
+			break;
 		//case SimpleTypes::verticaljcBoth   : //??????
 		//	odf_para_props->content_.style_vertical_align_ = odf_types::vertical_align(odf_types::vertical_align::Justify); break;
 		//case SimpleTypes::verticaljcBottom :
@@ -1332,8 +1331,17 @@ void PptxConverter::convert_slide(PPTX::Logic::CSld *oox_slide, PPTX::Logic::TxS
 	if (current_theme && current_clrMap)
 		current_theme->SetColorMap(*current_clrMap);
 
+	std::wstring page_name;
 	if (oox_slide->attrName.IsInit())
-		odp_context->current_slide().set_page_name(oox_slide->attrName.get());
+		page_name = oox_slide->attrName.get();
+	
+
+	if (page_name.empty())
+	{
+		if (type == Slide)
+			page_name = L"Slide_" + std::to_wstring(odp_context->get_pages_count());
+	}
+	odp_context->current_slide().set_page_name(page_name);
 
 	if (type != Notes && type != NotesMaster)
 	{
@@ -1343,47 +1351,66 @@ void PptxConverter::convert_slide(PPTX::Logic::CSld *oox_slide, PPTX::Logic::TxS
 	for (size_t i = 0 ; i < oox_slide->spTree.SpTreeElems.size(); i++)
 	{
 		smart_ptr<PPTX::WrapperWritingElement>	pElem = oox_slide->spTree.SpTreeElems[i].GetElem();
-		smart_ptr<PPTX::Logic::Shape>			pShape = pElem.smart_dynamic_cast<PPTX::Logic::Shape>();
 		
+		smart_ptr<PPTX::Logic::Shape>			pShape	= pElem.smart_dynamic_cast<PPTX::Logic::Shape>();
+		smart_ptr<PPTX::Logic::Pic>				pPic	= pElem.smart_dynamic_cast<PPTX::Logic::Pic>();
+
 		odf_context()->drawing_context()->start_drawing();
+
+		PPTX::Logic::NvPr *pNvPr = NULL;
 		
-		if (pShape.IsInit())
+		if (pShape.IsInit())	pNvPr = &pShape->nvSpPr.nvPr;
+		if (pPic.IsInit())		pNvPr = &pPic->nvPicPr.nvPr;
+
+		bool bConvert = false;
+
+		if ((pNvPr) && (pNvPr->ph.is_init()))
 		{
-			if (pShape->nvSpPr.nvPr.ph.is_init())
+			if (type == Notes || type == NotesMaster)
 			{
-				if (bFillUp)
-					pShape->FillLevelUp();
-				
-				if (pShape->nvSpPr.nvPr.ph->type.IsInit())
-				{
-					int ph_type = pShape->nvSpPr.nvPr.ph->type->GetBYTECode();
+				if (pShape.IsInit())	pShape->nvSpPr.nvPr.ph->idx.reset();
+				if (pPic.IsInit())		pPic->nvPicPr.nvPr.ph->idx.reset();
+			}				
+			if (bFillUp)
+			{
+				if (pShape.IsInit())	pShape->FillLevelUp();
+				if (pPic.IsInit())		pPic->FillLevelUp();
+			}
+			
+			if (pNvPr->ph->type.IsInit())
+			{
+				int ph_type = pNvPr->ph->type->GetBYTECode();
 
-					if (type == Layout && (ph_type == 5 || ph_type == 6 || ph_type == 7 || ph_type == 12))
-						continue;
-
-					odf_context()->drawing_context()->set_placeholder_type(ph_type);
-				}
-				else
-					odf_context()->drawing_context()->set_placeholder_type(0);
-
-				if (pShape->nvSpPr.nvPr.ph->idx.IsInit())
-					odf_context()->drawing_context()->set_placeholder_id(pShape->nvSpPr.nvPr.ph->idx.get());
-
-				if (!bPlaceholders)
+				if (type == Layout && (ph_type == 5 || ph_type == 6 || ph_type == 7 || ph_type == 12))
 					continue;
 
-				PPTX::Logic::TextListStyle * listMasterStyle = NULL;
+				odf_context()->drawing_context()->set_placeholder_type(ph_type);
+			}
+			else
+				odf_context()->drawing_context()->set_placeholder_type(0);
+
+			if (pNvPr->ph->idx.IsInit())
+				odf_context()->drawing_context()->set_placeholder_id(pNvPr->ph->idx.get());
+
+			if (!bPlaceholders)
+				continue;
+
+			PPTX::Logic::TextListStyle * listMasterStyle = NULL;
+			
+			if (txStyles)
+			{
+				std::wstring type = pNvPr->ph->type.get_value_or(_T("body"));
 				
-				if (txStyles)
-				{
-					std::wstring type = pShape->nvSpPr.nvPr.ph->type.get_value_or(_T("body"));
-					if ((type == L"title") || (type == L"ctrTitle"))
-						listMasterStyle = txStyles->titleStyle.GetPointer();
-					else if ((type == L"body") || (type == L"subTitle") || (type == L"obj"))
-						listMasterStyle = txStyles->bodyStyle.GetPointer();
-					else if (type != L"")
-						listMasterStyle = txStyles->otherStyle.GetPointer();
-				}
+				if ((type == L"title") || (type == L"ctrTitle"))
+					listMasterStyle = txStyles->titleStyle.GetPointer();
+				else if ((type == L"body") || (type == L"subTitle") || (type == L"obj"))
+					listMasterStyle = txStyles->bodyStyle.GetPointer();
+				else if (type != L"")
+					listMasterStyle = txStyles->otherStyle.GetPointer();
+			}
+
+			if (pShape.IsInit())
+			{
 				PPTX::Logic::Shape update_shape;
 				
 				if (listMasterStyle)
@@ -1402,24 +1429,36 @@ void PptxConverter::convert_slide(PPTX::Logic::CSld *oox_slide, PPTX::Logic::TxS
 				pShape->Merge(update_shape);
 				OoxConverter::convert(&update_shape);
 			}
-			else if (pShape->txBody.IsInit() && presentation->defaultTextStyle.IsInit())
-			{//default text style with master clrScheme
-				PPTX::Logic::Shape update_shape;
+			if (pPic.IsInit())
+			{
+				PPTX::Logic::Pic update_shape;
 				
-				update_shape.txBody = new PPTX::Logic::TxBody();
-
-				presentation->defaultTextStyle->Merge(update_shape.txBody->lstStyle);
-
-				pShape->Merge(update_shape);
+				pPic->Merge(update_shape);
 				OoxConverter::convert(&update_shape);
 			}
-			else
-				OoxConverter::convert(pShape.operator->());
+			bConvert = true;
 		}
-		else 
+		
+		if (!bConvert && (pShape.IsInit()) && (pShape->txBody.IsInit() && presentation->defaultTextStyle.IsInit()))
+		{//default text style with master clrScheme
+			PPTX::Logic::Shape update_shape;
+			
+			update_shape.txBody = new PPTX::Logic::TxBody();
+
+			presentation->defaultTextStyle->Merge(update_shape.txBody->lstStyle);
+
+			pShape->Merge(update_shape);
+			OoxConverter::convert(&update_shape);
+
+			bConvert = true;
+		}
+
+
+		if (!bConvert)
 		{
 			OoxConverter::convert(pElem.operator->());
 		}
+
 		odf_context()->drawing_context()->end_drawing();
 	}
 	convert(oox_slide->controls.GetPointer());
@@ -1436,6 +1475,8 @@ void PptxConverter::convert_layout(PPTX::Logic::CSld *oox_slide)
 		
 		if (pShape.IsInit() && pShape->nvSpPr.nvPr.ph.is_init())
 		{
+			pShape->FillLevelUp();
+			
 			int type = 0;
 			if (pShape->nvSpPr.nvPr.ph->type.IsInit())
 				type = pShape->nvSpPr.nvPr.ph->type->GetBYTECode();

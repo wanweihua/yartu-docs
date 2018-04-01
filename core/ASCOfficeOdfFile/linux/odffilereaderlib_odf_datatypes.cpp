@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -119,3 +119,11 @@
 #include "../src/odf/datatypes/wrapoption.cpp"
 #include "../src/odf/datatypes/writingmode.cpp"
 #include "../src/odf/datatypes/xlink.cpp"
+#include "../src/odf/datatypes/chartlabelposition.cpp"
+#include "../src/odf/datatypes/grandtotal.cpp"
+#include "../src/odf/datatypes/membertype.cpp"
+#include "../src/odf/datatypes/tabletype.cpp"
+#include "../src/odf/datatypes/tableorientation.cpp"
+#include "../src/odf/datatypes/tablefunction.cpp"
+#include "../src/odf/datatypes/tableorder.cpp"
+#include "../src/odf/datatypes/dategroup.cpp"

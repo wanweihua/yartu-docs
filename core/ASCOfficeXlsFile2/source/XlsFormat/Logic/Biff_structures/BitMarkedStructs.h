@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -78,17 +78,12 @@ typedef unsigned char	FillPattern;
 typedef BiffAttributeSimple<unsigned char>		BIFF_BYTE;
 typedef BiffAttributeSimple<_UINT16>			BIFF_WORD;
 typedef BiffAttributeSimple<_UINT32>			BIFF_DWORD;
-typedef BiffAttributeSimple<_INT32>				BIFF_LONG;
-typedef BiffAttributeSimple<double>				BIFF_DOUBLE;
-typedef BiffAttributeSimple<std::wstring>		BIFF_BSTR;
-
 
 struct PtgAttrSpaceType : public BiffStructure_NoVtbl
 {
 	unsigned char type;
 	unsigned char cch;
 };
-
 
 struct RkNumber : public BiffStructure_NoVtbl
 {
@@ -260,22 +255,6 @@ public:
 	unsigned char ifmt;
 };
 
-
-class SharedFeatureType : public BiffAttributeSimple<_UINT16>
-{
-public:
-
-	enum
-	{
-		ISFPROTECTION = 0x0002, // Specifies the enhanced protection type. 
-		ISFFEC2 = 0x0003, // Specifies the ignored formula errors type.
-		ISFFACTOID = 0x0004, // Specifies the smart tag type.
-		ISFLIST = 0x0005, // Specifies the list type.
-	};
-
-};
-
-
 struct FFErrorCheck : public BiffStructure_NoVtbl
 {
 	unsigned int ffecCalcError : 1;
@@ -354,21 +333,7 @@ struct CFrtId : public BiffStructure_NoVtbl
 	unsigned short rtLast;
 };
 
-
 } // namespace XLS
-
-
-namespace CRYPTO
-{
-
-struct Version : public XLS::BiffStructure_NoVtbl
-{
-	unsigned short vMajor;
-	unsigned short vMinor;
-};
-
-
-} // namespace CRYPTO
 
 #pragma pack()
 

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -97,79 +97,114 @@ CompoundFile::CompoundFile(const std::wstring & file_path, const ReadWriteMode m
 	Open(file_path, mode);
 }
 
+void CompoundFile::copy_stream(std::wstring streamNameOpen, std::wstring streamNameCreate, POLE::Storage * storageOut, bool bWithRoot)
+{
+	POLE::Stream *stream = new POLE::Stream(storage_, streamNameOpen);
+	if (!stream) return;
 
-// Opens "Workbook" stream and returns the only reference
+	stream->seek(0);
+	POLE::uint64 size_stream = stream->size();
+
+	if (bWithRoot == false)
+	{
+		int pos = streamNameCreate.find(L"/");
+		if (pos >= 0)
+			streamNameCreate = streamNameCreate.substr(pos + 1);
+	}
+	
+	POLE::Stream *streamNew = new POLE::Stream(storageOut, streamNameCreate, true, size_stream);
+	if (!streamNew) return;
+
+	unsigned char buffer[4096];
+	int bytesRead = 0;
+
+	while(true)
+	{
+		int bytesToRead = size_stream - bytesRead;
+		if (bytesToRead <= 0)
+			break;
+		if (bytesToRead > 4096)
+			bytesToRead = 4096;
+	
+		stream->read(buffer, bytesToRead);
+		streamNew->write(buffer, bytesToRead);
+		
+		bytesRead += bytesToRead;
+	}
+	//unsigned char* data_stream = new unsigned char[size_stream + 64];
+	//memset(data_stream, 0, size_stream + 64);
+	//if (data_stream)
+	//{
+	//	stream->read(data_stream, size_stream);
+
+	//	streamNew->write(data_stream, size_stream);
+
+	//	delete []data_stream;
+	//	data_stream = NULL;
+	//}
+
+	streamNew->flush();
+			
+	delete streamNew;
+	delete stream;
+}
+
+void CompoundFile::copy( int indent, std::wstring path, POLE::Storage * storageOut, bool bWithRoot, bool bSortFiles)
+{
+    std::list<std::wstring> entries, entries_files, entries_dir;
+    
+	entries = storage_->entries_with_prefix( path );
+	
+	for( std::list<std::wstring>::iterator it = entries.begin(); it != entries.end(); ++it )
+	{
+        std::wstring fullname = path + *it;
+       
+        if ((it->at(0) >= 32) && (storage_->isDirectory( fullname ) ))
+		{
+			entries_dir.push_back(*it);
+		}
+		else
+		{
+			entries_files.push_front(*it);
+		}
+	}
+
+	for( std::list<std::wstring>::iterator it = entries_dir.begin(); it != entries_dir.end(); ++it )
+	{
+        std::wstring fullname = path + *it;
+       
+		copy( indent + 1, fullname + L"/", storageOut, bWithRoot, bSortFiles );
+    }
+
+	//entries_files.sort();
+
+	for( std::list<std::wstring>::iterator it = entries_files.begin(); it != entries_files.end(); ++it )
+	{
+		std::wstring createName = path + *it;
+		std::wstring openName;
+		
+		if (it->at(0) < 32) openName = path + it->substr(1);
+		else				openName = path + *it;
+	   
+		copy_stream(openName, createName, storageOut, bWithRoot);
+	}
+}
 CFStreamPtr CompoundFile::getWorkbookStream()
 {
-	CFStreamPtr stream = getNamedStream("Workbook");
+	CFStreamPtr stream = getNamedStream(L"Workbook");
 
 	if (stream == NULL) 
-		stream = getNamedStream("WORKBOOK"); //6447323.xls
+		stream = getNamedStream(L"WORKBOOK"); //6447323.xls
 	if (stream == NULL) 
-		stream = getNamedStream("Book");
+		stream = getNamedStream(L"Book");
 	if (stream == NULL) 
-		stream = getNamedStream("BOOK");//file(6).xls
+		stream = getNamedStream(L"BOOK");//file(6).xls
 	if (stream == NULL) 
-		stream = getNamedStream("book");
+		stream = getNamedStream(L"book");
 	return stream;
 }
 
-
-// Creates "Workbook" stream and returns the only reference
-CFStreamPtr CompoundFile::createWorkbookStream()
-{
-	return createNamedStream("Workbook");
-}
-
-void CompoundFile::closeWorkbookStream()
-{
-	return closeNamedStream("Workbook");
-}
-
-
-// Opens "SummaryInformation" stream and returns the only reference
-CFStreamPtr CompoundFile::getSummaryInformationStream()
-{
-	return getNamedStream("SummaryInformation");
-}
-
-
-// Creates "SummaryInformation" stream and returns the only reference
-CFStreamPtr CompoundFile::createSummaryInformationStream()
-{
-	return createNamedStream("SummaryInformation");
-}
-
-
-// Closes "SummaryInformation" stream
-void CompoundFile::closeSummaryInformationStream()
-{
-	return closeNamedStream("SummaryInformation");
-}
-
-
-// Opens "SummaryInformation" stream and returns the only reference
-CFStreamPtr CompoundFile::getDocumentSummaryInformationStream()
-{
-	return getNamedStream("DocumentSummaryInformation");
-}
-
-
-// Creates "SummaryInformation" stream and returns the only reference
-CFStreamPtr CompoundFile::createDocumentSummaryInformationStream()
-{
-	return createNamedStream("DocumentSummaryInformation");
-}
-
-
-// Closes "SummaryInformation" stream
-void CompoundFile::closeDocumentSummaryInformationStream()
-{
-	return closeNamedStream("DocumentSummaryInformation");
-}
-
-
-CFStreamPtr CompoundFile::getNamedStream(const std::string& name)
+CFStreamPtr CompoundFile::getNamedStream(const std::wstring& name)
 {
 	if(!streams[name])
 	{
@@ -180,8 +215,7 @@ CFStreamPtr CompoundFile::getNamedStream(const std::string& name)
 	return streams[name];
 }
 
-
-CFStreamPtr CompoundFile::createNamedStream(const std::string& name)
+CFStreamPtr CompoundFile::createNamedStream(const std::wstring& name)
 {
 	if(!streams[name])
 	{
@@ -193,14 +227,14 @@ CFStreamPtr CompoundFile::createNamedStream(const std::string& name)
 }
 
 
-void CompoundFile::closeNamedStream(const std::string& name)
+void CompoundFile::closeNamedStream(const std::wstring& name)
 {
 	streams[name].reset();
 }
 
 
 // Opens a stream in the storage (shall be called not more than once per stream)
-POLE::Stream* CompoundFile::openStream(const std::string & stream_name)
+POLE::Stream* CompoundFile::openStream(const std::wstring & stream_name)
 {
 	if (storage_ == NULL) return NULL;
 
@@ -216,7 +250,7 @@ POLE::Stream* CompoundFile::openStream(const std::string & stream_name)
 
 
 // Creates a new stream in the storage
-POLE::Stream* CompoundFile::createStream(const std::string & stream_name)
+POLE::Stream* CompoundFile::createStream(const std::wstring & stream_name)
 {
 	if (storage_ == NULL) return NULL;
 

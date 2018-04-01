@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -38,7 +38,9 @@
 namespace cpdoccore { 
 namespace odf_reader {
 
-odf_document::odf_document(const std::wstring & Folder, const ProgressCallback* CallBack) : impl_(new Impl(Folder,CallBack))
+odf_document::odf_document(const std::wstring & Folder, const ProgressCallback* CallBack) : impl_(new Impl(Folder, CallBack))
+{}
+odf_document::odf_document( xml::sax * Reader) : impl_(new Impl(Reader))
 {}
 
 odf_document::~odf_document()
@@ -68,7 +70,7 @@ const std::wstring & odf_document::get_folder() const
     return impl_->get_folder();
 }
 
-long odf_document::get_office_mime_type() 
+int odf_document::get_office_mime_type() 
 {
 	return impl_->get_office_mime_type();
 }

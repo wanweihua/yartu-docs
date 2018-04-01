@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,7 +37,7 @@
 
 #include "FileType.h"
 #include "WritingElement.h"
-#include <map>
+#include <boost/unordered_map.hpp>
 
 
 namespace OOX
@@ -49,43 +49,45 @@ namespace OOX
 		public:
 			CExtensionTable()
 			{
-                m_mTable.insert( std::pair<std::wstring,std::wstring>( _T("bmp"),  _T("image/bmp")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("gif"),  _T("image/gif")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("png"),  _T("image/png")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("tif"),  _T("image/tiff")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("tiff"), _T("image/tiff")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("jpeg"), _T("image/jpeg")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("jpg"),  _T("image/jpeg")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("jpe"),  _T("image/jpeg")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("jfif"), _T("image/jpeg")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("rels"), _T("application/vnd.openxmlformats-package.relationships+xml")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("bin"),  _T("application/vnd.openxmlformats-officedocument.oleObject")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("xml"),  _T("application/xml")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("emf"),  _T("image/x-emf")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("emz"),  _T("image/x-emz")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("wmf"),  _T("image/x-wmf")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("svm"),  _T("image/svm")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("wav"),  _T("audio/wav")));
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("wma"),  _T("audio/x-wma")));    
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("m4a"),  _T("audio/unknown"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("mp3"),  _T("audio/mpeg"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("mp4"),  _T("video/unknown"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("mov"),  _T("video/unknown"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("avi"),  _T("video/avi"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("wmv"),  _T("video/x-wmv"))); 
-				m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("xls"),  _T("application/vnd.ms-excel")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("xlsm"), _T("application/vnd.ms-excel.sheet.macroEnabled.12")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("xlsb"), _T("application/vnd.ms-excel.sheet.binary.macroEnabled.12")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("xlsx"), _T("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("ppt"),  _T("application/vnd.ms-powerpoint")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("pptm"), _T("application/vnd.ms-powerpoint.presentation.macroEnabled.12")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("pptx"), _T("application/vnd.openxmlformats-officedocument.presentationml.presentation")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("sldm"), _T("application/vnd.ms-powerpoint.slide.macroEnabled.12")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("sldx"), _T("application/vnd.openxmlformats-officedocument.presentationml.slide")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("doc"),  _T("application/msword")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("docm"), _T("aapplication/vnd.ms-word.document.macroEnabled.12")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("docx"), _T("application/vnd.openxmlformats-officedocument.wordprocessingml.document")));
-                m_mTable.insert( std::pair<std::wstring,std::wstring>(  _T("vml"),  _T("application/vnd.openxmlformats-officedocument.vmlDrawing")));
+                m_mTable.insert( std::make_pair( _T("bmp"),  _T("image/bmp")));
+                m_mTable.insert( std::make_pair(  _T("gif"),  _T("image/gif")));
+                m_mTable.insert( std::make_pair(  _T("png"),  _T("image/png")));
+                m_mTable.insert( std::make_pair(  _T("tif"),  _T("image/tiff")));
+                m_mTable.insert( std::make_pair(  _T("tiff"), _T("image/tiff")));
+                m_mTable.insert( std::make_pair(  _T("jpeg"), _T("image/jpeg")));
+                m_mTable.insert( std::make_pair(  _T("jpg"),  _T("image/jpeg")));
+                m_mTable.insert( std::make_pair(  _T("jpe"),  _T("image/jpeg")));
+                m_mTable.insert( std::make_pair(  _T("jfif"), _T("image/jpeg")));
+                m_mTable.insert( std::make_pair(  _T("rels"), _T("application/vnd.openxmlformats-package.relationships+xml")));
+                m_mTable.insert( std::make_pair(  _T("bin"),  _T("application/vnd.openxmlformats-officedocument.oleObject")));
+                m_mTable.insert( std::make_pair(  _T("xml"),  _T("application/xml")));
+                m_mTable.insert( std::make_pair(  _T("emf"),  _T("image/x-emf")));
+                m_mTable.insert( std::make_pair(  _T("emz"),  _T("image/x-emz")));
+                m_mTable.insert( std::make_pair(  _T("wmf"),  _T("image/x-wmf")));
+                m_mTable.insert( std::make_pair(  _T("svm"),  _T("image/svm")));
+                m_mTable.insert( std::make_pair(  _T("wav"),  _T("audio/wav")));
+				m_mTable.insert( std::make_pair(  _T("wma"),  _T("audio/x-wma")));    
+				m_mTable.insert( std::make_pair(  _T("m4a"),  _T("audio/unknown"))); 
+				m_mTable.insert( std::make_pair(  _T("mp3"),  _T("audio/mpeg"))); 
+				m_mTable.insert( std::make_pair(  _T("mp4"),  _T("video/unknown"))); 
+				m_mTable.insert( std::make_pair(  _T("mov"),  _T("video/unknown"))); 
+				m_mTable.insert( std::make_pair(  _T("m4v"),  _T("video/unknown"))); 
+				m_mTable.insert( std::make_pair(  _T("mkv"),  _T("video/unknown"))); 
+				m_mTable.insert( std::make_pair(  _T("avi"),  _T("video/avi"))); 
+				m_mTable.insert( std::make_pair(  _T("wmv"),  _T("video/x-wmv"))); 
+				m_mTable.insert( std::make_pair(  _T("xls"),  _T("application/vnd.ms-excel")));
+                m_mTable.insert( std::make_pair(  _T("xlsm"), _T("application/vnd.ms-excel.sheet.macroEnabled.12")));
+                m_mTable.insert( std::make_pair(  _T("xlsb"), _T("application/vnd.ms-excel.sheet.binary.macroEnabled.12")));
+                m_mTable.insert( std::make_pair(  _T("xlsx"), _T("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")));
+                m_mTable.insert( std::make_pair(  _T("ppt"),  _T("application/vnd.ms-powerpoint")));
+                m_mTable.insert( std::make_pair(  _T("pptm"), _T("application/vnd.ms-powerpoint.presentation.macroEnabled.12")));
+                m_mTable.insert( std::make_pair(  _T("pptx"), _T("application/vnd.openxmlformats-officedocument.presentationml.presentation")));
+                m_mTable.insert( std::make_pair(  _T("sldm"), _T("application/vnd.ms-powerpoint.slide.macroEnabled.12")));
+                m_mTable.insert( std::make_pair(  _T("sldx"), _T("application/vnd.openxmlformats-officedocument.presentationml.slide")));
+                m_mTable.insert( std::make_pair(  _T("doc"),  _T("application/msword")));
+                m_mTable.insert( std::make_pair(  _T("docm"), _T("application/vnd.ms-word.document.macroEnabled.12")));
+                m_mTable.insert( std::make_pair(  _T("docx"), _T("application/vnd.openxmlformats-officedocument.wordprocessingml.document")));
+                m_mTable.insert( std::make_pair(  _T("vml"),  _T("application/vnd.openxmlformats-officedocument.vmlDrawing")));
 			}
             const std::wstring operator[] (const std::wstring& sExtension) const
 			{
@@ -276,11 +278,11 @@ namespace OOX
 		{
 			if (pSrcContentTypes == NULL) return;
 
-			for (std::map<std::wstring, ContentTypes::CDefault>::iterator it = pSrcContentTypes->m_mapDefaults.begin(); it != pSrcContentTypes->m_mapDefaults.end(); ++it)
+            for (boost::unordered_map<std::wstring, ContentTypes::CDefault>::iterator it = pSrcContentTypes->m_mapDefaults.begin(); it != pSrcContentTypes->m_mapDefaults.end(); ++it)
             {
                 AddDefault(it->first);
             }
-			for (std::map<std::wstring, ContentTypes::COverride>::iterator it = pSrcContentTypes->m_mapOverrides.begin(); it != pSrcContentTypes->m_mapOverrides.end(); ++it)
+            for (boost::unordered_map<std::wstring, ContentTypes::COverride>::iterator it = pSrcContentTypes->m_mapOverrides.begin(); it != pSrcContentTypes->m_mapOverrides.end(); ++it)
             {
 				if (m_mapOverrides.find(it->first) == m_mapOverrides.end())
 				{
@@ -292,12 +294,12 @@ namespace OOX
 		{
             std::wstring sXml = _T("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">");
 
-			for (std::map<std::wstring, ContentTypes::CDefault>::const_iterator it = m_mapDefaults.begin(); it != m_mapDefaults.end(); ++it)
+            for (boost::unordered_map<std::wstring, ContentTypes::CDefault>::const_iterator it = m_mapDefaults.begin(); it != m_mapDefaults.end(); ++it)
             {
                 sXml += it->second.toXML();
             }
 
-            for (std::map<std::wstring, ContentTypes::COverride>::const_iterator it = m_mapOverrides.begin(); it != m_mapOverrides.end(); ++it)
+            for (boost::unordered_map<std::wstring, ContentTypes::COverride>::const_iterator it = m_mapOverrides.begin(); it != m_mapOverrides.end(); ++it)
             {
                 sXml += it->second.toXML();
             }
@@ -324,9 +326,11 @@ namespace OOX
 		{
 			if (sExtension.empty()) return;
 
-			if (m_mapDefaults.find (sExtension) == m_mapDefaults.end())
+			std::wstring sExt = XmlUtils::GetLower(sExtension);
+
+			if (m_mapDefaults.find (sExt) == m_mapDefaults.end())
 			{
-				m_mapDefaults [sExtension] = ContentTypes::CDefault( sExtension );
+				m_mapDefaults [sExt] = ContentTypes::CDefault( sExt );
 			}
 		}
 	private:
@@ -367,8 +371,8 @@ namespace OOX
 
 	public:
 
-		std::map<std::wstring, ContentTypes::CDefault>	m_mapDefaults;
-        std::map<std::wstring, ContentTypes::COverride>	m_mapOverrides;
+        boost::unordered_map<std::wstring, ContentTypes::CDefault>	m_mapDefaults;
+        boost::unordered_map<std::wstring, ContentTypes::COverride>	m_mapOverrides;
 	};
 } // namespace OOX
 

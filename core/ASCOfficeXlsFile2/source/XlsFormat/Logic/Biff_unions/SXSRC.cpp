@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,16 +31,17 @@
  */
 
 #include "SXSRC.h"
-#include <Logic/Biff_unions/DREF.h>
-#include <Logic/Biff_unions/SXTBL.h>
-#include <Logic/Biff_unions/DBQUERY.h>
+#include "DREF.h"
+#include "SXTBL.h"
+#include "DBQUERY.h"
 
 namespace XLS
 {
 
-
 SXSRC::SXSRC()
 {
+	bSql = false;
+	bOLAP = false;
 }
 
 
@@ -54,10 +55,10 @@ BaseObjectPtr SXSRC::clone()
 	return BaseObjectPtr(new SXSRC(*this));
 }
 
-
 // SXSRC = DREF / SXTBL / DBQUERY
 const bool SXSRC::loadContent(BinProcessor& proc)
 {
+	bSql = false;
 	if(!proc.optional<DREF>())
 	{
 		if(!proc.optional<SXTBL>())
@@ -66,11 +67,20 @@ const bool SXSRC::loadContent(BinProcessor& proc)
 			{
 				return false;
 			}
+			bSql = true;
 		}
 	}
 	m_source = elements_.back();
 	elements_.pop_back();
 	return true;
+}
+
+int SXSRC::serialize(std::wostream & stream)
+{
+	if (m_source)
+		m_source->serialize(stream);
+
+	return 0;
 }
 
 } // namespace XLS

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -462,57 +462,60 @@ namespace DocFileFormat
 
     void PropertiesMapping::appendShading( XMLTools::XMLElement* parent, const ShadingDescriptor& desc )
 	{
+		std::wstring pattern = getShadingPattern( desc );
         if ( ( parent != NULL ) && ( desc.shadingSpecialValue == shadingSpecialValueNormal ))
 		{
             XMLTools::XMLElement shd( L"w:shd" );
 
-			//fill color
-            XMLTools::XMLAttribute fill( L"w:fill" );
-
-			if ( desc.shadingType == shadingTypeShd )
-			{
-				if ( desc.cvBackAuto )
-				{
-                    fill.SetValue( L"auto" );
-				}
-				else
-				{
-                    fill.SetValue( RGBColor( (int)desc.cvBack, RedLast ).SixDigitHexCode);
-				}
-			}
-			else
-			{
-                fill.SetValue( FormatUtils::MapValueToWideString( desc.icoBack, &Global::ColorIdentifier[0][0], 17, 12 ));
-			}
-
-			shd.AppendAttribute( fill );
-
-			//foreground color
-            XMLTools::XMLAttribute color( L"w:color" );
-
-			if ( desc.shadingType == shadingTypeShd )
-			{
-				if ( desc.cvForeAuto )
-				{
-                    color.SetValue( L"auto" );
-				}
-				else
-				{
-                    color.SetValue( RGBColor( (int)desc.cvFore, RedLast ).SixDigitHexCode);
-				}
-			}
-			else
-			{
-                color.SetValue( FormatUtils::MapValueToWideString( desc.icoFore, &Global::ColorIdentifier[0][0], 17, 12 ));
-			}
-
-			shd.AppendAttribute( color );
-
 			//pattern
             XMLTools::XMLAttribute val( L"w:val" );
-            val.SetValue( getShadingPattern( desc ));
+            val.SetValue( pattern);
 			shd.AppendAttribute( val );
 
+			if (pattern != L"nil")
+			{
+				//fill color
+				XMLTools::XMLAttribute fill( L"w:fill" );
+
+				if ( desc.shadingType == shadingTypeShd )
+				{
+					if ( desc.cvBackAuto )
+					{
+						fill.SetValue( L"auto" );
+					}
+					else
+					{
+						fill.SetValue( RGBColor( (int)desc.cvBack, RedLast ).SixDigitHexCode);
+					}
+				}
+				else
+				{
+					fill.SetValue( FormatUtils::MapValueToWideString( desc.icoBack, &Global::ColorIdentifier[0][0], 17, 12 ));
+				}
+
+				shd.AppendAttribute( fill );
+
+				//foreground color
+				XMLTools::XMLAttribute color( L"w:color" );
+
+				if ( desc.shadingType == shadingTypeShd )
+				{
+					if ( desc.cvForeAuto )
+					{
+						color.SetValue( L"auto" );
+					}
+					else
+					{
+						color.SetValue( RGBColor( (int)desc.cvFore, RedLast ).SixDigitHexCode);
+					}
+				}
+				else
+				{
+					color.SetValue( FormatUtils::MapValueToWideString( desc.icoFore, &Global::ColorIdentifier[0][0], 17, 12 ));
+				}
+
+				shd.AppendAttribute( color );
+			}
             parent->RemoveChildByName( L"w:shd" );
 			parent->AppendChild( shd );
 		}

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -181,7 +181,7 @@ namespace NSHtmlRenderer
         virtual HRESULT put_Mode(LONG lMode);
 
         virtual HRESULT CreateOfficeFile(std::wstring bsFileName, const std::wstring& fontsDir = L"");
-        virtual HRESULT CloseFile();
+        virtual HRESULT CloseFile(bool bIsNoBase64 = false);
 
         virtual HRESULT SetAdditionalParam(std::string sParamName, int nValue);
         virtual HRESULT SetAdditionalParam(std::string sParamName, const std::wstring& sParam);

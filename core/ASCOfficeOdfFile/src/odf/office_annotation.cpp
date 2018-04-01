@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,8 +32,6 @@
 
 #include "office_annotation.h"
 
-#include <boost/foreach.hpp>
-
 #include <cpdoccore/xml/xmlchar.h>
 
 #include <cpdoccore/xml/attributes.h>
@@ -42,9 +40,10 @@
 #include "serialize_elements.h"
 
 #include <cpdoccore/odf/odf_document.h>
-#include "../odf/odfcontext.h"
+#include "odfcontext.h"
 
-#include "../odf/calcs_styles.h"
+#include "calcs_styles.h"
+#include "../docx/xlsx_utils.h"
 
 namespace cpdoccore { 
 
@@ -141,9 +140,9 @@ void office_annotation::docx_convert(oox::docx_conversion_context & Context)
 	bool pState = Context.get_paragraph_state();
 	Context.set_paragraph_state(false);		
 
-	BOOST_FOREACH(const office_element_ptr & elm, content_)
+ 	for (size_t i = 0; i < content_.size(); i++)
     {
-        elm->docx_convert(Context);
+        content_[i]->docx_convert(Context);
     }
 
 	Context.set_run_state(runState);
@@ -191,9 +190,9 @@ void office_annotation::xlsx_convert(oox::xlsx_conversion_context & Context)
 	}  
 
 	Context.get_text_context().start_comment_content();
-	BOOST_FOREACH(office_element_ptr const & elm, content_)//текст + текстовый стиль
+	for (size_t i = 0; i < content_.size(); i++)//текст + текстовый стиль
     {
-        elm->xlsx_convert(Context);
+        content_[i]->xlsx_convert(Context);
     }
 	Context.get_comments_context().add_author(author);
 	Context.get_comments_context().add_content(Context.get_text_context().end_comment_content());
@@ -217,8 +216,12 @@ void office_annotation::xlsx_convert(oox::xlsx_conversion_context & Context)
 
 	const std::wstring textStyleName = office_annotation_attr_.draw_text_style_name_.get_value_or(L"");
 
-	std::wstring  ref = Context.current_cell_address();  
-	Context.get_comments_context().end_comment(ref,Context.current_table_column(), Context.current_table_row());
+	int col = Context.current_table_column();	if (col < 0) col = 0;
+	int row = Context.current_table_row();		if (row < 0) row = 0;
+
+	std::wstring  ref = oox::getCellAddress(col, row); 
+
+	Context.get_comments_context().end_comment(ref, col, row);
 }
 // officeooo:annotation
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,9 +271,9 @@ void officeooo_annotation::pptx_convert(oox::pptx_conversion_context & Context)
 	Context.get_comments_context().start_comment(x, y,id_idx.first,id_idx.second);//author & idx (uniq number for author
 	
 	Context.get_text_context().start_comment_content();
-	BOOST_FOREACH(office_element_ptr const & elm, content_)//текст + текстовый стиль
+	for (size_t i = 0; i < content_.size(); i++)//текст + текстовый стиль
     {
-        elm->pptx_convert(Context);
+        content_[i]->pptx_convert(Context);
     }
 
 	Context.get_comments_context().add_date(date);

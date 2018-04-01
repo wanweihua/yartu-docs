@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -80,7 +80,11 @@ function InputCommand(data) {
     this['password'] = data['password'];
     this['outputurls'] = data['outputurls'];
     this['closeonerror'] = data['closeonerror'];
+    this['serverVersion'] = data['serverVersion'];
     this['rediskey'] = data['rediskey'];
+    this['nobase64'] = data['nobase64'];
+    this['forgotten'] = data['forgotten'];
+    this['isbuilder'] = data['isbuilder'];
   } else {
     this['c'] = undefined;//string command
     this['id'] = undefined;//string document id
@@ -118,7 +122,11 @@ function InputCommand(data) {
     this['password'] = undefined;
     this['outputurls'] = undefined;
     this['closeonerror'] = undefined;
+    this['serverVersion'] = undefined;
     this['rediskey'] = undefined;
+    this['nobase64'] = true;
+    this['forgotten'] = undefined;
+    this['isbuilder'] = undefined;
   }
 }
 InputCommand.prototype = {
@@ -245,6 +253,12 @@ InputCommand.prototype = {
   setSaveKey: function(data) {
     this['savekey'] = data;
   },
+  getForgotten: function() {
+    return this['forgotten'];
+  },
+  setForgotten: function(data) {
+    this['forgotten'] = data;
+  },
   getUserConnectionId: function() {
     return this['userconnectionid'];
   },
@@ -305,11 +319,29 @@ InputCommand.prototype = {
   setCloseOnError: function(data) {
     this['closeonerror'] = data;
   },
+  getServerVersion: function() {
+    return this['serverVersion'];
+  },
+  setServerVersion: function(data) {
+    this['serverVersion'] = data;
+  },
   getRedisKey: function() {
     return this['rediskey'];
   },
   setRedisKey: function(data) {
     this['rediskey'] = data;
+  },
+  getNoBase64: function() {
+    return this['nobase64'];
+  },
+  setNoBase64: function(data) {
+    this['nobase64'] = data;
+  },
+  getIsBuilder: function() {
+    return this['isbuilder'];
+  },
+  setIsBuilder: function(data) {
+    this['isbuilder'] = data;
   }
 };
 
@@ -405,6 +437,7 @@ function CMailMergeSendData(obj) {
     this['url'] = obj['url'];
     this['baseUrl'] = obj['baseUrl'];
     this['jsonkey'] = obj['jsonkey'];
+	this['isJson'] = obj['isJson'];
   } else {
     this['from'] = null;
     this['to'] = null;
@@ -420,6 +453,7 @@ function CMailMergeSendData(obj) {
     this['url'] = null;
     this['baseUrl'] = null;
     this['jsonkey'] = null;
+	this['isJson'] = null;
   }
 }
 CMailMergeSendData.prototype.getFrom = function() {
@@ -505,6 +539,12 @@ CMailMergeSendData.prototype.getJsonKey = function() {
 };
 CMailMergeSendData.prototype.setJsonKey = function(v) {
   this['jsonkey'] = v;
+};
+CMailMergeSendData.prototype.getIsJsonKey = function() {
+  return this['isJson']
+};
+CMailMergeSendData.prototype.setIsJsonKey = function(v) {
+  this['isJson'] = v;
 };
 function TaskQueueData(data) {
   if (data) {
@@ -739,7 +779,9 @@ const c_oPublishType = {
   cursor: 9,
   shutdown: 10,
   meta: 11,
-  forceSave: 12
+  forceSave: 12,
+  closeConnection: 13,
+  changesNotify: 14
 };
 const c_oAscCsvDelimiter = {
   None: 0,
@@ -842,6 +884,16 @@ const c_oAscForceSaveTypes = {
   Button: 1,
   Timeout: 2
 };
+const c_oAscUrlTypes = {
+  Session: 0,
+  Temporary: 1
+};
+const c_oAscSecretType = {
+  Browser: 0,
+  Inbox: 1,
+  Outbox: 2,
+  Session: 3
+};
 
 const buildVersion = '4.1.2';
 const buildNumber = 37;
@@ -862,5 +914,7 @@ exports.c_oAscCodePageUtf8 = c_oAscCodePageUtf8;
 exports.c_oAscUserAction = c_oAscUserAction;
 exports.c_oAscServerCommandErrors = c_oAscServerCommandErrors;
 exports.c_oAscForceSaveTypes = c_oAscForceSaveTypes;
+exports.c_oAscUrlTypes = c_oAscUrlTypes;
+exports.c_oAscSecretType = c_oAscSecretType;
 exports.buildVersion = buildVersion;
 exports.buildNumber = buildNumber;

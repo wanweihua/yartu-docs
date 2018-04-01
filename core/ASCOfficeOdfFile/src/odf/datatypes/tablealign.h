@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -29,12 +29,8 @@
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
  */
-#ifndef _CPDOCCORE_ODF_TABLEALIGN_H_
-#define _CPDOCCORE_ODF_TABLEALIGN_H_
 
-#ifdef _MSC_VER
 #pragma once
-#endif
 
 #include <iosfwd>
 #include <string>
@@ -78,5 +74,3 @@ std::wostream & operator << (std::wostream & _Wostream, const table_align & _Val
 APPLY_PARSE_XML_ATTRIBUTES(odf_types::table_align);
 
 }
-
-#endif

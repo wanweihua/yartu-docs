@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *    app.js
  *
  *    Created by Maxim Kadushkin on 21 March 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -54,6 +54,8 @@ require.config({
         jmousewheel     : '../vendor/perfect-scrollbar/src/jquery.mousewheel',
         xregexp         : '../vendor/xregexp/xregexp-all-min',
         sockjs          : '../vendor/sockjs/sockjs.min',
+        jszip           : '../vendor/jszip/jszip.min',
+        jsziputils      : '../vendor/jszip-utils/jszip-utils.min',
         allfonts        : '../../sdkjs/common/AllFonts',
         sdk             : '../../sdkjs/cell/sdk-all-min',
         api             : 'api/documents/api',
@@ -106,7 +108,9 @@ require.config({
                 'underscore',
                 'allfonts',
                 'xregexp',
-                'sockjs'
+                'sockjs',
+                'jszip',
+                'jsziputils'
             ]
         },
         gateway: {

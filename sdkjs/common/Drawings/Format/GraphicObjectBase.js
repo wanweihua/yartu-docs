@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -853,6 +853,10 @@
     {
         return 1;
     };
+    CGraphicObjectBase.prototype.isEmptyPlaceholder = function()
+    {
+        return false;
+    };
 
     CGraphicObjectBase.prototype.Restart_CheckSpelling = function()
     {
@@ -962,6 +966,11 @@
         return !isRealObject(this.group) ? this.rot : this.rot + this.group.getFullRotate();
     };
 
+    CGraphicObjectBase.prototype.getAspect = function (num) {
+        var _tmp_x = this.extX !== 0 ? this.extX : 0.1;
+        var _tmp_y = this.extY !== 0 ? this.extY : 0.1;
+        return num === 0 || num === 4 ? _tmp_x / _tmp_y : _tmp_y / _tmp_x;
+    };
 
     CGraphicObjectBase.prototype.getFullFlipH = function () {
         if (!isRealObject(this.group))
@@ -1024,6 +1033,99 @@
         }
         return null;
     };
+
+    CGraphicObjectBase.prototype.getCardDirectionByNum = function (num) {
+        var num_north = this.getNumByCardDirection(AscFormat.CARD_DIRECTION_N);
+        var full_flip_h = this.getFullFlipH();
+        var full_flip_v = this.getFullFlipV();
+        var same_flip = !full_flip_h && !full_flip_v || full_flip_h && full_flip_v;
+        if (same_flip)
+            return ((num - num_north) + AscFormat.CARD_DIRECTION_N + 8) % 8;
+
+        return (AscFormat.CARD_DIRECTION_N - (num - num_north) + 8) % 8;
+    };
+
+    CGraphicObjectBase.prototype.getTransformMatrix = function(){
+        return this.transform;
+    };
+
+    CGraphicObjectBase.prototype.getNumByCardDirection = function (cardDirection) {
+        var hc = this.extX * 0.5;
+        var vc = this.extY * 0.5;
+        var transform = this.getTransformMatrix();
+        var y1, y3, y5, y7;
+        y1 = transform.TransformPointY(hc, 0);
+        y3 = transform.TransformPointY(this.extX, vc);
+        y5 = transform.TransformPointY(hc, this.extY);
+        y7 = transform.TransformPointY(0, vc);
+
+        var north_number;
+        var full_flip_h = this.getFullFlipH();
+        var full_flip_v = this.getFullFlipV();
+        switch (Math.min(y1, y3, y5, y7)) {
+            case y1:
+            {
+                north_number = 1;
+                break;
+            }
+            case y3:
+            {
+                north_number = 3;
+                break;
+            }
+            case y5:
+            {
+                north_number = 5;
+                break;
+            }
+            default:
+            {
+                north_number = 7;
+                break;
+            }
+        }
+        var same_flip = !full_flip_h && !full_flip_v || full_flip_h && full_flip_v;
+
+        if (same_flip)
+            return (north_number + cardDirection) % 8;
+        return (north_number - cardDirection + 8) % 8;
+    };
+
+    CGraphicObjectBase.prototype.getInvertTransform = function(){
+        return this.invertTransform;
+    };
+
+    CGraphicObjectBase.prototype.getResizeCoefficients = function (numHandle, x, y) {
+        var cx, cy;
+        cx = this.extX > 0 ? this.extX : 0.01;
+        cy = this.extY > 0 ? this.extY : 0.01;
+
+        var invert_transform = this.getInvertTransform();
+        var t_x = invert_transform.TransformPointX(x, y);
+        var t_y = invert_transform.TransformPointY(x, y);
+
+        switch (numHandle) {
+            case 0:
+                return { kd1: (cx - t_x) / cx, kd2: (cy - t_y) / cy };
+            case 1:
+                return { kd1: (cy - t_y) / cy, kd2: 0 };
+            case 2:
+                return { kd1: (cy - t_y) / cy, kd2: t_x / cx };
+            case 3:
+                return { kd1: t_x / cx, kd2: 0 };
+            case 4:
+                return { kd1: t_x / cx, kd2: t_y / cy };
+            case 5:
+                return { kd1: t_y / cy, kd2: 0 };
+            case 6:
+                return { kd1: t_y / cy, kd2: (cx - t_x) / cx };
+            case 7:
+                return { kd1: (cx - t_x) / cx, kd2: 0 };
+        }
+        return { kd1: 1, kd2: 1 };
+    };
+
+
     CGraphicObjectBase.prototype.GetAllContentControls = function(arrContentControls)
     {
     };
@@ -1038,7 +1140,125 @@
         }
     };
 
-window['AscFormat'] = window['AscFormat'] || {};
+    CGraphicObjectBase.prototype.drawLocks = function(transform, graphics){
+        var bNotes = !!(this.parent && this.parent.kind === AscFormat.TYPE_KIND.NOTES);
+        if(!this.group && !bNotes)
+        {
+            var oLock;
+            if(this.parent instanceof ParaDrawing)
+            {
+                oLock = this.parent.Lock;
+            }
+            else if(this.Lock)
+            {
+                oLock = this.Lock;
+            }
+            if(oLock && AscCommon.locktype_None !== oLock.Get_Type())
+            {
+                var bCoMarksDraw = true;
+                var oApi = editor || Asc['editor'];
+                if(oApi){
+
+                    switch(oApi.getEditorId()){
+                        case AscCommon.c_oEditorId.Word:{
+                            bCoMarksDraw = (true === oApi.isCoMarksDraw || AscCommon.locktype_Mine !== oLock.Get_Type());
+                            break;
+                        }
+                        case AscCommon.c_oEditorId.Presentation:{
+                            bCoMarksDraw = (!AscCommon.CollaborativeEditing.Is_Fast() || AscCommon.locktype_Mine !== oLock.Get_Type());
+                            break;
+                        }
+                        case AscCommon.c_oEditorId.Spreadsheet:{
+                            bCoMarksDraw = (!oApi.collaborativeEditing.getFast() || AscCommon.locktype_Mine !== oLock.Get_Type());
+                            break;
+                        }
+                    }
+                }
+                if(bCoMarksDraw){
+                    graphics.transform3(transform);
+                    graphics.DrawLockObjectRect(oLock.Get_Type(), 0, 0, this.extX, this.extY);
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    CGraphicObjectBase.prototype.getSignatureLineGuid = function(){
+        return null;
+    };
+
+    CGraphicObjectBase.prototype.getCopyWithSourceFormatting = function(oIdMap){
+        return this.copy(oIdMap);
+    };
+
+    CGraphicObjectBase.prototype.checkNeedRecalculate = function(){
+        return false;
+    };
+
+    CGraphicObjectBase.prototype.canChangeArrows = function () {
+        if (!this.spPr || this.spPr.geometry == null) {
+            return false;
+        }
+        var _path_list = this.spPr.geometry.pathLst;
+        var _path_index;
+        var _path_command_index;
+        var _path_command_arr;
+        for (_path_index = 0; _path_index < _path_list.length; ++_path_index) {
+            _path_command_arr = _path_list[_path_index].ArrPathCommandInfo;
+            for (_path_command_index = 0; _path_command_index < _path_command_arr.length; ++_path_command_index) {
+                if (_path_command_arr[_path_command_index].id == 5) {
+                    break;
+                }
+            }
+            if (_path_command_index == _path_command_arr.length) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    CGraphicObjectBase.prototype.getStroke = function () {
+        if(this.pen && this.pen.Fill)
+        {
+            if(this.getObjectType() === AscDFH.historyitem_type_ImageShape && AscFormat.isRealNumber(this.pen.w))
+            {
+                var _ret = this.pen.createDuplicate();
+                _ret.w/=2.0;
+                return _ret;
+            }
+            return this.pen;
+        }
+        var ret = AscFormat.CreateNoFillLine();
+        ret.w = 0;
+        return ret;
+    };
+
+
+    CGraphicObjectBase.prototype.getPresetGeom = function () {
+        if (this.spPr && this.spPr.geometry) {
+            return this.spPr.geometry.preset;
+        }
+        else {
+            if(this.calcGeometry)
+            {
+                return this.calcGeometry.preset;
+            }
+            return null;
+        }
+    };
+
+
+    CGraphicObjectBase.prototype.getFill = function () {
+        if(this.brush && this.brush.fill)
+        {
+            return this.brush;
+        }
+        return AscFormat.CreateNoFillUniFill();
+    };
+
+
+
+    window['AscFormat'] = window['AscFormat'] || {};
     window['AscFormat'].CGraphicObjectBase = CGraphicObjectBase;
     window['AscFormat'].CGraphicBounds     = CGraphicBounds;
     window['AscFormat'].checkNormalRotate  = checkNormalRotate;

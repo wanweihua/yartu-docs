@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Document Editor
  *
  *  Created by Alexander Yuzhin on 9/23/16
- *  Copyright (c) 2016 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -79,6 +79,7 @@ define([
                 this.api.asc_registerCallback('asc_onCanUndo',      _.bind(this.onApiCanRevert, this, 'undo'));
                 this.api.asc_registerCallback('asc_onCanRedo',      _.bind(this.onApiCanRevert, this, 'redo'));
                 this.api.asc_registerCallback('asc_onFocusObject',  _.bind(this.onApiFocusObject, this));
+                Common.NotificationCenter.on('api:disconnect',      _.bind(this.onCoAuthoringDisconnect, this));
             },
 
             setMode: function (mode) {
@@ -138,6 +139,8 @@ define([
             // API handlers
 
             onApiCanRevert: function(which, can) {
+                if (this.isDisconnected) return;
+
                 if (which == 'undo') {
                     $('#toolbar-undo').toggleClass('disabled', !can);
                 } else {
@@ -146,6 +149,8 @@ define([
             },
 
             onApiFocusObject: function (objects) {
+                if (this.isDisconnected) return;
+
                 if (objects.length > 0) {
                     var topObject = _.find(objects.reverse(), function (obj) {
                             return obj.get_ObjectType() != Asc.c_oAscTypeSelectElement.SpellCheck;
@@ -155,6 +160,22 @@ define([
 
                     $('#toolbar-add, #toolbar-edit').toggleClass('disabled', objectLocked);
                 }
+            },
+
+            activateControls: function() {
+                $('#toolbar-edit, #toolbar-add, #toolbar-settings, #toolbar-search, #document-back').removeClass('disabled');
+            },
+
+            activateViewControls: function() {
+                $('#toolbar-search, #document-back').removeClass('disabled');
+            },
+
+            deactivateEditControls: function() {
+                $('#toolbar-edit, #toolbar-add, #toolbar-settings').addClass('disabled');
+            },
+
+            onCoAuthoringDisconnect: function() {
+                this.isDisconnected = true;
             },
 
             dlgLeaveTitleText   : 'You leave the application',

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -599,6 +599,8 @@ CAutoshapeTrack.prototype =
 
         this.Graphics.SetIntegerGrid(false);
 
+
+        this.Graphics.globalAlpha = 0.5;
         this.m_oContext.globalAlpha = 0.5;
     },
     SetIntegerGrid : function(b)
@@ -788,6 +790,7 @@ CAutoshapeTrack.prototype =
 
         this.Graphics.SetIntegerGrid(false);
 
+        this.Graphics.globalAlpha = 0.5;
         this.m_oContext.globalAlpha = 0.5;
     },
 
@@ -2641,16 +2644,8 @@ CAutoshapeTrack.prototype =
 
 		var parRun = new ParaRun(par); var Pos = 0;
 		parRun.Set_Pr(_textPr);
-
-		var _len = this.Text.length;
-		for (var i = 0; i < _len; i++)
-		{
-			if (this.Text.charAt(i) == " ")
-				parRun.Add_ToContent(Pos++,new ParaSpace(1), false);
-			else
-				parRun.Add_ToContent(Pos++,new ParaText(this.Text.charAt(i)), false);
-		}
-		par.Add_ToContent(0, parRun);
+		parRun.AddText(this.Text);
+		par.AddToContent(0, parRun);
 
 		par.Recalculate_Page(0);
 		par.Recalculate_Page(0);
@@ -2662,13 +2657,13 @@ CAutoshapeTrack.prototype =
 		var _wPx = _canvas.width;
 		var _hPx = _canvas.height;
 
-		var _wMm = _wPx * g_dKoef_pix_to_mm;
-		var _hMm = _hPx * g_dKoef_pix_to_mm;
+		var _wMm = _wPx * AscCommon.g_dKoef_pix_to_mm;
+		var _hMm = _hPx * AscCommon.g_dKoef_pix_to_mm;
 
 		_ctx.clearRect(0, 0, _wPx, _hPx);
 
-		var _pxBoundsW = par.Lines[0].Ranges[0].W * g_dKoef_mm_to_pix;//(_bounds.Right - _bounds.Left) * g_dKoef_mm_to_pix;
-		var _pxBoundsH = (_bounds.Bottom - _bounds.Top) * g_dKoef_mm_to_pix;
+		var _pxBoundsW = par.Lines[0].Ranges[0].W * AscCommon.g_dKoef_mm_to_pix;//(_bounds.Right - _bounds.Left) * g_dKoef_mm_to_pix;
+		var _pxBoundsH = (_bounds.Bottom - _bounds.Top) * AscCommon.g_dKoef_mm_to_pix;
 
 		var _yOffset = (_hPx - _pxBoundsH) >> 1;
 		var _xOffset = (_wPx - _pxBoundsW) >> 1;

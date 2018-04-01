@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,6 +33,7 @@
 
 #include "../Base/Base.h"
 #include "../Base/SmartPtr.h"
+#include "../Base/Types_32.h"
 
 #include <algorithm>
 #include <sstream>
@@ -60,15 +61,37 @@ namespace XmlUtils
 
 		return 0;
 	}
-    AVSINLINE static bool     IsDigit   (wchar_t c)
+	AVSINLINE static int     GetDigit   (char c)
+	{
+		if (c >= '0' && c <= '9')
+			return (int)(c - '0');
+		if (c >= 'a' && c <= 'f')
+			return 10 + (int)(c - 'a');
+		if (c >= 'A' && c <= 'F')
+			return 10 + (int)(c - 'A');
+
+		return 0;
+	}
+	AVSINLINE static bool     IsDigit   (wchar_t c)
 	{
 		if (c >= '0' && c <= '9')
 			return true;
 		return false;
 	}
-    AVSINLINE static __int64 GetHex (const std::wstring& string)
+    AVSINLINE static _INT64 GetHex (const std::wstring& string)
 	{
-		__int64 nResult = 0;
+        _INT64 nResult = 0;
+        size_t nLen = string.length();
+		for (size_t nIndex = 0; nIndex < nLen; ++nIndex )
+		{
+			nResult += GetDigit( string[nIndex] ) << ( 4 * ( nLen - 1 - nIndex ) );
+		}
+
+		return nResult;
+	}
+    AVSINLINE static _INT64 GetHex (const std::string& string)
+	{
+        _INT64 nResult = 0;
         size_t nLen = string.length();
 		for (size_t nIndex = 0; nIndex < nLen; ++nIndex )
 		{
@@ -147,7 +170,20 @@ namespace XmlUtils
 
 		return ( L"true" == sTemp || L"1" == sTemp || L"t" == sTemp || L"on" == sTemp );
 	}
-    AVSINLINE static int     GetInteger (const std::wstring& string)
+    AVSINLINE static _INT64     GetInteger64 (const std::wstring& string)
+	{
+        if (string.empty()) return 0;
+
+        try
+        {
+            return _wtoi64(string.c_str());
+        }
+        catch(...)
+        {
+             return 0;
+		}
+    }
+	AVSINLINE static int     GetInteger (const std::wstring& string)
 	{
         if (string.empty()) return 0;
 
@@ -233,7 +269,13 @@ namespace XmlUtils
         sstream << boost::wformat(format) % value;
         return sstream.str();
     }
-
+    AVSINLINE static std::string IntToString( int value, const char* format )
+    {
+        if ( format == NULL ) return "";
+        std::stringstream sstream;
+        sstream << boost::format(format) % value;
+        return sstream.str();
+    }
     AVSINLINE static std::wstring DoubleToString( double value, wchar_t* format )
     {
         if ( format == NULL ) return L"";

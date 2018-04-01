@@ -49,8 +49,8 @@
 		6967917D1D9E8AEE002CA4BA /* BinReaderWriterDefines.h in Headers */ = {isa = PBXBuildFile; fileRef = 696791791D9E8AEE002CA4BA /* BinReaderWriterDefines.h */; };
 		6967917E1D9E8AEE002CA4BA /* BinWriters.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6967917A1D9E8AEE002CA4BA /* BinWriters.cpp */; };
 		6967917F1D9E8AEE002CA4BA /* BinWriters.h in Headers */ = {isa = PBXBuildFile; fileRef = 6967917B1D9E8AEE002CA4BA /* BinWriters.h */; };
+		69BBDF251F0B8AAC00EB1BF7 /* FileDownloader_mac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 69BBDF241F0B8AAC00EB1BF7 /* FileDownloader_mac.mm */; };
 		69F181AF1C77274E00B2952B /* FileDownloader.h in Headers */ = {isa = PBXBuildFile; fileRef = 69F181AD1C77274E00B2952B /* FileDownloader.h */; };
-		69F181B51C77276D00B2952B /* FileDownloader_curl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 69F181B31C77276D00B2952B /* FileDownloader_curl.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -97,8 +97,8 @@
 		696791791D9E8AEE002CA4BA /* BinReaderWriterDefines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BinReaderWriterDefines.h; path = ../../BinWriter/BinReaderWriterDefines.h; sourceTree = "<group>"; };
 		6967917A1D9E8AEE002CA4BA /* BinWriters.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = BinWriters.cpp; path = ../../BinWriter/BinWriters.cpp; sourceTree = "<group>"; };
 		6967917B1D9E8AEE002CA4BA /* BinWriters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BinWriters.h; path = ../../BinWriter/BinWriters.h; sourceTree = "<group>"; };
+		69BBDF241F0B8AAC00EB1BF7 /* FileDownloader_mac.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp.preprocessed; fileEncoding = 4; name = FileDownloader_mac.mm; path = ../../../Common/FileDownloader/FileDownloader_mac.mm; sourceTree = "<group>"; };
 		69F181AD1C77274E00B2952B /* FileDownloader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FileDownloader.h; path = ../../../Common/FileDownloader/FileDownloader.h; sourceTree = "<group>"; };
-		69F181B31C77276D00B2952B /* FileDownloader_curl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FileDownloader_curl.cpp; path = ../../../Common/FileDownloader/FileDownloader_curl.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -230,7 +230,7 @@
 			isa = PBXGroup;
 			children = (
 				69F181AD1C77274E00B2952B /* FileDownloader.h */,
-				69F181B31C77276D00B2952B /* FileDownloader_curl.cpp */,
+				69BBDF241F0B8AAC00EB1BF7 /* FileDownloader_mac.mm */,
 			);
 			name = Common;
 			sourceTree = "<group>";
@@ -314,7 +314,7 @@
 		17E17ED41AC453F800BEA2EA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0710;
+				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = "Ascensio System SIA";
 			};
 			buildConfigurationList = 17E17ED71AC453F800BEA2EA /* Build configuration list for PBXProject "ASCOfficeDocxFile2Lib" */;
@@ -339,7 +339,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				69F181B51C77276D00B2952B /* FileDownloader_curl.cpp in Sources */,
 				17C1FE961ACC42C4006B99B3 /* Common.cpp in Sources */,
 				17C1FE971ACC42C4006B99B3 /* ChartFromToBinary.cpp in Sources */,
 				17C1FE981ACC42C4006B99B3 /* CSVReader.cpp in Sources */,
@@ -348,6 +347,7 @@
 				17C1FE9B1ACC42C4006B99B3 /* CSVWriter.cpp in Sources */,
 				69414A301CB51666003E771B /* ChartWriter.cpp in Sources */,
 				6967917E1D9E8AEE002CA4BA /* BinWriters.cpp in Sources */,
+				69BBDF251F0B8AAC00EB1BF7 /* FileDownloader_mac.mm in Sources */,
 				17C1FE9C1ACC42C4006B99B3 /* XlsxSerializer.cpp in Sources */,
 				690FE0851E9BBD68004B26D0 /* Readers.cpp in Sources */,
 				17C1FE9D1ACC42C4006B99B3 /* FontProcessor.cpp in Sources */,
@@ -379,6 +379,7 @@
 					unix,
 					_IOS,
 					DONT_WRITE_EMBEDDED_FONTS,
+					_XCODE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
@@ -401,6 +402,7 @@
 				EXECUTABLE_PREFIX = lib;
 				GCC_ENABLE_CPP_EXCEPTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					UNICODE,
 					_UNICODE,
@@ -416,6 +418,7 @@
 					unix,
 					_IOS,
 					DONT_WRITE_EMBEDDED_FONTS,
+					_XCODE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
@@ -439,13 +442,21 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
@@ -453,6 +464,7 @@
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -465,7 +477,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -481,13 +493,21 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
@@ -495,13 +515,14 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;

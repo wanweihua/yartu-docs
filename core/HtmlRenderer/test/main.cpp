@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -41,15 +41,23 @@
 
 #include "../include/ASCSVGWriter.h"
 #include "../../DesktopEditor/raster/Metafile/MetaFile.h"
+#include "../../DesktopEditor/raster/BgraFrame.h"
 
+//#define RASTER_TEST
 //#define METAFILE_TEST
-//#define ONLINE_WORD_TO_PDF
-//#define TO_PDF
-#define TO_HTML_RENDERER
+#define ONLINE_WORD_TO_PDF
+//#define TO_PDF//#define TO_HTML_RENDERER
 //#define ONLY_TEXT
 
 int main(int argc, char *argv[])
 {
+#ifdef RASTER_TEST
+    CBgraFrame oFrame;
+    oFrame.OpenFile(L"D:\\22.png");
+    oFrame.SaveFile(L"D:\\oleg.png", 4);
+    return 0;
+#endif
+
     CApplicationFonts oFonts;
     oFonts.Initialize();
 
@@ -84,7 +92,7 @@ int main(int argc, char *argv[])
 
 #ifdef ONLINE_WORD_TO_PDF
     CPdfRenderer oPdfW(&oFonts);
-    oPdfW.SetTempFolder(sDst);
+    oPdfW.SetTempFolder(L"D:\\test\\Document");
     oPdfW.OnlineWordToPdf(L"D:\\test\\123.txt", L"D:\\test\\123.pdf");
     return 0;
 #endif

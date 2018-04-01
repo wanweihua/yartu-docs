@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -52,9 +52,13 @@ BaseObjectPtr RichTextStream::clone()
 
 void RichTextStream::readFields(CFRecord& record)
 {
-#pragma message("####################### RichTextStream record is not implemented")
-	Log::error("RichTextStream record is not implemented.");
-	//record >> some_value;
+	record >> frtHeader >> dwCheckSum >> cb;
+
+	if (cb > 0 &&cb < 0xffff)
+	{
+		rgb = std::string(record.getCurData<char>(), cb);
+		record.skipNunBytes(cb);
+	}
 }
 
 } // namespace XLS

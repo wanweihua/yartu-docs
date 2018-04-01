@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -51,18 +51,26 @@
 	#pragma comment(lib, "../../build/bin/icu/win_32/icuuc.lib")
 #endif
 
-int _tmain(int argc, _TCHAR* argv[])
+HRESULT convert_single(std::wstring srcFileName)
 {
 	HRESULT hr = S_OK;
-//////////////////////////////////////////////////////////////////////////
-	std::wstring srcFileName	= argv[1];
-	std::wstring dstPath		= argc > 2 ? argv[2] : srcFileName + L"-my.xlsx";
 
-	std::wstring outputDir		= NSDirectory::GetFolderPath(dstPath);	
+	std::wstring outputDir		= NSDirectory::GetFolderPath(srcFileName);	
 	std::wstring dstTempPath	= NSDirectory::CreateDirectoryWithUniqueName(outputDir);
+	std::wstring dstPath;
 
-	hr = ConvertXls2Xlsx(srcFileName, dstTempPath, L"password", L"C:\\Windows\\Fonts", NULL);
+	bool bMacros = true;
+	hr = ConvertXls2Xlsx(srcFileName, dstTempPath, L"2222", L"C:\\Windows\\Fonts", L"C:\\Windows\\Temp", NULL, bMacros);
 
+	if (bMacros)
+	{
+		dstPath = srcFileName + L"-my.xlsm";
+	}
+	else
+	{
+		dstPath = srcFileName + L"-my.xlsx";
+
+	}
 	if (hr == S_OK) 
 	{
 		COfficeUtils oCOfficeUtils(NULL);
@@ -70,6 +78,37 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	
 	NSDirectory::DeleteDirectory(dstTempPath);
+
+
+	return hr;
+}
+
+HRESULT convert_directory(std::wstring pathName)
+{
+	HRESULT hr = S_OK;
+
+	std::vector<std::wstring> arFiles = NSDirectory::GetFiles(pathName, false);
+
+	for (size_t i = 0; i < arFiles.size(); i++)
+	{
+		convert_single(arFiles[i]);
+	}
+	return S_OK;
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	if (argc < 2) return 1;
+
+	HRESULT hr = -1;
+	if (NSFile::CFileBinary::Exists(argv[1]))
+	{	
+		hr = convert_single(argv[1]);
+	}
+	else if (NSDirectory::Exists(argv[1]))
+	{
+		hr = convert_directory(argv[1]);
+	}
 
 	return hr;
 }

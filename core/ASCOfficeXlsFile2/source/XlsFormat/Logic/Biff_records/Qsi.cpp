@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -39,11 +39,9 @@ Qsi::Qsi()
 {
 }
 
-
 Qsi::~Qsi()
 {
 }
-
 
 BaseObjectPtr Qsi::clone()
 {
@@ -52,9 +50,32 @@ BaseObjectPtr Qsi::clone()
 
 void Qsi::readFields(CFRecord& record)
 {
-	Log::error("Qsi record is not implemented.");
-	
-	record.skipNunBytes(record.getDataSize() - record.getRdPtr());
+	unsigned short flags1, flags2; 
+	_UINT32	reserved;
+
+	record >> flags1 >> itblAutoFmt >> flags2 >> reserved >> rgchName;
+
+	fTitles			= GETBIT(flags1, 0);
+	fRowNums		= GETBIT(flags1, 1);
+	fDisableRefresh	= GETBIT(flags1, 2);
+	fAsync			= GETBIT(flags1, 3);
+	fNewAsync		= GETBIT(flags1, 4);
+	fAutoRefresh	= GETBIT(flags1, 5);
+	fShrink			= GETBIT(flags1, 6);
+	fFill			= GETBIT(flags1, 7);
+	fAutoFormat		= GETBIT(flags1, 8);
+	fSaveData		= GETBIT(flags1, 9);
+	fDisableEdit	= GETBIT(flags1, 10);
+	fOverwrite		= GETBIT(flags1, 13);
+
+	fibitAtrNum		= GETBIT(flags2, 0);
+	fibitAtrFnt		= GETBIT(flags2, 1);
+	fibitAtrAlc		= GETBIT(flags2, 2);
+	fibitAtrBdr		= GETBIT(flags2, 3);
+	fibitAtrPat		= GETBIT(flags2, 4);
+	fibitAtrProt	= GETBIT(flags2, 5);
+
+	record.skipNunBytes(2);	//unused
 }
 
 } // namespace XLS

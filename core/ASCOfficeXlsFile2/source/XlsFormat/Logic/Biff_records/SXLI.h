@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -55,7 +55,7 @@ class SXLI: public BiffRecordContinued
 	BIFF_RECORD_DEFINE_TYPE_INFO(SXLI)
 	BASE_OBJECT_DEFINE_CLASS_NAME(SXLI)
 public:
-	SXLI();
+	SXLI(int count_);
 	~SXLI();
 
 	BaseObjectPtr clone();
@@ -65,6 +65,7 @@ public:
 	static const ElementType type = typeSXLI;
 	
 	std::vector<SXLIItem> m_arItems;
+	int count;
 };
 
 } // namespace XLS

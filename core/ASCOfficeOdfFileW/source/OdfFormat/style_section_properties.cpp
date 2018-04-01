@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,6 @@
 #include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/simple_xml_writer.h>
 #include <iostream>
-#include <boost/foreach.hpp>
 
 #include "office_elements_create.h"
 
@@ -91,9 +90,9 @@ void style_columns::serialize(std::wostream & strm)
 
 			if(style_column_sep_) style_column_sep_->serialize(CP_XML_STREAM());
 			
-			BOOST_FOREACH(const office_element_ptr & elm, style_column_)
-			{
-				elm->serialize(CP_XML_STREAM());
+			for (size_t i = 0; i < style_column_.size(); i++)
+			{		
+				style_column_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}

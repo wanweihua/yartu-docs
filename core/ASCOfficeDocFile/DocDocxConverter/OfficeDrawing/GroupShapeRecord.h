@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -64,7 +64,7 @@ namespace DocFileFormat
 			oSize.cx	=	( right - left );
 			oSize.cy	=	( bottom - top );
 
-			rcgBounds	=	DocFormatUtils::Rectangle(oPoint,oSize);
+			rcgBounds	=	DocFileFormat::Rectangle(oPoint,oSize);
 		}
 
 		virtual ~GroupShapeRecord()
@@ -77,6 +77,6 @@ namespace DocFileFormat
 			return new GroupShapeRecord( _reader, bodySize, typeCode, version, instance );
 		}
 
-		DocFormatUtils::Rectangle rcgBounds;
+		DocFileFormat::Rectangle rcgBounds;
 	};
 }

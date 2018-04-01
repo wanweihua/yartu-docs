@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Toolbar view
  *
  *  Created by Alexander Yuzhin on 1/9/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -748,6 +748,15 @@ define([
             });
             this.paragraphControls.push(this.btnNotes);
 
+            this.btnContents = new Common.UI.Button({
+                id          : 'id-toolbar-btn-contents',
+                cls         : 'btn-toolbar',
+                iconCls     : 'btn-contents',
+                split       : true,
+                menu        : true
+            });
+            this.paragraphControls.push(this.btnContents);
+
             this.btnMailRecepients= new Common.UI.Button({
                 id          : 'id-toolbar-btn-mailrecepients',
                 cls         : 'btn-toolbar',
@@ -1087,7 +1096,8 @@ define([
             replacePlacholder('#id-toolbar-full-placeholder-field-styles',                 this.listStyles);
             replacePlacholder('#id-toolbar-short-placeholder-btn-halign',                  this.btnHorizontalAlign);
             replacePlacholder('#id-toolbar-full-placeholder-btn-mailrecepients',           this.btnMailRecepients);
-            replacePlacholder('#id-toolbar-' + prefix + '-placeholder-btn-notes',      this.btnNotes);
+            replacePlacholder('#id-toolbar-' + prefix + '-placeholder-btn-notes',          this.btnNotes);
+            replacePlacholder('#id-toolbar-' + prefix + '-placeholder-btn-contents',       this.btnContents);
         },
 
         createDelayedElements: function() {
@@ -1152,6 +1162,7 @@ define([
             this.btnHide.updateHint(this.tipViewSettings);
             this.btnAdvSettings.updateHint(this.tipAdvSettings);
             this.btnNotes.updateHint(this.tipNotes);
+            this.btnContents.updateHint(this.tipContents);
 
             // set menus
 
@@ -1317,6 +1328,21 @@ define([
                         { caption: '--' },
                         { caption: this.mniDelFootnote,  value: 'delele' },
                         { caption: this.mniNoteSettings, value: 'settings' }
+                    ]
+                })
+            );
+
+            var contentsTemplate = _.template('<a id="<%= id %>" tabindex="-1" type="menuitem" class="item-contents"><div style="background-position: 0 -<%= options.offsety %>px;" ></div></a>');
+            this.btnContents.setMenu(
+                new Common.UI.Menu({
+                    items: [
+                        {template: contentsTemplate, offsety: 0, value: 0},
+                        {template: contentsTemplate, offsety: 72, value: 1},
+                        {caption: this.textContentsSettings, value: 'settings'},
+                        {caption: this.textContentsRemove, value: 'remove'},
+                        { caption: '--' },
+                        {caption: this.textUpdateAll, value: 'all'},
+                        {caption: this.textUpdatePages, value: 'pages'}
                     ]
                 })
             );
@@ -1521,55 +1547,6 @@ define([
                 this.btnNewDocument.setDisabled(true);
                 this.btnOpenDocument.setDisabled(true);
                 this.btnSave.setDisabled(true);
-                this.btnCopy.setDisabled(true);
-                this.btnPaste.setDisabled(true);
-                this.btnUndo.setDisabled(true);
-                this.btnRedo.setDisabled(true);
-                this.btnIncFontSize.setDisabled(true);
-                this.btnDecFontSize.setDisabled(true);
-                this.btnBold.setDisabled(true);
-                this.btnItalic.setDisabled(true);
-                this.btnUnderline.setDisabled(true);
-                this.btnStrikeout.setDisabled(true);
-                this.btnSuperscript.setDisabled(true);
-                this.btnSubscript.setDisabled(true);
-                this.btnHighlightColor.setDisabled(true);
-                this.btnFontColor.setDisabled(true);
-                this.btnParagraphColor.setDisabled(true);
-                this.btnMarkers.setDisabled(true);
-                this.btnNumbers.setDisabled(true);
-                this.btnMultilevels.setDisabled(true);
-                this.btnAlignLeft.setDisabled(true);
-                this.btnAlignCenter.setDisabled(true);
-                this.btnAlignRight.setDisabled(true);
-                this.btnAlignJust.setDisabled(true);
-                this.btnDecLeftOffset.setDisabled(true);
-                this.btnIncLeftOffset.setDisabled(true);
-                this.btnLineSpace.setDisabled(true);
-                this.btnShowHidenChars.setDisabled(true);
-                this.btnInsertTable.setDisabled(true);
-                this.btnInsertImage.setDisabled(true);
-                this.btnInsertChart.setDisabled(true);
-                this.btnInsertText.setDisabled(true);
-                this.btnDropCap.setDisabled(true);
-                this.btnColumns.setDisabled(true);
-                this.btnInsertPageBreak.setDisabled(true);
-                this.btnInsertHyperlink.setDisabled(true);
-                this.btnEditHeader.setDisabled(true);
-                this.btnInsertShape.setDisabled(true);
-                this.btnInsertEquation.setDisabled(true);
-                this.btnPageOrient.setDisabled(true);
-                this.btnPageMargins.setDisabled(true);
-                this.btnPageSize.setDisabled(true);
-                this.btnClearStyle.setDisabled(true);
-                this.btnCopyStyle.setDisabled(true);
-                this.btnColorSchemas.setDisabled(true);
-                this.btnMailRecepients.setDisabled(true);
-                this.btnHorizontalAlign.setDisabled(true);
-                this.cmbFontName.setDisabled(true);
-                this.cmbFontSize.setDisabled(true);
-                this.listStyles.setDisabled(true);
-                this.btnNotes.setDisabled(true);
                 if (mode.disableDownload)
                     this.btnPrint.setDisabled(true);
             }
@@ -1972,7 +1949,11 @@ define([
         textGotoFootnote: 'Go to Footnotes',
         tipChangeChart: 'Change Chart Type',
         textColumnsCustom: 'Custom Columns',
-        textSurface: 'Surface'
-
+        textSurface: 'Surface',
+        tipContents: 'Insert or edit table of contents',
+        textContentsSettings: 'Settings',
+        textContentsRemove: 'Remove table of contents',
+        textUpdateAll: 'Update entire table',
+        textUpdatePages: 'Update page numbers only'
     }, DE.Views.Toolbar || {}));
 });

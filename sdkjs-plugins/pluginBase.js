@@ -6,6 +6,16 @@
     window.Asc = window.Asc || {};
     window.Asc.plugin = {};
 
+    window.Asc.scope = {};
+    window.Asc.scope.prototype = 
+    {
+        clear : function() 
+        {    
+            for (var i in window.Asc.scope) 
+                delete window.Asc.scope[i];
+        }
+    };
+
     function CopyObj(Obj, ObjectExt)
     {
         if( !Obj || !("object" == typeof(Obj) || "array" == typeof(Obj)) )
@@ -35,11 +45,17 @@
 
     window.onload = function()
     {
+        if (!window.Asc || !window.Asc.plugin)
+            return;
+
         var xhr = new XMLHttpRequest();
         xhr.open("get", "./config.json", true);
         xhr.responseType = "json";
         xhr.onload = function()
         {
+            if (!window.Asc || !window.Asc.plugin)
+                return;
+
             if (xhr.status == 200 || (xhr.status == 0 && xhr.readyState == 4))
             {
                 var objConfig = xhr.response;
@@ -53,6 +69,28 @@
                     type : "initialize",
                     guid : window.Asc.plugin.guid
                 };
+				
+				var _body = document.body;
+				if (_body && true !== window.Asc.plugin.enableDrops)
+				{
+					_body.ondrop = function(e) {
+						if (e && e.preventDefault)
+							e.preventDefault();
+						return false;
+					};
+					_body.ondragenter = function(e) {
+						if (e && e.preventDefault)
+							e.preventDefault();
+						return false;
+					};
+					_body.ondragover = function(e) {
+						if (e && e.preventDefault)
+							e.preventDefault();
+						if (e && e.dataTransfer)
+							e.dataTransfer.dropEffect = "none";
+						return false;
+					};
+				}
 
                 window.parent.postMessage(JSON.stringify(obj), "*");
             }
@@ -62,7 +100,7 @@
 
     function onMessage(event)
     {
-        if (!window.Asc.plugin)
+        if (!window.Asc || !window.Asc.plugin)
             return;
 
         if (window.plugin_onMessage)
@@ -88,13 +126,47 @@
         }
     }
 
+    function onReloadPage(isCtrl)
+    {
+        var obj = 
+        {
+            type : "reload",
+            guid : window.Asc.plugin.guid,
+            ctrl : isCtrl
+        };
+        window.parent.postMessage(JSON.stringify(obj), "*");
+    }
+    function onBaseKeyDown(e)
+    {
+        var isCtrl = (e.metaKey || e.ctrlKey) ? true : false;
+        if (e.keyCode == 116)
+        {
+            onReloadPage(isCtrl);
+            if (e.preventDefault)
+                e.preventDefault();
+            if (e.stopPropagation)
+                e.stopPropagation();
+            return false;
+        }
+    }
+    
     if (window.addEventListener)
     {
         window.addEventListener("message", onMessage, false);
+        window.addEventListener("keydown", onBaseKeyDown, false);
     }
     else
     {
         window.attachEvent("onmessage", onMessage);
-    }
+        window.attachEvent("keydown", onBaseKeyDown);
+    }    
 
+    window.onunload = function()
+	{
+		if (window.addEventListener)
+			window.removeEventListener("message", onMessage, false);
+		else
+			window.detachEvent("onmessage", onMessage);
+	}
+	
 })(window, undefined);

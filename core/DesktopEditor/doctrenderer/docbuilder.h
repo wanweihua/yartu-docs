@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,7 +32,7 @@
 #ifndef DOCBUILDER_H
 #define DOCBUILDER_H
 
-#include "../common/base_export.h"
+#include "./common.h"
 
 namespace NSDoctRenderer
 {
@@ -58,6 +58,8 @@ namespace NSDoctRenderer
 
         void SetProperty(const char* param, const wchar_t* value);
         void SetPropertyW(const wchar_t* param, const wchar_t* value);
+
+        char* GetVersion();
 
     public:
         static void Initialize();

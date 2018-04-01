@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -48,22 +48,21 @@
 	var cArray = AscCommonExcel.cArray;
 	var cBaseFunction = AscCommonExcel.cBaseFunction;
 	var cFormulaFunctionGroup = AscCommonExcel.cFormulaFunctionGroup;
+	var cElementType = AscCommonExcel.cElementType;
 
 	cFormulaFunctionGroup['Logical'] = cFormulaFunctionGroup['Logical'] || [];
-	cFormulaFunctionGroup['Logical'].push(cAND, cFALSE, cIF, cIFERROR, cIFNA, cNOT, cOR, cTRUE, cXOR);
+	cFormulaFunctionGroup['Logical'].push(cAND, cFALSE, cIF, cIFERROR, cIFNA, cIFS, cNOT, cOR, cSWITCH, cTRUE, cXOR);
 
 	/**
 	 * @constructor
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cAND() {
-		this.name = "AND";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cAND.prototype = Object.create(cBaseFunction.prototype);
 	cAND.prototype.constructor = cAND;
+	cAND.prototype.name = 'AND';
 	cAND.prototype.argumentsMin = 1;
 	cAND.prototype.Calculate = function (arg) {
 		var argResult = null;
@@ -72,7 +71,7 @@
 				var argArr = arg[i].getValue();
 				for (var j = 0; j < argArr.length; j++) {
 					if (argArr[j] instanceof cError) {
-						return this.value = argArr[j];
+						return argArr[j];
 					} else if (!(argArr[j] instanceof cString || argArr[j] instanceof cEmpty)) {
 						if (argResult === null) {
 							argResult = argArr[j].tocBool();
@@ -80,15 +79,15 @@
 							argResult = new cBool(argResult.value && argArr[j].tocBool().value);
 						}
 						if (argResult.value === false) {
-							return this.value = new cBool(false);
+							return new cBool(false);
 						}
 					}
 				}
 			} else {
 				if (arg[i] instanceof cString) {
-					return this.value = new cError(cErrorType.wrong_value_type);
+					return new cError(cErrorType.wrong_value_type);
 				} else if (arg[i] instanceof cError) {
-					return this.value = arg[i];
+					return arg[i];
 				} else if (arg[i] instanceof cArray) {
 					arg[i].foreach(function (elem) {
 						if (elem instanceof cError) {
@@ -114,15 +113,15 @@
 						argResult = new cBool(argResult.value && arg[i].tocBool().value);
 					}
 					if (argResult.value === false) {
-						return this.value = new cBool(false);
+						return new cBool(false);
 					}
 				}
 			}
 		}
 		if (argResult === null) {
-			return this.value = new cError(cErrorType.wrong_value_type);
+			return new cError(cErrorType.wrong_value_type);
 		}
-		return this.value = argResult;
+		return argResult;
 	};
 
 	/**
@@ -130,16 +129,14 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cFALSE() {
-		this.name = "FALSE";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cFALSE.prototype = Object.create(cBaseFunction.prototype);
 	cFALSE.prototype.constructor = cFALSE;
+	cFALSE.prototype.name = 'FALSE';
 	cFALSE.prototype.argumentsMax = 0;
 	cFALSE.prototype.Calculate = function () {
-		return this.value = new cBool(false);
+		return new cBool(false);
 	};
 
 	/**
@@ -147,13 +144,11 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cIF() {
-		this.name = "IF";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cIF.prototype = Object.create(cBaseFunction.prototype);
 	cIF.prototype.constructor = cIF;
+	cIF.prototype.name = 'IF';
 	cIF.prototype.argumentsMin = 1;
 	cIF.prototype.argumentsMax = 3;
 	cIF.prototype.numFormat = AscCommonExcel.cNumFormatNone;
@@ -170,17 +165,15 @@
 			arg2 = arg2.getElement(0);
 		}
 
+		arg0 = arg0.tocBool();
 		if (arg0 instanceof cError) {
-			return this.value = arg0;
+			return arg0;
+		} else if (arg0 instanceof cString) {
+			return new cError(cErrorType.wrong_value_type);
+		} else if (arg0.value) {
+			return arg1 ? arg1 instanceof cEmpty ? new cNumber(0) : arg1 : new cBool(true);
 		} else {
-			arg0 = arg0.tocBool();
-			if (arg0 instanceof cString) {
-				return this.value = new cError(cErrorType.wrong_value_type);
-			} else if (arg0.value) {
-				return this.value = arg1 ? arg1 instanceof cEmpty ? new cNumber(0) : arg1 : new cBool(true);
-			} else {
-				return this.value = arg2 ? arg2 instanceof cEmpty ? new cNumber(0) : arg2 : new cBool(false);
-			}
+			return arg2 ? arg2 instanceof cEmpty ? new cNumber(0) : arg2 : new cBool(false);
 		}
 	};
 
@@ -189,13 +182,11 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cIFERROR() {
-		this.name = "IFERROR";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cIFERROR.prototype = Object.create(cBaseFunction.prototype);
 	cIFERROR.prototype.constructor = cIFERROR;
+	cIFERROR.prototype.name = 'IFERROR';
 	cIFERROR.prototype.argumentsMin = 2;
 	cIFERROR.prototype.argumentsMax = 2;
 	cIFERROR.prototype.Calculate = function (arg) {
@@ -211,9 +202,9 @@
 		}
 
 		if (arg0 instanceof cError) {
-			return this.value = arg[1] instanceof cArray ? arg[1].getElement(0) : arg[1];
+			return arg[1] instanceof cArray ? arg[1].getElement(0) : arg[1];
 		} else {
-			return this.value = arg[0];
+			return arg[0];
 		}
 	};
 
@@ -222,13 +213,11 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cIFNA() {
-		this.name = "IFNA";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cIFNA.prototype = Object.create(cBaseFunction.prototype);
 	cIFNA.prototype.constructor = cIFNA;
+	cIFNA.prototype.name = 'IFNA';
 	cIFNA.prototype.argumentsMin = 2;
 	cIFNA.prototype.argumentsMax = 2;
 	cIFNA.prototype.isXLFN = true;
@@ -245,9 +234,9 @@
 		}
 
 		if (arg0 instanceof cError && cErrorType.not_available === arg0.errorType) {
-			return this.value = arg[1] instanceof cArray ? arg[1].getElement(0) : arg[1];
+			return arg[1] instanceof cArray ? arg[1].getElement(0) : arg[1];
 		} else {
-			return this.value = arg[0];
+			return arg[0];
 		}
 	};
 
@@ -255,14 +244,64 @@
 	 * @constructor
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
+	function cIFS() {
+	}
+
+	cIFS.prototype = Object.create(cBaseFunction.prototype);
+	cIFS.prototype.constructor = cIFS;
+	cIFS.prototype.name = 'IFS';
+	cIFS.prototype.argumentsMin = 2;
+	cIFS.prototype.Calculate = function (arg) {
+		var oArguments = this._prepareArguments(arg, arguments[1], true);
+		var argClone = oArguments.args;
+
+		var argError;
+		if (argError = this._checkErrorArg(argClone)) {
+			return argError;
+		}
+
+		var res = null;
+		for (var i = 0; i < arg.length; i++) {
+			var argN = argClone[i];
+			if (cElementType.string === argN.type) {
+				res = new cError(cErrorType.wrong_value_type);
+				break;
+			} else if (cElementType.number === argN.type || cElementType.bool === argN.type) {
+				if (!argClone[i + 1]) {
+					res = new cError(cErrorType.not_available);
+					break;
+				}
+
+				argN = argN.tocBool();
+				if (true === argN.value) {
+					res = argClone[i + 1];
+					break;
+				}
+			}
+			if (i === arg.length - 1) {
+				res = new cError(cErrorType.not_available);
+				break;
+			}
+			i++;
+		}
+
+		if (null === res) {
+			return new cError(cErrorType.not_available);
+		}
+
+		return res;
+	};
+
+	/**
+	 * @constructor
+	 * @extends {AscCommonExcel.cBaseFunction}
+	 */
 	function cNOT() {
-		this.name = "NOT";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cNOT.prototype = Object.create(cBaseFunction.prototype);
 	cNOT.prototype.constructor = cNOT;
+	cNOT.prototype.name = 'NOT';
 	cNOT.prototype.argumentsMin = 1;
 	cNOT.prototype.argumentsMax = 1;
 	cNOT.prototype.Calculate = function (arg) {
@@ -278,14 +317,14 @@
 		if (arg0 instanceof cString) {
 			var res = arg0.tocBool();
 			if (res instanceof cString) {
-				return this.value = new cError(cErrorType.wrong_value_type);
+				return new cError(cErrorType.wrong_value_type);
 			} else {
-				return this.value = new cBool(!res.value);
+				return new cBool(!res.value);
 			}
 		} else if (arg0 instanceof cError) {
-			return this.value = arg0;
+			return arg0;
 		} else {
-			return this.value = new cBool(!arg0.tocBool().value);
+			return new cBool(!arg0.tocBool().value);
 		}
 	};
 
@@ -294,13 +333,11 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cOR() {
-		this.name = "OR";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cOR.prototype = Object.create(cBaseFunction.prototype);
 	cOR.prototype.constructor = cOR;
+	cOR.prototype.name = 'OR';
 	cOR.prototype.argumentsMin = 1;
 	cOR.prototype.Calculate = function (arg) {
 		var argResult = null;
@@ -309,7 +346,7 @@
 				var argArr = arg[i].getValue();
 				for (var j = 0; j < argArr.length; j++) {
 					if (argArr[j] instanceof cError) {
-						return this.value = argArr[j];
+						return argArr[j];
 					} else if (argArr[j] instanceof cString || argArr[j] instanceof cEmpty) {
 						if (argResult === null) {
 							argResult = argArr[j].tocBool();
@@ -317,15 +354,15 @@
 							argResult = new cBool(argResult.value || argArr[j].tocBool().value);
 						}
 						if (argResult.value === true) {
-							return this.value = new cBool(true);
+							return new cBool(true);
 						}
 					}
 				}
 			} else {
 				if (arg[i] instanceof cString) {
-					return this.value = new cError(cErrorType.wrong_value_type);
+					return new cError(cErrorType.wrong_value_type);
 				} else if (arg[i] instanceof cError) {
-					return this.value = arg[i];
+					return arg[i];
 				} else if (arg[i] instanceof cArray) {
 					arg[i].foreach(function (elem) {
 						if (elem instanceof cError) {
@@ -348,15 +385,66 @@
 						argResult = new cBool(argResult.value || arg[i].tocBool().value);
 					}
 					if (argResult.value === true) {
-						return this.value = new cBool(true);
+						return new cBool(true);
 					}
 				}
 			}
 		}
 		if (argResult == null) {
-			return this.value = new cError(cErrorType.wrong_value_type);
+			return new cError(cErrorType.wrong_value_type);
 		}
-		return this.value = argResult;
+		return argResult;
+	};
+
+	/**
+	 * @constructor
+	 * @extends {AscCommonExcel.cBaseFunction}
+	 */
+	function cSWITCH() {
+	}
+
+	cSWITCH.prototype = Object.create(cBaseFunction.prototype);
+	cSWITCH.prototype.constructor = cSWITCH;
+	cSWITCH.prototype.name = 'SWITCH';
+	cSWITCH.prototype.argumentsMin = 3;
+	cSWITCH.prototype.argumentsMax = 126;
+	cSWITCH.prototype.isXLFN = true;
+	cSWITCH.prototype.Calculate = function (arg) {
+		var oArguments = this._prepareArguments(arg, arguments[1], true);
+		var argClone = oArguments.args;
+
+		var argError;
+		if (argError = this._checkErrorArg(argClone)) {
+			return argError;
+		}
+
+		var arg0 = argClone[0].getValue();
+		if (cElementType.cell === argClone[0].type || cElementType.cell3D === argClone[0].type) {
+			arg0 = arg0.getValue()
+		}
+
+		var res = null;
+		for (var i = 1; i < argClone.length; i++) {
+			var argN = argClone[i].getValue();
+			if (arg0 === argN) {
+				if (!argClone[i + 1]) {
+					return cErrorType.not_available;
+				} else {
+					res = argClone[i + 1];
+					break;
+				}
+			}
+			if (i === argClone.length - 1) {
+				res = argClone[i];
+			}
+			i++;
+		}
+
+		if (null === res) {
+			return new cError(cErrorType.not_available);
+		}
+
+		return res;
 	};
 
 	/**
@@ -364,16 +452,14 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cTRUE() {
-		this.name = "TRUE";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cTRUE.prototype = Object.create(cBaseFunction.prototype);
 	cTRUE.prototype.constructor = cTRUE;
+	cTRUE.prototype.name = 'TRUE';
 	cTRUE.prototype.argumentsMax = 0;
 	cTRUE.prototype.Calculate = function () {
-		return this.value = new cBool(true);
+		return new cBool(true);
 	};
 
 	/**
@@ -381,13 +467,11 @@
 	 * @extends {AscCommonExcel.cBaseFunction}
 	 */
 	function cXOR() {
-		this.name = "XOR";
-		this.value = null;
-		this.argumentsCurrent = 0;
 	}
 
 	cXOR.prototype = Object.create(cBaseFunction.prototype);
 	cXOR.prototype.constructor = cXOR;
+	cXOR.prototype.name = 'XOR';
 	cXOR.prototype.argumentsMin = 1;
 	cXOR.prototype.argumentsMax = 254;
 	cXOR.prototype.isXLFN = true;
@@ -399,7 +483,7 @@
 				var argArr = arg[i].getValue();
 				for (var j = 0; j < argArr.length; j++) {
 					if (argArr[j] instanceof cError) {
-						return this.value = argArr[j];
+						return argArr[j];
 					} else if (argArr[j] instanceof cString || argArr[j] instanceof cEmpty) {
 						if (argResult === null) {
 							argResult = argArr[j].tocBool();
@@ -413,9 +497,9 @@
 				}
 			} else {
 				if (arg[i] instanceof cString) {
-					return this.value = new cError(cErrorType.wrong_value_type);
+					return new cError(cErrorType.wrong_value_type);
 				} else if (arg[i] instanceof cError) {
-					return this.value = arg[i];
+					return arg[i];
 				} else if (arg[i] instanceof cArray) {
 					arg[i].foreach(function (elem) {
 						if (elem instanceof cError) {
@@ -449,15 +533,15 @@
 			}
 		}
 		if (argResult == null) {
-			return this.value = new cError(cErrorType.wrong_value_type);
-		}else{
-			if(nTrueValues % 2){
+			return new cError(cErrorType.wrong_value_type);
+		} else {
+			if (nTrueValues % 2) {
 				argResult = new cBool(true);
-			}else{
+			} else {
 				argResult = new cBool(false);
 			}
 		}
 
-		return this.value = argResult;
+		return argResult;
 	};
 })(window);

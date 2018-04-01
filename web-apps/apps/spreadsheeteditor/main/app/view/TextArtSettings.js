@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  TextArtSettings.js
  *
  *  Created by Julia Radzhabova on 7/10/15
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -539,7 +539,7 @@ define([
             if (this.api && !this._noApply) {
                 var props = new Asc.asc_TextArtProperties();
                 var stroke = new Asc.asc_CStroke();
-                if (this.BorderSize<0.01) {
+                if (this.BorderSize<0.00001) {
                     stroke.asc_putType( Asc.c_oAscStrokeType.STROKE_NONE);
                     this._state.StrokeType = this._state.StrokeWidth = -1;
                 } else {
@@ -591,7 +591,7 @@ define([
             if (this.api && !this._noApply) {
                 var props = new Asc.asc_TextArtProperties();
                 var stroke = new Asc.asc_CStroke();
-                if (this.BorderSize<0.01) {
+                if (this.BorderSize<0.00001) {
                     stroke.put_type( Asc.c_oAscStrokeType.STROKE_NONE);
                 } else {
                     stroke.put_type( Asc.c_oAscStrokeType.STROKE_COLOR);
@@ -612,7 +612,7 @@ define([
             if (this.api && this.BorderSize>0 && !this._noApply) {
                 var props = new Asc.asc_TextArtProperties();
                 var stroke = new Asc.asc_CStroke();
-                if (this.BorderSize<0.01) {
+                if (this.BorderSize<0.00001) {
                     stroke.asc_putType( Asc.c_oAscStrokeType.STROKE_NONE);
                 } else {
                     stroke.asc_putType( Asc.c_oAscStrokeType.STROKE_COLOR);
@@ -924,14 +924,14 @@ define([
                 if (this._state.StrokeType !== strokeType || strokeType == Asc.c_oAscStrokeType.STROKE_COLOR) {
                     if ( strokeType == Asc.c_oAscStrokeType.STROKE_COLOR ) {
                         var w = stroke.asc_getWidth();
-                        var check_value = (Math.abs(this._state.StrokeWidth-w)<0.001) && !((new RegExp(this.txtPt + '\\s*$')).test(this.cmbBorderSize.getRawValue()));
-                        if ( Math.abs(this._state.StrokeWidth-w)>0.001 || check_value ||
+                        var check_value = (Math.abs(this._state.StrokeWidth-w)<0.00001) && !((new RegExp(this.txtPt + '\\s*$')).test(this.cmbBorderSize.getRawValue()));
+                        if ( Math.abs(this._state.StrokeWidth-w)>0.00001 || check_value ||
                             (this._state.StrokeWidth===null || w===null)&&(this._state.StrokeWidth!==w)) {
                             this._state.StrokeWidth = w;
 
                             if (w!==null) w = this._mm2pt(w);
                             var _selectedItem = (w===null) ? w : _.find(this.cmbBorderSize.store.models, function(item) {
-                                if ( w<item.attributes.value+0.01 && w>item.attributes.value-0.01) {
+                                if ( w<item.attributes.value+0.00001 && w>item.attributes.value-0.00001) {
                                     return true;
                                 }
                             });
@@ -1108,7 +1108,7 @@ define([
             this.lockedControls.push(this.btnInsertFromUrl);
 
             this.btnInsertFromFile.on('click', _.bind(function(btn){
-                if (this.api) this.api.asc_changeArtImageFromFile();
+                if (this.api) this.api.asc_changeArtImageFromFile(this.BlipFillType);
                 Common.NotificationCenter.trigger('edit:complete', this);
             }, this));
             this.btnInsertFromUrl.on('click', _.bind(this.insertFromUrl, this));

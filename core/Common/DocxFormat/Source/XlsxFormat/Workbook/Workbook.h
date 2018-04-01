@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,6 +33,7 @@
 #ifndef OOX_WORKBOOK_FILE_INCLUDE_H_
 #define OOX_WORKBOOK_FILE_INCLUDE_H_
 
+#include "../Xlsx.h"
 #include "../CommonInclude.h"
 
 #include "BookViews.h"
@@ -64,13 +65,27 @@ namespace OOX
 		class CWorkbook : public OOX::File, public OOX::IFileContainer
 		{
 		public:
-			CWorkbook()
+			CWorkbook(OOX::Document* pMain) : OOX::File(pMain), OOX::IFileContainer(pMain)
 			{
+				m_bMacroEnabled	= false;
 				m_bSpreadsheets = true;
+
+				CXlsx* xlsx = dynamic_cast<CXlsx*>(pMain);
+				if ((xlsx) && (!xlsx->m_pWorkbook))
+				{
+					xlsx->m_pWorkbook = this;
+				}
 			}
-			CWorkbook(const CPath& oRootPath, const CPath& oPath)
+			CWorkbook(OOX::Document* pMain, const CPath& oRootPath, const CPath& oPath) : OOX::File(pMain), OOX::IFileContainer(pMain)
 			{
+				m_bMacroEnabled	= false;
 				m_bSpreadsheets = true;				
+				
+  				CXlsx* xlsx = dynamic_cast<CXlsx*>(File::m_pMainDocument);
+				if ((xlsx) && (!xlsx->m_pWorkbook))
+				{
+					xlsx->m_pWorkbook = this;
+				}
 				read(oRootPath, oPath);
 			}
 			virtual ~CWorkbook()
@@ -87,6 +102,12 @@ namespace OOX
 			{
 				m_oReadPath = oPath;
 				IFileContainer::Read( oRootPath, oPath );
+
+  				CXlsx* xlsx = dynamic_cast<CXlsx*>(File::m_pMainDocument);
+				if ( (xlsx ) && (xlsx->m_pVbaProject) )
+				{
+					m_bMacroEnabled = true;
+				}
 
 				XmlUtils::CXmlLiteReader oReader;
 
@@ -149,7 +170,8 @@ namespace OOX
 			}
 			virtual const OOX::FileType type() const
 			{
-				return OOX::Spreadsheet::FileTypes::Workbook;
+				if (m_bMacroEnabled)	return OOX::Spreadsheet::FileTypes::WorkbookMacro;
+				else					return OOX::Spreadsheet::FileTypes::Workbook;
 			}
 			virtual const CPath DefaultDirectory() const
 			{
@@ -177,9 +199,12 @@ namespace OOX
 				//BookViews
 				if(false == m_oBookViews.IsInit())
 					m_oBookViews.Init();
-				if(0 == m_oBookViews->m_arrItems.size())
+				
+				if(m_oBookViews->m_arrItems.empty())
 					m_oBookViews->m_arrItems.push_back(new OOX::Spreadsheet::CWorkbookView());
-				OOX::Spreadsheet::CWorkbookView* pWorkbookView = m_oBookViews->m_arrItems[0];
+				
+				OOX::Spreadsheet::CWorkbookView* pWorkbookView = m_oBookViews->m_arrItems.front();
+
 				if(false == pWorkbookView->m_oXWindow.IsInit())
 				{
 					pWorkbookView->m_oXWindow.Init();
@@ -202,7 +227,7 @@ namespace OOX
 				}
 			}
 		private:
-			CPath									m_oReadPath;
+			CPath											m_oReadPath;
 
 		public:
 			nullable<OOX::Spreadsheet::CBookViews>			m_oBookViews;
@@ -211,6 +236,8 @@ namespace OOX
 			nullable<OOX::Spreadsheet::CWorkbookPr>			m_oWorkbookPr;
 			nullable<OOX::Spreadsheet::CExternalReferences>	m_oExternalReferences;
 			nullable<std::wstring>							m_oPivotCachesXml;
+			
+			bool											m_bMacroEnabled;
 		};
 	} //Spreadsheet
 } // namespace OOX

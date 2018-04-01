@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -175,13 +175,6 @@ void xlsx_fills::serialize(std::wostream & _Wostream) const
             }
         }
     }
-
-    //_Wostream << L"<fills count=\"" << inst_array.size() << L"\" >";
-    //BOOST_FOREACH(const xlsx_fill & f, inst_array)
-    //{
-    //    ::cpdoccore::oox::xlsx_serialize(_Wostream, f);
-    //}
-    //_Wostream << L"</fills>";    
 }
 
 }

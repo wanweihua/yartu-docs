@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -122,9 +122,9 @@ void draw_shape::common_xlsx_convert(oox::xlsx_conversion_context & Context)
 ////////////////////////////////////////////////////////////////////////////////////
 	properties.apply_to(Context.get_drawing_context().get_properties());
 	
-	BOOST_FOREACH(odf_reader::_property const & p, additional_)
+ 	for (size_t i = 0; i < additional_.size(); i++)
 	{
-		Context.get_drawing_context().set_property(p);
+		Context.get_drawing_context().set_property(additional_[i]);
 	}
 	
 	oox::_oox_fill fill;
@@ -134,9 +134,9 @@ void draw_shape::common_xlsx_convert(oox::xlsx_conversion_context & Context)
 //////////////////////////////////////////////////////////////////////////////////////	
 	Context.get_text_context().start_drawing_content();
 
-	BOOST_FOREACH(office_element_ptr const & elm, content_)
+	for (size_t i = 0; i < content_.size(); i++)
     {
-        elm->xlsx_convert(Context);
+        content_[i]->xlsx_convert(Context);
     }
 	std::wstring text_content_ = Context.get_text_context().end_drawing_content();
 
@@ -334,6 +334,26 @@ void draw_enhanced_geometry::xlsx_convert(oox::xlsx_conversion_context & Context
 		{
 		}
 	}
+}
+void dr3d_scene::xlsx_convert(oox::xlsx_conversion_context & Context)
+{
+	//const std::wstring style = common_shape_draw_attlist_.draw_text_style_name_.get_value_or(L"");
+
+	Context.get_drawing_context().start_shape(1);//rect с наваротами-атрибутами .. а-ля TextBox
+	
+	common_xlsx_convert(Context);
+
+	Context.get_drawing_context().end_shape();
+	Context.get_drawing_context().clear();
+}
+void dr3d_extrude::xlsx_convert(oox::xlsx_conversion_context & Context)
+{
+	reset_svg_path();
+
+}
+void dr3d_light::xlsx_convert(oox::xlsx_conversion_context & Context)
+{
+
 }
 }
 }

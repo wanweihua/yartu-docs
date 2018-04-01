@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,8 +36,6 @@
 namespace XLS
 {
 
-
-// Logical representation of STYLES union of records 
 class STYLES : public CompositeObject
 {
 	BASE_OBJECT_DEFINE_CLASS_NAME(STYLES)
@@ -52,6 +50,8 @@ public:
 	static const ElementType	type = typeSTYLES;
 
 	int serialize(std::wostream & stream);
+
+	std::vector<std::pair<BaseObjectPtr, BaseObjectPtr>> m_arStyles;
 
 	int styles_count;
 	

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -78,6 +78,8 @@ function CHistory(Document)
     // Параметры для специального сохранения для локальной версии редактора
     this.UserSaveMode   = false;
     this.UserSavedIndex = null;  // Номер точки, на которой произошло последнее сохранение пользователем (не автосохранение)
+
+	this.StoredData = [];
 }
 
 CHistory.prototype =
@@ -218,7 +220,7 @@ CHistory.prototype =
 
     Undo : function(Options)
     {
-        this.Check_UninonLastPoints();
+        this.CheckUnionLastPoints();
 
         // Проверяем можно ли сделать Undo
         if (true !== this.Can_Undo())
@@ -273,9 +275,9 @@ CHistory.prototype =
         if (null != Point)
             this.Document.SetSelectionState( Point.State );
 		
-		if(!window['AscCommon'].g_clipboardBase.pasteStart)
+		if(!window['AscCommon'].g_specialPasteHelper.pasteStart)
 		{
-			window['AscCommon'].g_clipboardBase.SpecialPasteButton_Hide();
+			window['AscCommon'].g_specialPasteHelper.SpecialPasteButton_Hide();
 		}
 		
         return this.RecalculateData;
@@ -315,9 +317,9 @@ CHistory.prototype =
 
         this.Document.SetSelectionState( State );
 		
-		if(!window['AscCommon'].g_clipboardBase.pasteStart)
+		if(!window['AscCommon'].g_specialPasteHelper.pasteStart)
 		{
-			window['AscCommon'].g_clipboardBase.SpecialPasteButton_Hide();
+			window['AscCommon'].g_specialPasteHelper.SpecialPasteButton_Hide();
 		}
 		
         return this.RecalculateData;
@@ -328,6 +330,9 @@ CHistory.prototype =
 		if ( 0 !== this.TurnOffHistory )
 			return;
 
+		if (this.Document && this.Document.OnCreateNewHistoryPoint)
+			this.Document.OnCreateNewHistoryPoint();
+
         this.CanNotAddChanges = false;
 		this.CollectChanges   = false;
 
@@ -336,7 +341,7 @@ CHistory.prototype =
 
         this.Clear_Additional();
 
-        this.Check_UninonLastPoints();
+        this.CheckUnionLastPoints();
         
         var State = this.Document.GetSelectionState();
         var Items = [];
@@ -355,9 +360,9 @@ CHistory.prototype =
         // Удаляем ненужные точки
         this.Points.length = this.Index + 1;
 		
-		if(!window['AscCommon'].g_clipboardBase.pasteStart)
+		if(!window['AscCommon'].g_specialPasteHelper.pasteStart)
 		{
-			window['AscCommon'].g_clipboardBase.SpecialPasteButton_Hide();
+			window['AscCommon'].g_specialPasteHelper.SpecialPasteButton_Hide();
 		}
     },
 
@@ -693,7 +698,7 @@ CHistory.prototype =
         this.RecalculateData.Update = true;
     },
 
-    Check_UninonLastPoints : function()
+	CheckUnionLastPoints : function()
     {
         // Не объединяем точки в истории, когда отключается пересчет.
         // TODO: Неправильно изменяется RecalcIndex
@@ -844,17 +849,20 @@ CHistory.prototype =
       }
     },
 
-    Have_Changes : function(IsNotUserSave)
-    {
-      var checkIndex = (this.Is_UserSaveMode() && !IsNotUserSave) ? this.UserSavedIndex : this.SavedIndex;
-      if (-1 === this.Index && null === checkIndex && false === this.ForceSave)
-        return false;
+	Have_Changes : function(IsNotUserSave)
+	{
+		if (!this.Document || this.Document.IsViewModeInReview())
+			return false;
 
-      if (this.Index != checkIndex || true === this.ForceSave)
-        return true;
+		var checkIndex = (this.Is_UserSaveMode() && !IsNotUserSave) ? this.UserSavedIndex : this.SavedIndex;
+		if (-1 === this.Index && null === checkIndex && false === this.ForceSave)
+			return false;
 
-      return false;
-    },
+		if (this.Index != checkIndex || true === this.ForceSave)
+			return true;
+
+		return false;
+	},
 
     Get_RecalcData : function(RecalcData, arrChanges)
     {
@@ -945,79 +953,6 @@ CHistory.prototype =
         }
 
         return [];
-    },
-
-    Is_ParagraphSimpleChanges : function()
-    {
-        var Count, Items;
-        if (this.Index - this.RecIndex !== 1 && this.RecIndex >= -1)
-        {
-            Items = [];
-            Count = 0;
-            for (var PointIndex = this.RecIndex + 1; PointIndex <= this.Index; PointIndex++)
-            {
-                Items = Items.concat(this.Points[PointIndex].Items);
-                Count += this.Points[PointIndex].Items.length;
-            }
-        }
-        else if (this.Index >= 0)
-        {
-            // Считываем изменения, начиная с последней точки, и смотрим что надо пересчитать.
-            var Point = this.Points[this.Index];
-
-            Count = Point.Items.length;
-            Items = Point.Items;
-        }
-        else
-            return null;
-
-
-        if (Items.length > 0)
-        {
-            // Смотрим, чтобы параграф, в котором происходили все изменения был один и тот же. Если есть изменение,
-            // которое не возвращает параграф, значит возвращаем null.
-
-            var Para = null;
-            var Class = Items[0].Class;
-            if (Class instanceof Paragraph)
-                Para = Class;
-            else if (Class.GetParagraph)
-                Para = Class.GetParagraph();
-            else
-                return null;
-
-            for (var Index = 1; Index < Count; Index++)
-            {
-                Class = Items[Index].Class;
-
-                if (Class instanceof Paragraph)
-                {
-                    if (Para != Class)
-                        return null;
-                }
-                else if (Class.GetParagraph)
-                {
-                    if (Para != Class.GetParagraph())
-                        return null;
-                }
-                else
-                    return null;
-            }
-
-            // Все изменения сделаны в одном параграфе, нам осталось проверить, что каждое из этих изменений
-            // влияет только на данный параграф.
-            for (var Index = 0; Index < Count; Index++)
-            {
-                var Item = Items[Index];
-                var Class = Item.Class;
-                if (!Class.Is_SimpleChanges || !Class.Is_ParagraphSimpleChanges(Item))
-                    return null;
-            }
-
-            return Para;
-        }
-
-        return null;
     },
 
     Set_Additional_ExtendDocumentToPos : function()
@@ -1221,6 +1156,156 @@ CHistory.prototype.SetRecalculateIndex = function(nIndex)
 {
 	this.RecIndex = Math.min(this.Index, nIndex);
 };
+CHistory.prototype.SaveRedoPoints = function()
+{
+	var arrData = [];
+	this.StoredData.push(arrData);
+	for (var nIndex = this.Index + 1, nCount = this.Points.length; nIndex < nCount; ++nIndex)
+	{
+		arrData.push(this.Points[nIndex]);
+	}
+};
+CHistory.prototype.PopRedoPoints = function()
+{
+	if (this.StoredData.length <= 0)
+		return;
+
+	var arrPoints = this.StoredData[this.StoredData.length - 1];
+	this.Points.length = this.Index + 1;
+	for (var nIndex = 0, nCount = arrPoints.length; nIndex < nCount; ++nIndex)
+	{
+		this.Points[this.Index + nIndex + 1] = arrPoints[nIndex];
+	}
+
+	this.StoredData.length = this.StoredData.length - 1;
+};
+CHistory.prototype.RemoveLastPoint = function()
+{
+	this.Remove_LastPoint();
+};
+CHistory.prototype.IsParagraphSimpleChanges = function()
+{
+	var Count, Items;
+	if (this.Index - this.RecIndex !== 1 && this.RecIndex >= -1)
+	{
+		Items = [];
+		Count = 0;
+		for (var PointIndex = this.RecIndex + 1; PointIndex <= this.Index; PointIndex++)
+		{
+			Items = Items.concat(this.Points[PointIndex].Items);
+			Count += this.Points[PointIndex].Items.length;
+		}
+	}
+	else if (this.Index >= 0)
+	{
+		// Считываем изменения, начиная с последней точки, и смотрим что надо пересчитать.
+		var Point = this.Points[this.Index];
+
+		Count = Point.Items.length;
+		Items = Point.Items;
+	}
+	else
+		return null;
+
+
+	if (Items.length > 0)
+	{
+		// Смотрим, чтобы параграф, в котором происходили все изменения был один и тот же. Если есть изменение,
+		// которое не возвращает параграф, значит возвращаем null.
+
+		var Para = null;
+		for (var Index = 0; Index < Count; Index++)
+		{
+			var Class = Items[Index].Class;
+
+			if (Class instanceof Paragraph)
+			{
+				if (null === Para)
+					Para = Class;
+				else if (Para !== Class)
+					return null;
+			}
+			else if (Class instanceof AscCommon.CTableId || Class instanceof AscCommon.CComments)
+			{
+				continue;
+			}
+			else if (Class.GetParagraph)
+			{
+				if (null === Para)
+					Para = Class.GetParagraph();
+				else if (Para !== Class.GetParagraph())
+					return null;
+			}
+			else
+				return null;
+		}
+
+		// Все изменения сделаны в одном параграфе, нам осталось проверить, что каждое из этих изменений
+		// влияет только на данный параграф.
+		for (var Index = 0; Index < Count; Index++)
+		{
+			var Item  = Items[Index];
+			var Class = Item.Class;
+
+			if (Class instanceof AscCommon.CTableId || Class instanceof AscCommon.CComments)
+				continue;
+
+			if (!Class.IsParagraphSimpleChanges || !Class.IsParagraphSimpleChanges(Item))
+				return null;
+		}
+
+		return Para;
+	}
+
+	return null;
+};
+	/**
+	 * Получаем сколько изменений в истории уже сохранено на сервере на данный момент с учетом текущей точки в истории
+	 * @returns {number}
+	 */
+	CHistory.prototype.GetDeleteIndex = function()
+	{
+		if (null === this.SavedIndex)
+			return null;
+
+		var nSum = 0;
+		for (var nPointIndex = 0, nLastPoint = Math.min(this.SavedIndex, this.Index); nPointIndex <= nLastPoint; ++nPointIndex)
+		{
+			nSum += this.Points[nPointIndex].Items.length;
+		}
+
+		return nSum;
+	};
+	/**
+	 * Удаляем изменения из истории, которые сохранены на сервере. Это происходит при подключении второго пользователя
+	 */
+	CHistory.prototype.RemovePointsByDeleteIndex = function()
+	{
+		var nDeleteIndex = this.GetDeleteIndex();
+		if (null === nDeleteIndex)
+			return;
+
+		while (nDeleteIndex > 0 && this.Points.length > 0)
+		{
+			nDeleteIndex -= this.Points[0].Items.length;
+
+			this.Points.splice(0, 1);
+
+			if (this.Index >= 0)
+				this.Index--;
+
+			if (this.RecIndex >= 0)
+				this.RecIndex--;
+
+			if (null !== this.SavedIndex && this.SavedIndex >= 0)
+			{
+				this.SavedIndex--;
+
+				if (this.SavedIndex < 0)
+					this.SavedIndex = null;
+			}
+		}
+	};
 
 function CRC32()
 {

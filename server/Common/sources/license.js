@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -52,8 +52,19 @@ const redisKeyLicense = cfgRedisPrefix + ((constants.PACKAGE_TYPE_OS === oPackag
 
 exports.readLicense = function*() {
 	const c_LR = constants.LICENSE_RESULT;
-	const resMax = {count: 999999, type: c_LR.Success};
-	const res = {count: 1, type: c_LR.Error, light: false, packageType: oPackageType, trial: false, branding: false};
+	const c_LM = constants.LICENSE_MODE;
+	const resMax = {count: 999999, type: c_LR.Success, mode: c_LM.None, connections: 999999999, users: 999999999};
+	const res = {
+		count: 1,
+		type: c_LR.Error,
+		light: false,
+		packageType: oPackageType,
+		mode: c_LM.None,
+		branding: false,
+		connections: constants.LICENSE_CONNECTIONS,
+		usersCount: 0,
+		usersExpire: constants.LICENSE_EXPIRE_USERS_ONE_DAY
+	};
 	let checkFile = false;
 	try {
 		const oFile = fs.readFileSync(configL.get('license_file')).toString();
@@ -67,10 +78,12 @@ exports.readLicense = function*() {
 		const publicKey = '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDRhGF7X4A0ZVlEg594WmODVVUI\niiPQs04aLmvfg8SborHss5gQXu0aIdUT6nb5rTh5hD2yfpF2WIW6M8z0WxRhwicg\nXwi80H1aLPf6lEPPLvN29EhQNjBpkFkAJUbS8uuhJEeKw0cE49g80eBBF4BCqSL6\nPFQbP9/rByxdxEoAIQIDAQAB\n-----END PUBLIC KEY-----\n';
 		if (verify.verify(publicKey, sign, 'hex')) {
 			const endDate = new Date(oLicense['end_date']);
-			const isTrial = res.trial = (true === oLicense['trial'] || 'true' === oLicense['trial']); // Someone who likes to put json string instead of bool
-			const checkDate = (isTrial && constants.PACKAGE_TYPE_OS === oPackageType) ? new Date() : oBuildDate;
+			const isTrial = (true === oLicense['trial'] || 'true' === oLicense['trial']); // Someone who likes to put json string instead of bool
+			res.mode = isTrial ? c_LM.Trial : getLicenseMode(oLicense['mode']);
+			const checkDate = c_LM.Trial === res.mode ? new Date() : oBuildDate;
 			if (endDate >= checkDate && 2 <= oLicense['version']) {
-				res.count = Math.min(Math.max(res.count, oLicense['process'] >> 0), resMax.count);
+				res.connections = Math.max(res.count, oLicense['process'] >> 0) * 75;
+				res.count = resMax.count;
 				res.type = c_LR.Success;
 			} else {
 				res.type = isTrial ? c_LR.ExpiredTrial : c_LR.Expired;
@@ -78,6 +91,16 @@ exports.readLicense = function*() {
 
 			res.light = (true === oLicense['light'] || 'true' === oLicense['light']); // Someone who likes to put json string instead of bool
 			res.branding = (true === oLicense['branding'] || 'true' === oLicense['branding']); // Someone who likes to put json string instead of bool
+			if (oLicense.hasOwnProperty('connections')) {
+				res.connections = oLicense['connections'] >> 0;
+			}
+			if (oLicense.hasOwnProperty('users_count')) {
+				res.usersCount = oLicense['users_count'] >> 0;
+			}
+			if (oLicense.hasOwnProperty('users_expire')) {
+				res.usersExpire = Math.max(constants.LICENSE_EXPIRE_USERS_ONE_DAY, (oLicense['users_expire'] >> 0) *
+					constants.LICENSE_EXPIRE_USERS_ONE_DAY);
+			}
 		} else {
 			throw 'verify';
 		}
@@ -95,8 +118,8 @@ exports.readLicense = function*() {
 			} else {
 				res.type = (yield* _getFileState()) ? c_LR.Success : c_LR.ExpiredTrial;
 				if (res.type === c_LR.Success) {
-					res.trial = true;
-					res.count = 2;
+					res.mode = c_LM.Trial;
+					res.count = resMax.count;
 					return res;
 				}
 			}
@@ -113,6 +136,12 @@ exports.readLicense = function*() {
 
 	return res;
 };
+exports.packageType = oPackageType;
+
+function getLicenseMode(mode) {
+	const c_LM = constants.LICENSE_MODE;
+	return 'developer' === mode ? c_LM.Developer : ('trial' === mode ? c_LM.Trial : c_LM.None);
+}
 
 function* _getFileState() {
 	const val = yield utils.promiseRedis(redisClient, redisClient.hget, redisKeyLicense, redisKeyLicense);

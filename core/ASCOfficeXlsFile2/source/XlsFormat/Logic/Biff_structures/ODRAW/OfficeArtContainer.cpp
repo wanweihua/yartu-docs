@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -64,6 +64,8 @@ OfficeArtRecordPtr OfficeArtContainer::CreateOfficeArt(unsigned short type)
 	OfficeArtRecordPtr art_record;
 	switch (type)
 	{
+		case DggContainer:
+			art_record = OfficeArtRecordPtr(new OfficeArtDggContainer(anchor_type_));	break;
 		case DgContainer:
 			art_record = OfficeArtRecordPtr(new OfficeArtDgContainer(anchor_type_));	break;
 		case FDG:
@@ -206,6 +208,8 @@ void OfficeArtContainer::loadFields(XLS::CFRecord& record)
 		}
 		else // If the found record is not implemented or unknown
 		{
+			if (rh_child.recType == 0xf150)
+				break;
 			if (rh_child.size() > record.getDataSize() - container_beginning_ptr)
 				break;
 			try

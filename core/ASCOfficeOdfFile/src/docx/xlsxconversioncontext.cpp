@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -152,8 +152,7 @@ void xlsx_conversion_context::end_document()
             content->add_rel(relationship(dId, kType, dName));
         }
 //////////////////////////////////////////////////////////////////////////////////////////////////
-        content->add_rels(sheet->hyperlinks_rels());
-        content->add_rels(sheet->ole_objects_rels());
+        content->add_rels(sheet->sheet_rels());
 /////////////////////////////////////////////////////////////////////////////////////////////////
 		const std::pair<std::wstring, std::wstring> p2 = sheet->get_comments_link();        
 		if (!p2.first.empty())
@@ -232,6 +231,54 @@ void xlsx_conversion_context::end_document()
                 }
 
                 get_xlsx_defined_names().xlsx_serialize(CP_XML_STREAM());
+
+				int pivot_cache_count = xlsx_pivots_context_.get_count();
+				if (pivot_cache_count > 0)
+				{
+					CP_XML_NODE(L"pivotCaches")
+					{
+						for (int i = 0; i < pivot_cache_count; i++)
+						{
+							std::wstring				rId		= L"pcId" + std::to_wstring(i+1);
+							static const std::wstring	sType	= L"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition"; 
+							const std::wstring			sName	= std::wstring(L"../pivotCache/pivotCacheDefinition" + std::to_wstring(i + 1) + L".xml");
+							
+							package::pivot_cache_content_ptr content = package::pivot_cache_content::create();
+							
+							CP_XML_NODE(L"pivotCache")
+							{
+								CP_XML_ATTR(L"cacheId", std::to_wstring(i));
+								CP_XML_ATTR(L"r:id", rId);
+							}
+
+							xlsx_pivots_context_.dump_rels_cache(i, content->get_rels());
+							xlsx_pivots_context_.write_cache_definitions_to(i, content->definitions());
+							xlsx_pivots_context_.write_cache_records_to(i, content->records());
+
+							output_document_->get_xl_files().add_pivot_cache(content);	
+						}
+					}
+				}
+				int pivot_view_count = xlsx_pivots_context_.get_count();
+				if (pivot_view_count > 0)
+				{
+					for (int i = 0; i < pivot_view_count; i++)
+					{
+						package::pivot_table_content_ptr content = package::pivot_table_content::create();
+
+						xlsx_pivots_context_.dump_rels_view(i, content->get_rels());
+						xlsx_pivots_context_.write_table_view_to(i, content->content());
+
+						output_document_->get_xl_files().add_pivot_table(content);	
+					}
+				}
+				if (xlsx_pivots_context_.is_connections())
+				{
+					std::wstringstream strm;
+					xlsx_pivots_context_.write_connections_to(strm);
+
+					output_document_->get_xl_files().set_connections( package::simple_element::create(L"connections.xml", strm.str()) );
+				}
             }
         }
 
@@ -316,16 +363,32 @@ oox_chart_context & xlsx_conversion_context::current_chart()
         throw std::runtime_error("internal error");
     }
 }
-xlsx_xml_worksheet & xlsx_conversion_context::current_sheet()
+xlsx_xml_worksheet & xlsx_conversion_context::current_sheet(int index)
 {
     if (!sheets_.empty())
     {
-        return *sheets_.back().get();
+		if (index < 0)	return *sheets_.back().get();
+		else			return *sheets_[index].get();
     }
     else
     {
         throw std::runtime_error("internal error");
     }
+}
+int xlsx_conversion_context::find_sheet_by_name(std::wstring tableName)
+{
+	if (tableName.empty()) return -1;
+
+	if (0 == tableName.find(L"'"))
+	{
+		tableName = tableName.substr(1, tableName.length() - 2);
+	}
+	for (size_t i = 0; i < sheets_.size(); i++)
+	{
+		if (sheets_[i]->name() == tableName)
+			return i;
+	}
+	return -1;
 }
 void xlsx_conversion_context::create_new_sheet(std::wstring const & name)
 {
@@ -374,6 +437,7 @@ void xlsx_conversion_context::end_table()
     get_table_context().serialize_autofilter			(current_sheet().autofilter());
     get_table_context().serialize_sort					(current_sheet().sort());
     get_table_context().serialize_merge_cells			(current_sheet().mergeCells());
+	get_table_context().serialize_data_validation		(current_sheet().dataValidations());
     
 	get_drawing_context().set_odf_packet_path			(root()->get_folder());
     get_drawing_context().process_objects				(get_table_metrics());
@@ -381,9 +445,20 @@ void xlsx_conversion_context::end_table()
 	get_table_context().serialize_hyperlinks			(current_sheet().hyperlinks());
     get_table_context().serialize_ole_objects			(current_sheet().ole_objects());
 	
-	get_table_context().dump_rels_hyperlinks			(current_sheet().hyperlinks_rels());
-	get_table_context().dump_rels_ole_objects			(current_sheet().ole_objects_rels());
+	get_table_context().dump_rels_hyperlinks			(current_sheet().sheet_rels());
+	get_table_context().dump_rels_ole_objects			(current_sheet().sheet_rels());
 
+	typedef std::multimap<std::wstring, int> _mapPivotsTableView;
+	std::pair<_mapPivotsTableView::iterator, _mapPivotsTableView::iterator> range;
+
+	range = mapPivotsTableView_.equal_range(current_sheet().name());
+
+	for (_mapPivotsTableView::iterator it = range.first; it != range.second; ++it)
+	{
+		current_sheet().sheet_rels().add(oox::relationship(L"pvId" + std::to_wstring(it->second),
+			L"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable",
+			L"../pivotTables/pivotTable" + std::to_wstring(it->second) + L".xml"));
+	}
 
 	if (!get_drawing_context().empty())
     {
@@ -401,9 +476,10 @@ void xlsx_conversion_context::end_table()
             {
                 CP_XML_ATTR(L"r:id", drawingName.second);
             }
-        }
+		}
+	}
+	get_table_context().serialize_background (current_sheet().drawing());
 
-    }
 	if (!get_comments_context().empty())
     {
         std::wstringstream strm;
@@ -421,7 +497,6 @@ void xlsx_conversion_context::end_table()
         current_sheet().set_comments_link(commentsName.first, commentsName.second);
         current_sheet().set_vml_drawing_link(vml_drawingName.first, vml_drawingName.second);
     }    
-//background picture
     get_table_context().end_table();
 }
 
@@ -473,7 +548,10 @@ int xlsx_conversion_context::current_table_row()
 
 std::wstring xlsx_conversion_context::current_cell_address()
 {
-    return oox::getCellAddress(current_table_column(), current_table_row());
+	int col = current_table_column(); 
+	int row = current_table_row();
+
+	return oox::getCellAddress(col < 0 ? 0 : col, row < 0 ? 0 : row); //under covered cell
 }
 
 void xlsx_conversion_context::start_office_spreadsheet(const odf_reader::office_element * elm)
@@ -639,6 +717,10 @@ void xlsx_conversion_context::end_hyperlink(std::wstring const & href)
 		
 		xlsx_text_context_.end_span2();
 	}
+}
+void xlsx_conversion_context::add_pivot_sheet_source (const std::wstring & sheet_name, int index_table_view)
+{//ващето в либре жесткая привязка что на одном листе тока одна сводная может быть ..
+	mapPivotsTableView_.insert(std::make_pair(sheet_name, index_table_view));
 }
 
 void xlsx_conversion_context::start_conditional_format(std::wstring ref)

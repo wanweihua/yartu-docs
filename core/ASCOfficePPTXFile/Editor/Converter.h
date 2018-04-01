@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -38,7 +38,7 @@ namespace PPTX2EditorAdvanced
 {
 	using namespace NSBinPptxRW;
 
-	DWORD Convert(NSBinPptxRW::CBinaryFileWriter& oBinaryWriter, PPTX::Folder& oFolder, const std::wstring& strSourceDirectory, const std::wstring& strDstFile)
+	DWORD Convert(NSBinPptxRW::CBinaryFileWriter& oBinaryWriter, PPTX::Document& oFolder, const std::wstring& strSourceDirectory, const std::wstring& strDstFile, bool bIsNoBase64)
 	{	
 		// сначала соберем все объекты для конвертации и сформируем main-таблицы
 		NSBinPptxRW::CCommonWriter* pCommon = oBinaryWriter.m_pCommon;
@@ -230,6 +230,12 @@ namespace PPTX2EditorAdvanced
 			oBinaryWriter.m_pCommon->m_oNote_Rels.push_back(nMasterIndex);
 		}
 
+		if (bIsNoBase64)
+		{
+			std::wstring strPrefix = L"PPTY;v"+std::to_wstring(g_nFormatVersionNoBase64)+L";0;";
+			oBinaryWriter.WriteStringUtf8(strPrefix);
+		}
+		_UINT32 nStartPos = oBinaryWriter.GetPosition();
 		// нужно записать все в maintables. А кроме главных таблиц ничего и нету. Все остальное лежит в них
 		// на каждую таблицу - 5 байт (тип и сдвиг)
 		// число таблиц - заранее известно (сделаем 30. если потом не будет хватать - новая версия формата)
@@ -374,12 +380,12 @@ namespace PPTX2EditorAdvanced
 		oBinaryWriter.StartRecord(NSMainTables::ImageMap);
 		oBinaryWriter.WriteBYTE(NSBinPptxRW::g_nodeAttributeStart);
 
-		std::map<std::wstring, NSShapeImageGen::CImageInfo>* pIMaps = &oBinaryWriter.m_pCommon->m_pImageManager->m_mapImagesFile;
+		std::map<std::wstring, NSShapeImageGen::CMediaInfo>* pIMaps = &oBinaryWriter.m_pCommon->m_pMediaManager->m_mapMediaFiles;
 
 		LONG lIndexI = 0;
-		for (std::map<std::wstring, NSShapeImageGen::CImageInfo>::iterator pPair = pIMaps->begin(); pPair != pIMaps->end(); ++pPair)
+		for (std::map<std::wstring, NSShapeImageGen::CMediaInfo>::iterator pPair = pIMaps->begin(); pPair != pIMaps->end(); ++pPair)
 		{
-			NSShapeImageGen::CImageInfo& oRec = pPair->second;
+			NSShapeImageGen::CMediaInfo& oRec = pPair->second;
 			oBinaryWriter.WriteString1(lIndexI++, oRec.GetPath2());
 		}
 
@@ -516,29 +522,35 @@ namespace PPTX2EditorAdvanced
 		// ------------------------------------------------
 
 		oBinaryWriter.WriteEmbeddedFonts();
-		oBinaryWriter.WriteMainPart();
+		oBinaryWriter.WriteMainPart(nStartPos);
 
 		// все записалось нормально. осталось скинуть на диск
 		BYTE* pbBinBuffer = oBinaryWriter.GetBuffer();
 		int nBinBufferLen = (int)oBinaryWriter.GetPosition();
-		int nBase64BufferLen = Base64::Base64EncodeGetRequiredLength(nBinBufferLen, Base64::B64_BASE64_FLAG_NOCRLF);
-        BYTE* pbBase64Buffer = new BYTE[nBase64BufferLen+64];
-//		if (true == Base64::Base64Encode(pbBinBuffer, nBinBufferLen, (LPSTR)pbBase64Buffer, &nBase64BufferLen, Base64::B64_BASE64_FLAG_NOCRLF))
-        if (true == Base64_1::Base64Encode(pbBinBuffer, nBinBufferLen, pbBase64Buffer, &nBase64BufferLen))
-        {
-			CFile oFile;
-#if defined(_WIN32) || defined (_WIN64)
-            oFile.CreateFileW(strDstFile);
-#else
-            oFile.CreateFile(strDstFile);
-#endif
-			std::string strPrefix = "PPTY;v1;" + std::to_string(nBinBufferLen) + ";";
-            oFile.WriteFile((void*)strPrefix.c_str(), (DWORD)strPrefix.length());
-			oFile.WriteFile(pbBase64Buffer, nBase64BufferLen);
+		if (bIsNoBase64)
+		{
+			NSFile::CFileBinary oFile;
+			oFile.CreateFileW(strDstFile);
+			oFile.WriteFile(pbBinBuffer, nBinBufferLen);
 			oFile.CloseFile();
 		}
+		else
+		{
+			int nBase64BufferLen = Base64::Base64EncodeGetRequiredLength(nBinBufferLen, Base64::B64_BASE64_FLAG_NOCRLF);
+			BYTE* pbBase64Buffer = new BYTE[nBase64BufferLen+64];
+	//		if (true == Base64::Base64Encode(pbBinBuffer, nBinBufferLen, (LPSTR)pbBase64Buffer, &nBase64BufferLen, Base64::B64_BASE64_FLAG_NOCRLF))
+			if (true == Base64_1::Base64Encode(pbBinBuffer, nBinBufferLen, pbBase64Buffer, &nBase64BufferLen))
+			{
+				NSFile::CFileBinary oFile;
+				oFile.CreateFileW(strDstFile);
+				std::wstring strPrefix = L"PPTY;v1;" + std::to_wstring(nBinBufferLen) + L";";
+				oFile.WriteStringUTF8(strPrefix);
+				oFile.WriteFile(pbBase64Buffer, nBase64BufferLen);
+				oFile.CloseFile();
+			}
 
-		RELEASEARRAYOBJECTS(pbBase64Buffer);
+			RELEASEARRAYOBJECTS(pbBase64Buffer);
+		}
 		return 0;
 	}
 }

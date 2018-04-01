@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,7 +32,6 @@
 
 #include "oox_conversion_context.h"
 
-#include <boost/foreach.hpp>
 #include <iostream>
 #include <cpdoccore/xml/utils.h>
 #include <cpdoccore/odf/odf_document.h>
@@ -145,7 +144,7 @@ void styles_context::docx_serialize_table_style(std::wostream & strm, std::wstri
 namespace oox
 {
 math_context::math_context(odf_reader::fonts_container & fonts, bool graphic) :
-base_font_size_(12), fonts_container_(fonts)
+						base_font_size_(12), fonts_container_(fonts), is_need_e_(false)
 {
 	graphRPR_ = graphic;
 

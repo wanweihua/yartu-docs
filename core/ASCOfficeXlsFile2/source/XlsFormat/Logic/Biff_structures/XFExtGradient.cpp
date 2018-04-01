@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -46,7 +46,10 @@ BiffStructurePtr XFExtGradient::clone()
 void XFExtGradient::load(CFRecord& record)
 {
 	record >> gradient >> cGradStops;
-	for(size_t i = 0; i < cGradStops; ++i)
+
+	if (cGradStops > 256) cGradStops = 256;
+
+	for(size_t i = 0; !record.isEOF() && i < cGradStops; ++i)
 	{
 		GradStop grad_stop;
 		record >> grad_stop;

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -235,7 +235,10 @@
      */
     Api.prototype.CreateSlide = function(){
         var oPresentation = private_GetPresentation();
-        var oSlide = new AscCommonSlide.Slide(oPresentation, oPresentation.slideLayouts[0], 0);
+        var oSlide = new AscCommonSlide.Slide(oPresentation, oPresentation.slideMasters[0].sldLayoutLst[0], 0);
+        oSlide.setNotes(AscCommonSlide.CreateNotes());
+        oSlide.notes.setNotesMaster(oPresentation.notesMasters[0]);
+        oSlide.notes.setSlide(oSlide);
         return new ApiSlide(oSlide);
     };
 
@@ -438,7 +441,7 @@
             else{
                 selectedObjects = oController.selectedObjects;
             }
-            if(selectedObjects.length > 0){
+            if(selectedObjects.length > 0 && !oController.getTargetDocContent()){
                 if(selectedObjects[0].group){
                     spTree = selectedObjects[0].group.spTree;
                 }

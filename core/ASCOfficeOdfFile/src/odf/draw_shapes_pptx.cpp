@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -136,9 +136,9 @@ void draw_shape::common_pptx_convert(oox::pptx_conversion_context & Context)
 ////////////////////////////////////////////////////////////////////////////////////
 	properties.apply_to(Context.get_slide_context().get_properties());
 	
-	BOOST_FOREACH(odf_reader::_property const & p, additional_)
+ 	for (size_t i = 0; i < additional_.size(); i++)
 	{
-		Context.get_slide_context().set_property(p);
+		Context.get_slide_context().set_property(additional_[i]);
 	}
 	if (!textStyleName.empty())
 	{
@@ -162,9 +162,9 @@ void draw_shape::common_pptx_convert(oox::pptx_conversion_context & Context)
 	}
 ////////////////////////////////////////////////////////////////////////////////////
 	Context.get_text_context().start_object();
-	BOOST_FOREACH(office_element_ptr const & elm, content_)
+	for (size_t i = 0; i < content_.size(); i++)
     {
-        elm->pptx_convert(Context);
+        content_[i]->pptx_convert(Context);
     }
 	std::wstring text_content_ = Context.get_text_context().end_object();
 
@@ -401,6 +401,24 @@ void draw_enhanced_geometry::pptx_convert(oox::pptx_conversion_context & Context
 	{
 		Context.get_slide_context().start_shape(1); //restart type shape
 	}
+}
+void dr3d_scene::pptx_convert(oox::pptx_conversion_context & Context)
+{
+	Context.get_slide_context().start_shape(sub_type_);
+
+	common_pptx_convert(Context);
+
+	Context.get_slide_context().end_shape();
+
+}
+void dr3d_extrude::pptx_convert(oox::pptx_conversion_context & Context)
+{
+	reset_svg_path();
+
+}
+void dr3d_light::pptx_convert(oox::pptx_conversion_context & Context)
+{
+
 }
 }
 }

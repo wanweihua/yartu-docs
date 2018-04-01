@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -49,7 +49,7 @@ Asc['asc_docs_api'].prototype._OfflineAppDocumentStartLoad = function()
 	AscCommon.History.UserSaveMode = true;
     window["AscDesktopEditor"]["LocalStartOpen"]();
 };
-Asc['asc_docs_api'].prototype._OfflineAppDocumentEndLoad = function(_url, _data)
+Asc['asc_docs_api'].prototype._OfflineAppDocumentEndLoad = function(_url, _data, _len)
 {
 	AscCommon.g_oIdCounter.m_sUserId = window["AscDesktopEditor"]["CheckUserId"]();
 	if (_data == "")
@@ -57,15 +57,16 @@ Asc['asc_docs_api'].prototype._OfflineAppDocumentEndLoad = function(_url, _data)
 		this.sendEvent("asc_onError", c_oAscError.ID.ConvertationOpenError, c_oAscError.Level.Critical);
 		return;
 	}
-	
-    this.OpenDocument2(_url, _data);
+
+	var _binary = getBinaryArray(_data, _len);
+    this.OpenDocument2(_url, _binary);
 	this.WordControl.m_oLogicDocument.Set_FastCollaborativeEditing(false);
 	this.DocumentOrientation = (null == this.WordControl.m_oLogicDocument) ? true : !this.WordControl.m_oLogicDocument.Orientation;
 	DesktopOfflineUpdateLocalName(this);
 
 	window["DesktopAfterOpen"](this);
 };
-window["DesktopOfflineAppDocumentEndLoad"] = function(_url, _data)
+window["DesktopOfflineAppDocumentEndLoad"] = function(_url, _data, _len)
 {
 	AscCommon.g_oDocumentUrls.documentUrl = _url;
 	if (AscCommon.g_oDocumentUrls.documentUrl.indexOf("file:") != 0)
@@ -75,7 +76,9 @@ window["DesktopOfflineAppDocumentEndLoad"] = function(_url, _data)
 		AscCommon.g_oDocumentUrls.documentUrl = "file://" + AscCommon.g_oDocumentUrls.documentUrl;
 	}
 	
-    editor._OfflineAppDocumentEndLoad(_url, _data);
+    editor._OfflineAppDocumentEndLoad(_url, _data, _len);
+
+	editor.sendEvent("asc_onDocumentPassword", ("" != editor.currentPassword) ? true : false);
 };
 
 /////////////////////////////////////////////////////////
@@ -168,7 +171,7 @@ Asc['asc_docs_api'].prototype.asc_Save = function (isNoUserSave, isSaveAs)
 
 		var t = this;
 		this.CoAuthoringApi.askSaveChanges(function(e) {
-			t.onSaveCallback(e);
+			t._onSaveCallback(e);
 		});
 		
 		if (this.CoAuthoringApi.onUnSaveLock)
@@ -178,8 +181,15 @@ Asc['asc_docs_api'].prototype.asc_Save = function (isNoUserSave, isSaveAs)
 			window["DesktopOfflineAppDocumentStartSave"](isSaveAs);
 	}
 };
-window["DesktopOfflineAppDocumentStartSave"] = function(isSaveAs)
+window["DesktopOfflineAppDocumentStartSave"] = function(isSaveAs, password, isForce)
 {
+	window.doadssIsSaveAs = isSaveAs;
+	if (true !== isForce && window.g_asc_plugins && window.g_asc_plugins.isRunned("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}"))
+	{
+		window.g_asc_plugins.init("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}", { "type" : "generatePassword" });
+		return;
+	}
+
 	editor.sync_StartAction(Asc.c_oAscAsyncActionType.BlockInteraction, Asc.c_oAscAsyncAction.Save);
 	
 	var _param = "";
@@ -188,9 +198,9 @@ window["DesktopOfflineAppDocumentStartSave"] = function(isSaveAs)
 	if (AscCommon.AscBrowser.isRetina)
 		_param += "retina=true;";
 	
-	window["AscDesktopEditor"]["LocalFileSave"](_param);
+	window["AscDesktopEditor"]["LocalFileSave"](_param, (password === undefined) ? editor.currentPassword : password);
 };
-window["DesktopOfflineAppDocumentEndSave"] = function(error)
+window["DesktopOfflineAppDocumentEndSave"] = function(error, hash, password)
 {
 	editor.sync_EndAction(Asc.c_oAscAsyncActionType.BlockInteraction, Asc.c_oAscAsyncAction.Save);
 	if (0 == error)
@@ -209,10 +219,21 @@ window["DesktopOfflineAppDocumentEndSave"] = function(error)
 		if (window.SaveQuestionObjectBeforeSign)
 		{
 			var _obj = window.SaveQuestionObjectBeforeSign;
-			editor.sendEvent("asc_onSignatureClick", _obj.guid, _obj.width, _obj.height);
+			editor.sendEvent("asc_onSignatureClick", _obj.guid, _obj.width, _obj.height, window["asc_IsVisibleSign"](_obj.guid));
 			window.SaveQuestionObjectBeforeSign = null;
 		}
 	}
+
+	if (hash !== null && hash !== undefined && hash != "")
+	{
+		if (window.g_asc_plugins && window.g_asc_plugins.isRunned("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}"))
+		{
+			window.g_asc_plugins.init("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}", {"type": "setPasswordByFile", "hash": hash, "password": password});
+		}
+	}
+
+	if (0 == error)
+		editor.sendEvent("asc_onDocumentPassword", ("" != editor.currentPassword) ? true : false);
 };
 Asc['asc_docs_api'].prototype.asc_DownloadAs = function(typeFile, bIsDownloadEvent) 
 {
@@ -279,6 +300,7 @@ Asc['asc_docs_api'].prototype.asc_setAdvancedOptions = function(idOption, option
 	if (window["Asc"].c_oAscAdvancedOptionsID.DRM === idOption) {
         var _param = "";
         _param += ("<m_sPassword>" + AscCommon.CopyPasteCorrectString(option.asc_getPassword()) + "</m_sPassword>");
+		this.currentPassword = option.asc_getPassword();
         window["AscDesktopEditor"]["SetAdvancedOptions"](_param);
     }
 };

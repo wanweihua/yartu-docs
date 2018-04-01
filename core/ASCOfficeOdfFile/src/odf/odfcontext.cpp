@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,7 +31,6 @@
  */
 
 #include "odfcontext.h"
-#include <boost/foreach.hpp>
 
 namespace cpdoccore { 
 
@@ -105,8 +104,7 @@ void styles_container::add_style(	const std::wstring & Name,
         map_[n] = pos;
 
         // TODO: как правильно??
-        std::wstring lName = Name;
-		XmlUtils::GetLower(lName);
+        std::wstring lName = XmlUtils::GetLower(Name);
         //if ( boost::algorithm::contains(lName, L"internet_20_link") )
         if (lName == L"internet_20_link")///???????????????
             hyperlink_style_pos_ = pos;
@@ -196,8 +194,20 @@ style_instance * styles_container::style_by_name(const std::wstring & Name, styl
 		int index = res->second;
         return instances_[index].get();
     }
-    else
-        return NULL;
+    else if (object_in_styles)
+	{
+		//try automatic
+		n = Name + L":" + boost::lexical_cast<std::wstring>( style_family(Type) );
+	   
+		map_wstring_int_t::const_iterator res = map_.find(n);
+	    
+		if (res != map_.end())
+		{
+			int index = res->second;
+			return instances_[index].get();
+		}
+	}
+	return NULL;
 }
 style_instance * styles_container::style_by_display_name(const std::wstring & Name, style_family::type Type, bool object_in_styles) const
 {
@@ -317,7 +327,7 @@ page_layout_instance::page_layout_instance(const style_page_layout * StylePageLa
 
 const std::wstring & page_layout_instance::name() const
 {     
-    return style_page_layout_->style_page_layout_attlist_.get_style_name();
+    return style_page_layout_->attlist_.get_style_name();
 }
 
 style_page_layout_properties * page_layout_instance::properties() const
@@ -332,7 +342,7 @@ void page_layout_instance::xlsx_serialize(std::wostream & strm, oox::xlsx_conver
 		props->xlsx_serialize(strm, Context);   
 }
 
-void page_layout_instance::docx_convert_serialize(std::wostream & strm, oox::docx_conversion_context & Context)
+void page_layout_instance::docx_serialize(std::wostream & strm, oox::docx_conversion_context & Context)
 {
     const style_header_style * headerStyle = dynamic_cast<style_header_style *>(style_page_layout_->style_header_style_.get());
     const style_footer_style * footerStyle = dynamic_cast<style_footer_style *>(style_page_layout_->style_footer_style_.get());
@@ -358,7 +368,7 @@ void page_layout_instance::docx_convert_serialize(std::wostream & strm, oox::doc
 	
 	style_page_layout_properties * props = properties();
     if (props)
-		props->docx_convert_serialize(strm, Context);   
+		props->docx_serialize(strm, Context);   
 }
 void page_layout_instance::pptx_serialize(std::wostream & strm, oox::pptx_conversion_context & Context)
 {
@@ -425,6 +435,21 @@ const page_layout_instance * page_layout_container::page_layout_first() const
         return NULL;
 
     return page_layout_by_style(master_page_names_array_[0]);
+}
+bool page_layout_container::compare_page_properties(const std::wstring & master1, const std::wstring & master2)
+{
+	const page_layout_instance *page_layout1 = page_layout_by_style(master1);
+	const page_layout_instance *page_layout2 = page_layout_by_style(master1);
+
+	if (!page_layout1 || !page_layout2) return true;
+	if (!page_layout1->style_page_layout_ || !page_layout1->style_page_layout_) return true;
+
+	style_page_layout_properties *props1 = dynamic_cast<style_page_layout_properties*>(page_layout1->style_page_layout_->style_page_layout_properties_.get());
+	style_page_layout_properties *props2 = dynamic_cast<style_page_layout_properties*>(page_layout2->style_page_layout_->style_page_layout_properties_.get());
+	
+	if (!props1 || !props1) return true;
+
+	return props1->attlist_.compare(props2->attlist_);
 }
 
 style_presentation_page_layout * page_layout_container::presentation_page_layout_by_name(const std::wstring & Name)

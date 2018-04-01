@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -70,6 +70,10 @@ void PtgStr::loadFields(CFRecord& record)
 	if (pos1 == 0 && pos2 >= string_.length() - 1)
 	{
 		string_ = string_.substr(1, string_.length() - 2);
+	}
+	else if (pos1 > 0)
+	{
+		boost::algorithm::replace_all(string_, L"\"", L"\"\""); 
 	}
 
 	string_ = L"\"" + string_ + L"\"";

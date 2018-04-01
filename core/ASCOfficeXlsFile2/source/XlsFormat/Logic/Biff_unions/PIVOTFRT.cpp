@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,8 +31,8 @@
  */
 
 #include "PIVOTFRT.h"
-#include <Logic/Biff_unions/PIVOTFRT9.h>
-#include <Logic/Biff_unions/PIVOTADDL.h>
+#include "PIVOTFRT9.h"
+#include "PIVOTADDL.h"
 
 namespace XLS
 {
@@ -61,9 +61,13 @@ const bool PIVOTFRT::loadContent(BinProcessor& proc)
 	{
 		return false;
 	}
+	m_PIVOTFRT9 =  elements_.back();
+	elements_.pop_back(); 
 	
 	if (proc.optional<PIVOTADDL>())
 	{
+		m_PIVOTADDL =  elements_.back();
+		elements_.pop_back(); 
 	}
 	return true;
 }

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -67,7 +67,7 @@ int SIIndex::serialize(std::wostream & _stream, int idx, const CellRef & in_ref)
 	int res = 0;
 	CP_XML_WRITER(_stream)    
 	{	
-		for (int i = 0 ; i < m_arData.size(); i++)
+		for (size_t i = 0 ; i < m_arData.size(); i++)
 		{
 			Number	* number	= dynamic_cast<Number*>	(m_arData[i].get());
 			BoolErr * boolErr	= dynamic_cast<BoolErr*>(m_arData[i].get());
@@ -81,7 +81,7 @@ int SIIndex::serialize(std::wostream & _stream, int idx, const CellRef & in_ref)
 					CP_XML_NODE(L"c:pt")
 					{
 						CP_XML_ATTR(L"idx", idx++);
-						CP_XML_NODE(L"c:v") { CP_XML_STREAM() << number->num; }
+						CP_XML_NODE(L"c:v") { CP_XML_STREAM() << number->num.data.value; }
 					}
 					res = 1;
 				}
@@ -108,7 +108,7 @@ int SIIndex::serialize(std::wostream & _stream, ChartParsedFormula & in_ref)
 	int idx = 0;
 	CP_XML_WRITER(_stream)    
 	{	
-		for (int i = 0 ; i < m_arData.size(); i++)
+		for (size_t i = 0 ; i < m_arData.size(); i++)
 		{
 			Number	* number	= dynamic_cast<Number*>	(m_arData[i].get());
 			BoolErr * boolErr	= dynamic_cast<BoolErr*>(m_arData[i].get());
@@ -122,7 +122,7 @@ int SIIndex::serialize(std::wostream & _stream, ChartParsedFormula & in_ref)
 					CP_XML_NODE(L"c:pt")
 					{
 						CP_XML_ATTR(L"idx", idx++);
-						CP_XML_NODE(L"c:v") { CP_XML_STREAM() << number->num; }
+						CP_XML_NODE(L"c:v") { CP_XML_STREAM() << std::to_wstring(number->num.data.value); }
 					}
 				}
 			}

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -58,31 +58,26 @@ public:
 	
 	bool isError();
 
-	CFStreamPtr getWorkbookStream();
-	CFStreamPtr createWorkbookStream();
-	void		closeWorkbookStream();
+	void copy( int indent, std::wstring path, POLE::Storage * storageOut, bool bWithRoot = true, bool bSortFiles = false);
 
-	CFStreamPtr getSummaryInformationStream();
-	CFStreamPtr createSummaryInformationStream();
-	void		closeSummaryInformationStream();
+	CFStreamPtr getWorkbookStream	();
+	CFStreamPtr getNamedStream		(const std::wstring& name);
 
-	CFStreamPtr getDocumentSummaryInformationStream();
-	CFStreamPtr createDocumentSummaryInformationStream();
-	void		closeDocumentSummaryInformationStream();
-
+	POLE::Storage *storage_;
 private:
-	POLE::Stream* openStream		(const std::string & stream_name); // Opens a stream in the storage (shall be called not more than once per stream)
-	POLE::Stream* createStream		(const std::string & stream_name); // Creates a new stream in the storage
+	void copy_stream(std::wstring streamNameOpen, std::wstring streamNameCreate, POLE::Storage * storageOut, bool bWithRoot = true);
+	
+	POLE::Stream* openStream		(const std::wstring & stream_name); // Opens a stream in the storage (shall be called not more than once per stream)
+	POLE::Stream* createStream		(const std::wstring & stream_name); // Creates a new stream in the storage
 
-	CFStreamPtr getNamedStream		(const std::string& name);
-	CFStreamPtr createNamedStream	(const std::string& name);
-	void		closeNamedStream	(const std::string& name);
+	CFStreamPtr createNamedStream	(const std::wstring& name);
+	void		closeNamedStream	(const std::wstring& name);
 
-private:
-	std::map<std::string, CFStreamPtr>	streams;
-	POLE::Storage						*storage_;
+	std::map<std::wstring, CFStreamPtr>	streams;
 	ReadWriteMode						rwMode;
 };
+typedef boost::shared_ptr<CompoundFile> CompoundFilePtr;
+
 
 } // namespace XLS
 

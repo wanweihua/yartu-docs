@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,26 +32,26 @@
 #pragma once
 
 #include "BiffRecord.h"
+#include "../Biff_structures/CellRangeRef.h"
 
 namespace XLS
 {
 
-
-// Logical representation of SBaseRef record in BIFF8
 class SBaseRef: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(SBaseRef)
 	BASE_OBJECT_DEFINE_CLASS_NAME(SBaseRef)
 public:
-	SBaseRef();
-	~SBaseRef();
+	SBaseRef(){}
+	~SBaseRef(){}
 
 	BaseObjectPtr clone();
-
 	
 	void readFields(CFRecord& record);
 
-	static const ElementType	type = typeSBaseRef;
+	static const ElementType type = typeSBaseRef;
+
+	Ref8U	ref;
 
 };
 

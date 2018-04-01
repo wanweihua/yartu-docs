@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,14 +34,14 @@
 #include "../DocDocxConverter/Converter.h"
 #include "../../OfficeUtils/src/OfficeUtils.h"
 
-HRESULT COfficeDocFile::LoadFromFile(const std::wstring &  docFile, const std::wstring & docxDirectory, const std::wstring & password, ProgressCallback *ffCallBack )
+HRESULT COfficeDocFile::LoadFromFile(const std::wstring &  docFile, const std::wstring & docxDirectory, const std::wstring & password, bool &bMacros, ProgressCallback *ffCallBack)
 {
 	HRESULT hr = S_FALSE;
 
 	DocFileFormat::Converter docToDocx;
 	docToDocx.m_sTempFolder = m_sTempFolder;
 
-    hr= docToDocx.LoadAndConvert(docFile, docxDirectory, password, ffCallBack);
+    hr= docToDocx.LoadAndConvert(docFile, docxDirectory, password, ffCallBack, bMacros);
 
 	return hr;
 }

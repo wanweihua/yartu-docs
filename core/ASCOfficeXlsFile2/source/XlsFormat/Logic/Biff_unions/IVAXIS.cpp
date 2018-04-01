@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -67,7 +67,7 @@ const bool IVAXIS::loadContentRead(BinReaderProcessor& proc)
 	bool ok = loadContent(proc);
 	if(ok)
 	{
-		id = proc.getGlobalWorkbookInfo()->GenerateAXESId();
+		id = proc.getGlobalWorkbookInfo()->last_Axes_id++;
 	}
 	return ok;
 }
@@ -153,7 +153,6 @@ int IVAXIS::serialize(std::wostream & _stream)
 				CP_XML_NODE(L"c:orientation"){  CP_XML_ATTR(L"val", L"minMax"); }
 			}
 		}
-		CP_XML_NODE(L"c:auto")	{  CP_XML_ATTR(L"val", 0); }
 		CP_XML_NODE(L"c:delete"){  CP_XML_ATTR(L"val", 0); }
 		
 //-------------------------------------------------------------------------------
@@ -181,11 +180,33 @@ int IVAXIS::serialize(std::wostream & _stream)
 		if (m_AxcExt)
 			m_AxcExt->serialize(_stream);
 	
-		CP_XML_NODE(L"c:crosses")
+		if (cat_ser_range)
 		{
-			if ((cat_ser_range) && (cat_ser_range->fMaxCross == true))	CP_XML_ATTR(L"val", L"max");
-			else CP_XML_ATTR(L"val", L"autoZero");
-		}	
+			CP_XML_NODE(L"c:crosses")
+			{
+				if (cat_ser_range->fMaxCross == true)	CP_XML_ATTR(L"val", L"max");
+				else									CP_XML_ATTR(L"val", L"autoZero");
+			}
+		}
+		if (m_CatLab)
+		{
+			CatLab *label = dynamic_cast<CatLab*>(m_CatLab.get());
+
+			CP_XML_NODE(L"c:lblAlgn")
+			{
+				switch(label->at)
+				{
+				case 0x0001:	CP_XML_ATTR(L"val", L"l");	break;
+				case 0x0003:	CP_XML_ATTR(L"val", L"r");	break;
+				case 0x0002:
+				default:		CP_XML_ATTR(L"val", L"ctr"); break;
+				}
+			}
+			CP_XML_NODE(L"c:lblOffset")
+			{
+				CP_XML_ATTR(L"val", label->wOffset);
+			}
+		}
 	}
 	
 	return 	axes_type;

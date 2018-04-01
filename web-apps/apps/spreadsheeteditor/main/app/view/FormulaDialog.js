@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  Add formula to cell dialog
  *
  *  Created by Alexey.Musinov on 11/04/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -134,7 +134,7 @@ define([
                     main_height = Common.Utils.innerHeight();
                 }
 
-                top = ((parseInt(main_height, 10) - parseInt(win_height, 10)) / 2) * 0.9;
+                top = (parseInt(main_height, 10) - parseInt(win_height, 10)) / 2;
                 left = (parseInt(main_width, 10) - parseInt(this.initConfig.width, 10)) / 2;
 
                 this.$window.css('left', Math.floor(left));

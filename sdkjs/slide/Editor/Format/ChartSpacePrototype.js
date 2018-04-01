@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -89,7 +89,7 @@ CChartSpace.prototype.recalculatePlotAreaChartBrush = function()
             default_brush.merge(plot_area.spPr.Fill);
         }
         var parents = this.getParentObjects();
-        default_brush.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255});
+        default_brush.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255}, this.clrMapOvr);
         plot_area.brush = default_brush;
     }
 };
@@ -120,7 +120,7 @@ CChartSpace.prototype.recalculateChartBrush = function()
         default_brush.merge(this.spPr.Fill);
     }
     var parents = this.getParentObjects();
-    default_brush.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255});
+    default_brush.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255}, this.clrMapOvr);
     this.brush = default_brush;
 
 };
@@ -156,7 +156,7 @@ CChartSpace.prototype.recalculateChartPen = function()
     if(this.spPr && this.spPr.ln)
         default_line.merge(this.spPr.ln);
     var parents = this.getParentObjects();
-    default_line.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255});
+    default_line.calculate(parents.theme, parents.slide, parents.layout, parents.master, {R: 0, G: 0, B: 0, A: 255}, this.clrMapOvr);
     this.pen = default_line;
     AscFormat.checkBlackUnifill(this.pen.Fill, true);
 };
@@ -176,9 +176,6 @@ CChartSpace.prototype.getInvertTransform = CShape.prototype.getInvertTransform;
 CChartSpace.prototype.hit = CShape.prototype.hit;
 CChartSpace.prototype.hitInInnerArea = CShape.prototype.hitInInnerArea;
 CChartSpace.prototype.hitInPath = CShape.prototype.hitInPath;
-CChartSpace.prototype.getNumByCardDirection = CShape.prototype.getNumByCardDirection;
-CChartSpace.prototype.getCardDirectionByNum = CShape.prototype.getCardDirectionByNum;
-CChartSpace.prototype.getResizeCoefficients = CShape.prototype.getResizeCoefficients;
 CChartSpace.prototype.check_bounds = CShape.prototype.check_bounds;
 CChartSpace.prototype.setWorksheet = CShape.prototype.setWorksheet;
 CChartSpace.prototype.handleUpdateLn = function()
@@ -195,7 +192,6 @@ CChartSpace.prototype.setRecalculateInfo = function()
         recalculateTransform: true,
         recalculateBounds:    true,
         recalculateChart:     true,
-        recalculateBaseColors: true,
         recalculateSeriesColors: true,
         recalculateMarkers: true,
         recalculateGridLines: true,
@@ -219,7 +215,6 @@ CChartSpace.prototype.setRecalculateInfo = function()
         recalculateTextPr : true,
         recalculateBBoxRange: true
     };
-    this.baseColors = [];
     this.chartObj = null;
     this.rectGeometry = AscFormat.ExecuteNoHistory(function(){return  AscFormat.CreateGeometry("rect");},  this, []);
     this.lockType = AscCommon.c_oAscLockTypes.kLockTypeNone;
@@ -235,10 +230,6 @@ CChartSpace.prototype.recalcBounds = function()
 CChartSpace.prototype.recalcChart = function()
 {
     this.recalcInfo.recalculateChart = true;
-};
-CChartSpace.prototype.recalcBaseColors = function()
-{
-    this.recalcInfo.recalculateBaseColors = true;
 };
 CChartSpace.prototype.recalcSeriesColors = function()
 {
@@ -331,7 +322,6 @@ CChartSpace.prototype.canRotate = function()
 
 CChartSpace.prototype.createResizeTrack = CShape.prototype.createResizeTrack;
 CChartSpace.prototype.createMoveTrack = CShape.prototype.createMoveTrack;
-CChartSpace.prototype.getAspect = CShape.prototype.getAspect;
 CChartSpace.prototype.getRectBounds = CShape.prototype.getRectBounds;
 
 CChartSpace.prototype.recalculateBounds = function()
@@ -394,11 +384,6 @@ CChartSpace.prototype.recalculate = function()
         {
             this.recalculateBBox();
             this.recalcInfo.recalculateBBox = false;
-        }
-        if(this.recalcInfo.recalculateBaseColors)
-        {
-            this.recalculateBaseColors();
-            this.recalcInfo.recalculateBaseColors = false;
         }
         if(this.recalcInfo.recalculateMarkers)
         {
@@ -538,11 +523,11 @@ CChartSpace.prototype.recalculateLocalTransform = CShape.prototype.recalculateLo
 CChartSpace.prototype.Get_Theme = CShape.prototype.Get_Theme;
 CChartSpace.prototype.Get_ColorMap = CShape.prototype.Get_ColorMap;
 
-CTable.prototype.Get_TableOffsetCorrection = function()
+CTable.prototype.GetTableOffsetCorrection = function()
 {
     return 0;
 };
-CTable.prototype.Get_RightTableOffsetCorrection = function()
+CTable.prototype.GetRightTableOffsetCorrection = function()
 {
     return 0;
 };
@@ -557,6 +542,7 @@ CTable.prototype.DrawSelectionOnPage = function(CurPage)
     var Page    = this.Pages[CurPage];
     var PageAbs = this.private_GetAbsolutePageIndex(CurPage);
 
+    var H;
     switch (this.Selection.Type)
     {
         case table_Selection_Cell:
@@ -567,8 +553,6 @@ CTable.prototype.DrawSelectionOnPage = function(CurPage)
                 var Row      = this.Content[Pos.Row];
                 var Cell     = Row.Get_Cell(Pos.Cell);
                 var CellInfo = Row.Get_CellInfo(Pos.Cell);
-                var CellMar  = Cell.GetMargins();
-
                 var X_start = Page.X + CellInfo.X_cell_start;
                 var X_end   = Page.X + CellInfo.X_cell_end;
 
@@ -576,9 +560,6 @@ CTable.prototype.DrawSelectionOnPage = function(CurPage)
                 var Cell_PageRel = CurPage - Cell.Content.Get_StartPage_Relative();
                 if (Cell_PageRel < 0 || Cell_PageRel >= Cell_Pages)
                     continue;
-
-                var Bounds   = Cell.Content_Get_PageBounds(Cell_PageRel);
-                var Y_offset = Cell.Temp.Y_VAlign_offset[Cell_PageRel];
 
                 if (0 != Cell_PageRel)
                 {
@@ -588,7 +569,23 @@ CTable.prototype.DrawSelectionOnPage = function(CurPage)
                 }
                 else
                 {
-                    this.DrawingDocument.AddPageSelection(PageAbs, X_start, this.RowsInfo[Pos.Row].Y[CurPage] + this.RowsInfo[Pos.Row].TopDy[CurPage], X_end - X_start, this.RowsInfo[Pos.Row].H[CurPage] );
+                    H = this.RowsInfo[Pos.Row].H[CurPage];
+                    for(var i = Pos.Row + 1; i < this.Content.length; ++i){
+                        var Row2      = this.Content[i];
+                        var Cell2     = Row2.Get_Cell(Pos.Cell);
+
+                        if(!Cell2){
+                            break;
+                        }
+                        var VMerge = Cell2.GetVMerge();
+                        if (vmerge_Continue === VMerge){
+                            H += this.RowsInfo[i].H[CurPage];
+                        }
+                        else{
+                            break;
+                        }
+                    }
+                    this.DrawingDocument.AddPageSelection(PageAbs, X_start, this.RowsInfo[Pos.Row].Y[CurPage] + this.RowsInfo[Pos.Row].TopDy[CurPage], X_end - X_start, H );
                 }
 
 
@@ -599,11 +596,57 @@ CTable.prototype.DrawSelectionOnPage = function(CurPage)
         {
             var Cell = this.Content[this.Selection.StartPos.Pos.Row].Get_Cell(this.Selection.StartPos.Pos.Cell);
             var Cell_PageRel = CurPage - Cell.Content.Get_StartPage_Relative();
-            Cell.Content.DrawSelectionOnPage(Cell_PageRel);
+            Cell.Content_DrawSelectionOnPage(Cell_PageRel);
             break;
         }
     }
 };
+
+CTableCell.prototype.Content_DrawSelectionOnPage = function(CurPage)
+{
+    var Transform       = this.private_GetTextDirectionTransform();
+    var DrawingDocument = this.Row.Table.DrawingDocument;
+    var OldTextMatrix = null;
+    if (null !== Transform && DrawingDocument){
+        if(DrawingDocument.TextMatrix)
+        {
+            OldTextMatrix = DrawingDocument.TextMatrix;
+            DrawingDocument.TextMatrix = DrawingDocument.TextMatrix.CreateDublicate();
+        }
+        DrawingDocument.MultiplyTargetTransform(Transform.CreateDublicate());
+
+    }
+
+    this.Content.DrawSelectionOnPage(CurPage);
+
+
+    if (null !== Transform && DrawingDocument){
+        DrawingDocument.TextMatrix = OldTextMatrix;
+    }
+};
+
+CTableCell.prototype.Content_RecalculateCurPos = function()
+{
+    var Transform = this.private_GetTextDirectionTransform();
+    var DrawingDocument = this.Row.Table.DrawingDocument;
+    var OldTextMatrix = null;
+    if (null !== Transform && DrawingDocument)
+    {
+        if(DrawingDocument.TextMatrix)
+        {
+            OldTextMatrix = DrawingDocument.TextMatrix;
+            DrawingDocument.TextMatrix = DrawingDocument.TextMatrix.CreateDublicate();
+        }
+        DrawingDocument.MultiplyTargetTransform(Transform.CreateDublicate());
+    }
+
+    var ret = this.Content.RecalculateCurPos();
+    if (null !== Transform && DrawingDocument){
+        DrawingDocument.TextMatrix = OldTextMatrix;
+    }
+    return ret;
+};
+
 CStyle.prototype.Create_NormalTable = function()
 {
     var TablePr =

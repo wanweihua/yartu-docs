@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -39,6 +39,9 @@
 #include "../../ASCOfficePPTXFile/Editor/FontPicker.h"
 #include "../../OfficeUtils/src/OfficeUtils.h"
 
+#include "../../Common/DocxFormat/Source/DocxFormat/App.h"
+#include "../../Common/DocxFormat/Source/DocxFormat/Core.h"
+
 int BinDocxRW::g_nCurFormatVersion = 0;
 
 BinDocxRW::CDocxSerializer::CDocxSerializer()
@@ -47,58 +50,13 @@ BinDocxRW::CDocxSerializer::CDocxSerializer()
 	m_pCurFileWriter	= NULL;
 
 	m_bIsNoBase64Save	= false;
+	m_bIsNoBase64		= false;
 	m_bSaveChartAsImg	= false;
 }
 BinDocxRW::CDocxSerializer::~CDocxSerializer()
 {
 	RELEASEOBJECT(m_pParamsWriter);
 	RELEASEOBJECT(m_pCurFileWriter);
-}
-bool BinDocxRW::CDocxSerializer::ConvertDocxToDoct(const std::wstring& sSrcFileName, const std::wstring& sDstFileName, const std::wstring& sTmpDir, const std::wstring& sXMLOptions)
-{
-    std::wstring strDirSrc      = NSSystemPath::Combine(sTmpDir,	L"from");
-    std::wstring strDirDst      = NSSystemPath::Combine(sTmpDir,	L"to");
-    std::wstring strEditorBin   = NSSystemPath::Combine(strDirDst,	L"Editor.bin");
-
-    NSDirectory::CreateDirectory(strDirSrc);
-	NSDirectory::CreateDirectory(strDirDst);
-
-    COfficeUtils oCOfficeUtils(NULL);
-
-    if(S_OK == oCOfficeUtils.ExtractToDirectory(sSrcFileName, strDirSrc, NULL, 0))
-		if(saveToFile(strEditorBin, strDirSrc, sXMLOptions))
-            if(S_OK == oCOfficeUtils.CompressFileOrDirectory(strDirDst, sDstFileName))
-				return true;
-	return false;
-}
-bool BinDocxRW::CDocxSerializer::ConvertDoctToDocx(const std::wstring& sSrcFileName, const std::wstring& sDstFileName, const std::wstring& sTmpDir, const std::wstring& sXMLOptions)
-{
-	std::wstring strDirSrc		= NSSystemPath::Combine(sTmpDir,	L"from");
-	std::wstring strEditorBin	= NSSystemPath::Combine(strDirSrc,	L"Editor.bin");
-	std::wstring strDirDst		= NSSystemPath::Combine(sTmpDir,	L"to");
-	
-	NSDirectory::CreateDirectory(strDirSrc);
-	NSDirectory::CreateDirectory(strDirDst);
-	
-    std::wstring sEditorBin = strEditorBin;
-
-    COfficeUtils oCOfficeUtils(NULL);
-
-    if(S_OK == oCOfficeUtils.ExtractToDirectory(sSrcFileName, strDirSrc, NULL, 0))
-    {
-        std::wstring sMediaPath;
-        std::wstring sThemePath;
-        std::wstring sEmbedPath;
-
-        CreateDocxFolders(strDirDst, sThemePath, sMediaPath, sEmbedPath);
-
-        if(loadFromFile(sEditorBin, strDirDst, sXMLOptions, sThemePath, sMediaPath, sEmbedPath))
-        {
-            if(S_OK == oCOfficeUtils.CompressFileOrDirectory(strDirDst, sDstFileName, true))
-				return true;
-        }
-    }
-    return false;
 }
 bool BinDocxRW::CDocxSerializer::saveToFile(const std::wstring& sSrcFileName, const std::wstring& sDstPath, const std::wstring& sXMLOptions)
 {
@@ -138,19 +96,25 @@ bool BinDocxRW::CDocxSerializer::saveToFile(const std::wstring& sSrcFileName, co
 	oDrawingConverter.SetFontDir(m_sFontDir);
 	oDrawingConverter.SetFontPicker(pFontPicker);
 	oDrawingConverter.SetMainDocument(this);
+
+    oDrawingConverter.SetDstPath(pathMain.GetDirectory() + FILE_SEPARATOR_STR + L"word");
 	oDrawingConverter.SetMediaDstPath(pathMedia.GetPath());
 	
 	m_pParamsWriter = new ParamsWriter(&oBufferedStream, &fp, &oDrawingConverter, pEmbeddedFontsManager);
 
 	BinaryFileWriter oBinaryFileWriter(*m_pParamsWriter);
 	
+	if (m_bIsNoBase64)
+	{
+		oBufferedStream.WriteStringUtf8(oBinaryFileWriter.WriteFileHeader(0, g_nFormatVersionNoBase64));
+	}
 	oBinaryFileWriter.intoBindoc(sDstPath);
 	
 	BYTE* pbBinBuffer = oBufferedStream.GetBuffer();
 	int nBinBufferLen = oBufferedStream.GetPosition();
 
 
-    if (m_bIsNoBase64Save)
+	if (m_bIsNoBase64 || m_bIsNoBase64Save)
 	{
 		NSFile::CFileBinary oFile;
 		oFile.CreateFileW(sSrcFileName);
@@ -166,7 +130,7 @@ bool BinDocxRW::CDocxSerializer::saveToFile(const std::wstring& sSrcFileName, co
 		{
 			NSFile::CFileBinary oFile;
 			oFile.CreateFileW(sSrcFileName);
-			oFile.WriteStringUTF8(oBinaryFileWriter.WriteFileHeader(nBinBufferLen));
+			oFile.WriteStringUTF8(oBinaryFileWriter.WriteFileHeader(nBinBufferLen, g_nFormatVersion));
 			oFile.WriteFile(pbBase64Buffer, nBase64BufferLen);
 			oFile.CloseFile();
 		}
@@ -268,28 +232,45 @@ bool BinDocxRW::CDocxSerializer::loadFromFile(const std::wstring& sSrcFileName, 
 				else
                     dst_len += _c;
 			}
-			
-            int nDataSize = atoi(dst_len.c_str());
-			BYTE* pData = new BYTE[nDataSize];
-			
-            if(false != Base64::Base64Decode((const char*)(pBase64Data + nIndex), nBase64DataSize - nIndex, pData, &nDataSize))
+			int nVersion = g_nFormatVersion;
+			if(!version.empty())
 			{
-                NSBinPptxRW::CDrawingConverter oDrawingConverter;
-				
-				NSBinPptxRW::CBinaryFileReader& oBufferedStream = *oDrawingConverter.m_pReader;
-				oBufferedStream.Init(pData, 0, nDataSize);
+				version = version.substr(1);
+				g_nCurFormatVersion = nVersion = std::stoi(version.c_str());
+			}
+			bool bIsNoBase64 = nVersion == g_nFormatVersionNoBase64;
 
-				int nVersion = g_nFormatVersion;
-                if(!version.empty())
+			NSBinPptxRW::CDrawingConverter oDrawingConverter;
+			NSBinPptxRW::CBinaryFileReader& oBufferedStream = *oDrawingConverter.m_pReader;
+			int nDataSize = 0;
+			BYTE* pData = NULL;
+			if (!bIsNoBase64)
+			{
+				nDataSize = atoi(dst_len.c_str());
+				pData = new BYTE[nDataSize];
+				if(Base64::Base64Decode((const char*)(pBase64Data + nIndex), nBase64DataSize - nIndex, pData, &nDataSize))
 				{
-                    version = version.substr(1);
-                    int nTempVersion = atoi(version.c_str());
-					if(0 != nTempVersion)
-					{
-						g_nCurFormatVersion = nVersion = nTempVersion;
-					}
-				}		
+					oBufferedStream.Init(pData, 0, nDataSize);
+				}
+				else
+				{
+					RELEASEARRAYOBJECTS(pData);
+				}
+			}
+			else
+			{
+				nDataSize = nBase64DataSize;
+				pData = pBase64Data;
+				oBufferedStream.Init(pData, 0, nDataSize);
+				oBufferedStream.Seek(nIndex);
+			}
+
+			
+			if (NULL != pData)
+			{
 				oDrawingConverter.SetMainDocument(this);
+                oDrawingConverter.SetDstPath(sDstPath + FILE_SEPARATOR_STR + L"word");
+
 				oDrawingConverter.SetMediaDstPath(sMediaPath);
 				oDrawingConverter.SetEmbedDstPath(sEmbedPath);
 				
@@ -299,7 +280,7 @@ bool BinDocxRW::CDocxSerializer::loadFromFile(const std::wstring& sSrcFileName, 
 				std::wstring strFileInDir = NSSystemPath::GetDirectoryName(sSrcFileName);
                 std::wstring sFileInDir = strFileInDir.c_str();
 
-                oDrawingConverter.SetSourceFileDir(sFileInDir);
+                oDrawingConverter.SetSrcPath(sFileInDir);
 				
 				BinaryFileReader oBinaryFileReader(sFileInDir, oBufferedStream, *m_pCurFileWriter);
 				oBinaryFileReader.ReadFile();
@@ -314,11 +295,13 @@ bool BinDocxRW::CDocxSerializer::loadFromFile(const std::wstring& sSrcFileName, 
 				
                 OOX::CPath DocProps = std::wstring(_T("docProps"));
 
-				OOX::CApp* pApp = new OOX::CApp();
+				OOX::CApp* pApp = new OOX::CApp(NULL);
 				if (pApp)
 				{
-					pApp->SetApplication(_T("OnlyOffice"));
-					pApp->SetAppVersion(_T("4.3000"));
+					pApp->SetApplication(L"ONLYOFFICE");
+#if defined(INTVER)
+                    pApp->SetAppVersion(VALUE2STR(INTVER));
+#endif
 					pApp->SetDocSecurity(0);
 					pApp->SetScaleCrop(false);
 					pApp->SetLinksUpToDate(false);
@@ -328,7 +311,7 @@ bool BinDocxRW::CDocxSerializer::loadFromFile(const std::wstring& sSrcFileName, 
 					pApp->write(pathDocProps + FILE_SEPARATOR_STR + _T("app.xml"), DocProps, *pContentTypes);
 					delete pApp;
 				}				
-				OOX::CCore* pCore = new OOX::CCore();
+				OOX::CCore* pCore = new OOX::CCore(NULL);
 				if (pCore)
 				{
 					pCore->SetCreator(_T(""));
@@ -343,6 +326,11 @@ bool BinDocxRW::CDocxSerializer::loadFromFile(const std::wstring& sSrcFileName, 
 				bResultOk = true;
 
 			}
+			if (!bIsNoBase64)
+			{
+				RELEASEARRAYOBJECTS(pData);
+			}
+
 		}
 		RELEASEARRAYOBJECTS(pBase64Data);
 	}
@@ -471,6 +459,10 @@ void BinDocxRW::CDocxSerializer::setEmbeddedFontsDir(const std::wstring& sEmbedd
 void BinDocxRW::CDocxSerializer::setIsNoBase64Save(bool bIsNoBase64Save)
 {
 	m_bIsNoBase64Save = bIsNoBase64Save;
+}
+void BinDocxRW::CDocxSerializer::setIsNoBase64(bool bIsNoBase64)
+{
+	m_bIsNoBase64 = bIsNoBase64;
 }
 void BinDocxRW::CDocxSerializer::setSaveChartAsImg(bool bSaveChartAsImg)
 {

@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *    Main controller
  *
  *    Created by Maxim Kadushkin on 24 March 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -180,7 +180,7 @@ define([
                 Common.Gateway.on('showmessage', _.bind(this.onExternalMessage, this));
                 Common.Gateway.on('opendocument', _.bind(this.loadDocument, this));
                 Common.Gateway.on('internalcommand', _.bind(this.onInternalCommand, this));
-                Common.Gateway.ready();
+                Common.Gateway.appReady();
 
                 this.getApplication().getController('Viewport').setApi(this.api);
 
@@ -204,6 +204,8 @@ define([
                             !/area_id/.test(e.target.id) && $(e.target).parent().find(e.relatedTarget).length<1 /* Check if focus in combobox goes from input to it's menu button or menu items */
                             && (e.relatedTarget.localName != 'input' || !/form-control/.test(e.relatedTarget.className)) /* Check if focus goes to text input with class "form-control" */
                             && (e.relatedTarget.localName != 'textarea' || /area_id/.test(e.relatedTarget.id))) /* Check if focus goes to textarea, but not to "area_id" */ {
+                            if (Common.Utils.isIE && e.originalEvent && e.originalEvent.target && /area_id/.test(e.originalEvent.target.id) && (e.originalEvent.target === e.originalEvent.srcElement))
+                                return;
                             me.api.asc_enableKeyEvents(true);
                             if (/msg-reply/.test(e.target.className))
                                 me.dontCloseDummyComment = false;
@@ -308,7 +310,7 @@ define([
 
                 value = Common.localStorage.getItem("sse-settings-func-locale");
                 if (value===null) {
-                    var lang = ((this.editorConfig.lang) ? this.editorConfig.lang : 'en').split("-")[0].toLowerCase();
+                    var lang = ((this.editorConfig.lang) ? this.editorConfig.lang : 'en').split(/[\-\_]/)[0].toLowerCase();
                     if (lang !== 'en')
                         value = SSE.Views.FormulaLang.get(lang);
                 } else
@@ -329,7 +331,8 @@ define([
                 if (data.doc) {
                     this.permissions = _.extend(this.permissions, data.doc.permissions);
 
-                    var _user = new Asc.asc_CUserInfo();
+                    var _permissions = $.extend({}, data.doc.permissions),
+                        _user = new Asc.asc_CUserInfo();
                     _user.put_Id(this.appOptions.user.id);
                     _user.put_FullName(this.appOptions.user.fullname);
 
@@ -343,11 +346,13 @@ define([
                     docInfo.put_UserInfo(_user);
                     docInfo.put_CallbackUrl(this.editorConfig.callbackUrl);
                     docInfo.put_Token(data.doc.token);
+                    docInfo.put_Permissions(_permissions);
 
                     this.headerView.setDocumentCaption(data.doc.title);
                 }
 
                 this.api.asc_registerCallback('asc_onGetEditorPermissions', _.bind(this.onEditorPermissions, this));
+                this.api.asc_registerCallback('asc_onLicenseChanged',       _.bind(this.onLicenseChanged, this));
                 this.api.asc_setDocInfo(docInfo);
                 this.api.asc_getEditorPermissions(this.editorConfig.licenseUrl, this.editorConfig.customerId);
             },
@@ -529,6 +534,11 @@ define([
                     case LoadingDocument:
                         title   = this.loadingDocumentTitleText;
                         break;
+                    default:
+                        if (typeof action.id == 'string'){
+                            title   = action.id;
+                        }
+                        break;
                 }
 
                 if (action.type == Asc.c_oAscAsyncActionType.BlockInteraction) {
@@ -554,6 +564,8 @@ define([
             onDocumentReady: function() {
                 if (this._isDocReady)
                     return;
+
+                Common.Gateway.documentReady();
 
                 var me = this,
                     value;
@@ -615,8 +627,10 @@ define([
 
                  if (!me.appOptions.isEditMailMerge && !me.appOptions.isEditDiagram) {
                     pluginsController.setApi(me.api);
-                    me.updatePlugins(me.plugins, false);
-                    me.requestPlugins('../../../../plugins.json');
+                     if (me.plugins && me.plugins.pluginsData && me.plugins.pluginsData.length>0)
+                         me.updatePlugins(me.plugins, false);
+                     else
+                         me.requestPlugins('../../../../plugins.json');
                     me.api.asc_registerCallback('asc_onPluginsInit', _.bind(me.updatePluginsList, me));
                 }
 
@@ -695,6 +709,8 @@ define([
 
                             if (me.appOptions.canBrandingExt)
                                 Common.NotificationCenter.trigger('document:ready', 'main');
+
+                            me.applyLicense();
                         }
                     }, 50);
                 } else {
@@ -729,17 +745,34 @@ define([
                 if (typeof document.hidden !== 'undefined' && document.hidden) {
                     document.addEventListener('visibilitychange', checkWarns);
                 } else checkWarns();
+            },
 
+            onLicenseChanged: function(params) {
+                if (this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) return;
+
+                var licType = params.asc_getLicenseType();
+                if (licType !== undefined && (licType===Asc.c_oLicenseResult.Connections || licType===Asc.c_oLicenseResult.UsersCount) && this.appOptions.canEdit && this.editorConfig.mode !== 'view') {
+                    this._state.licenseWarning = (licType===Asc.c_oLicenseResult.Connections) ? this.warnNoLicense : this.warnNoLicenseUsers;
+                }
+
+                if (this._isDocReady)
+                    this.applyLicense();
+            },
+
+            applyLicense: function() {
                 if (this._state.licenseWarning) {
-                    value = Common.localStorage.getItem("de-license-warning");
+                    this.disableEditing(true);
+                    Common.NotificationCenter.trigger('api:disconnect');
+
+                    var value = Common.localStorage.getItem("sse-license-warning");
                     value = (value!==null) ? parseInt(value) : 0;
                     var now = (new Date).getTime();
                     if (now - value > 86400000) {
-                        Common.localStorage.setItem("de-license-warning", now);
+                        Common.localStorage.setItem("sse-license-warning", now);
                         Common.UI.info({
                             width: 500,
                             title: this.textNoLicenseTitle,
-                            msg  : this.warnNoLicense,
+                            msg  : this._state.licenseWarning,
                             buttons: [
                                 {value: 'buynow', caption: this.textBuyNow},
                                 {value: 'contact', caption: this.textContactUs}
@@ -747,12 +780,20 @@ define([
                             primary: 'buynow',
                             callback: function(btn) {
                                 if (btn == 'buynow')
-                                    window.open('http://www.onlyoffice.com/enterprise-edition.aspx', "_blank");
+                                    window.open('https://www.onlyoffice.com', "_blank");
                                 else if (btn == 'contact')
                                     window.open('mailto:sales@onlyoffice.com', "_blank");
                             }
                         });
                     }
+                }
+            },
+
+            disableEditing: function(disable) {
+                var app = this.getApplication();
+                if (this.appOptions.canEdit && this.editorConfig.mode !== 'view') {
+                    app.getController('RightMenu').getView('RightMenu').clearSelection();
+                    app.getController('Toolbar').DisableToolbar(disable);
                 }
             },
 
@@ -795,7 +836,7 @@ define([
                     this.appOptions.canComments    = this.appOptions.canComments && !((typeof (this.editorConfig.customization) == 'object') && this.editorConfig.customization.comments===false);
                     this.appOptions.canChat        = this.appOptions.canLicense && !this.appOptions.isOffline && !((typeof (this.editorConfig.customization) == 'object') && this.editorConfig.customization.chat===false);
                     this.appOptions.canRename      = !!this.permissions.rename;
-                    this.appOptions.isTrial        = params.asc_getTrial();
+                    this.appOptions.trialMode      = params.asc_getLicenseMode();
 
                     this.appOptions.canBranding  = (licType === Asc.c_oLicenseResult.Success) && (typeof this.editorConfig.customization == 'object');
                     if (this.appOptions.canBranding)
@@ -819,14 +860,12 @@ define([
                 this.appOptions.forcesave      = this.appOptions.canForcesave;
                 this.appOptions.canEditComments= this.appOptions.isOffline || !(typeof (this.editorConfig.customization) == 'object' && this.editorConfig.customization.commentAuthorOnly);
 
-                this._state.licenseWarning = !(this.appOptions.isEditDiagram || this.appOptions.isEditMailMerge) && (licType===Asc.c_oLicenseResult.Connections) && this.appOptions.canEdit && this.editorConfig.mode !== 'view';
-
                 this.applyModeCommonElements();
                 this.applyModeEditorElements();
 
                 this.api.asc_setViewMode(!this.appOptions.isEdit && !this.appOptions.canComments);
                 (!this.appOptions.isEdit && this.appOptions.canComments) && this.api.asc_setRestriction(Asc.c_oAscRestrictionType.OnlyComments);
-                (this.appOptions.isEditMailMerge || this.appOptions.isEditDiagram) ? this.api.asc_LoadEmptyDocument() : this.api.asc_LoadDocument();
+                this.api.asc_LoadDocument();
 
                 if (!this.appOptions.isEdit) {
                     this.hidePreloader();
@@ -1092,6 +1131,10 @@ define([
                         config.msg = this.errorDataRange;
                         break;
 
+                    case Asc.c_oAscError.ID.MaxDataPointsError:
+                        config.msg = this.errorMaxPoints;
+                        break;
+
                     case Asc.c_oAscError.ID.VKeyEncrypt:
                         config.msg = this.errorToken;
                         break;
@@ -1199,6 +1242,10 @@ define([
 
                     case Asc.c_oAscError.ID.AccessDeny:
                         config.msg = this.errorAccessDeny;
+                        break;
+
+                    case Asc.c_oAscError.ID.LockedCellPivot:
+                        config.msg = this.errorLockedCellPivot;
                         break;
 
                     default:
@@ -1645,7 +1692,8 @@ define([
                             this.isFrameClosed = true;
                             this.api.asc_closeCellEditor();
                             Common.Gateway.internalMessage('canClose', {mr:data.data.mr, answer: true});
-                        }
+                        } else
+                            Common.Gateway.internalMessage('canClose', {answer: false});
                         break;
                     case 'window:drag':
                         this.isDiagramDrag = data.data;
@@ -1837,43 +1885,7 @@ define([
             requestPlugins: function(pluginsPath) { // request plugins
                 if (!pluginsPath) return;
 
-                var _createXMLHTTPObject = function() {
-                    var xmlhttp;
-                    try {
-                        xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
-                    }
-                    catch (e) {
-                        try {
-                            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-                        }
-                        catch (E) {
-                            xmlhttp = false;
-                        }
-                    }
-                    if (!xmlhttp && typeof XMLHttpRequest != 'undefined') {
-                        xmlhttp = new XMLHttpRequest();
-                    }
-                    return xmlhttp;
-                };
-
-                var _getPluginJson = function(plugin) {
-                    if (!plugin) return '';
-                    try {
-                        var xhrObj = _createXMLHTTPObject();
-                        if (xhrObj && plugin) {
-                            xhrObj.open('GET', plugin, false);
-                            xhrObj.send('');
-                            var pluginJson = eval("(" + xhrObj.responseText + ")");
-                            return pluginJson;
-                        }
-                    }
-                    catch (e) {}
-                    return null;
-                };
-
-                var value = _getPluginJson(pluginsPath);
-                if (value)
-                    this.updatePlugins(value, false);
+                this.updatePlugins( Common.Utils.getConfigJson(pluginsPath), false );
             },
 
             updatePlugins: function(plugins, uiCustomize) { // plugins from config
@@ -1882,49 +1894,15 @@ define([
                 var pluginsData = (uiCustomize) ? plugins.UIpluginsData : plugins.pluginsData;
                 if (!pluginsData || pluginsData.length<1) return;
 
-                var _createXMLHTTPObject = function() {
-                    var xmlhttp;
-                    try {
-                        xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
-                    }
-                    catch (e) {
-                        try {
-                            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-                        }
-                        catch (E) {
-                            xmlhttp = false;
-                        }
-                    }
-                    if (!xmlhttp && typeof XMLHttpRequest != 'undefined') {
-                        xmlhttp = new XMLHttpRequest();
-                    }
-                    return xmlhttp;
-                };
-
-                var _getPluginJson = function(plugin) {
-                    if (!plugin) return '';
-                    try {
-                        var xhrObj = _createXMLHTTPObject();
-                        if (xhrObj && plugin) {
-                            xhrObj.open('GET', plugin, false);
-                            xhrObj.send('');
-                            var pluginJson = eval("(" + xhrObj.responseText + ")");
-                            return pluginJson;
-                        }
-                    }
-                    catch (e) {}
-                    return null;
-                };
-
                 var arr = [],
                     baseUrl = _.isEmpty(plugins.url) ? "" : plugins.url;
 
                 if (baseUrl !== "")
-                    console.log("Obsolete: The url parameter is deprecated. Please check the documentation for new plugin connection configuration.");
+                    console.warn("Obsolete: The url parameter is deprecated. Please check the documentation for new plugin connection configuration.");
 
                 pluginsData.forEach(function(item){
                     item = baseUrl + item; // for compatibility with previouse version of server, where plugins.url is used.
-                    var value = _getPluginJson(item);
+                    var value = Common.Utils.getConfigJson(item);
                     if (value) {
                         value.baseUrl = item.substring(0, item.lastIndexOf("config.json"));
                         value.oldVersion = (baseUrl !== "");
@@ -1932,11 +1910,17 @@ define([
                     }
                 });
 
-                if (arr.length>0)
+                if (arr.length>0) {
+                    var autostart = plugins.autostart || plugins.autoStartGuid;
+                    if (typeof (autostart) == 'string')
+                        autostart = [autostart];
+                    plugins.autoStartGuid && console.warn("Obsolete: The autoStartGuid parameter is deprecated. Please check the documentation for new plugin connection configuration.");
+
                     this.updatePluginsList({
-                        autoStartGuid: plugins.autoStartGuid,
+                        autostart: autostart,
                         pluginsData: arr
                     }, !!uiCustomize);
+                }
             },
 
             updatePluginsList: function(plugins, uiCustomize) {
@@ -1945,18 +1929,9 @@ define([
                 if (plugins) {
                     var arr = [], arrUI = [];
                     plugins.pluginsData.forEach(function(item){
-                        if (uiCustomize!==undefined && (pluginStore.findWhere({baseUrl : item.baseUrl}) || pluginStore.findWhere({guid : item.guid}))) return;
-
-                        var variations = item.variations,
-                            variationsArr = [];
-                        variations.forEach(function(itemVar){
-                            var isSupported = false;
-                            for (var i=0; i<itemVar.EditorsSupport.length; i++){
-                                if (itemVar.EditorsSupport[i]=='cell') {
-                                    isSupported = true; break;
-                                }
-                            }
-                            if (isSupported && (isEdit || itemVar.isViewer)) {
+                        var variationsArr = [];
+                        item.variations.forEach(function(itemVar){
+                            if (_.contains(itemVar.EditorsSupport, 'cell') && (isEdit || itemVar.isViewer)) {
                                 var icons = itemVar.icons;
                                 if (item.oldVersion) { // for compatibility with previouse version of server, where plugins.url is used.
                                     icons = [];
@@ -1991,29 +1966,37 @@ define([
                                 guid: item.guid,
                                 baseUrl : item.baseUrl,
                                 variations: variationsArr,
-                                currentVariation: 0
+                                currentVariation: 0,
+                                groupName: (item.group) ? item.group.name : '',
+                                groupRank: (item.group) ? item.group.rank : 0
                             }));
                     });
 
                     if (uiCustomize!==false)  // from ui customizer in editor config or desktop event
                         this.UICustomizePlugins = arrUI;
 
-                    if (uiCustomize === undefined) { // for desktop
-                        if (pluginStore) pluginStore.reset(arr);
-                        this.appOptions.canPlugins = (pluginStore.length>0);
-                    } else if (!uiCustomize) {
-                        if (pluginStore) pluginStore.add(arr);
-                        this.appOptions.canPlugins = (pluginStore.length>0);
+                    if ( !uiCustomize && pluginStore) {
+                        arr.sort(function(a, b){
+                            var rank_a = a.get('groupRank'),
+                                rank_b = b.get('groupRank');
+                            if (rank_a < rank_b)
+                                return (rank_a==0) ? 1 : -1;
+                            if (rank_a > rank_b)
+                                return (rank_b==0) ? -1 : 1;
+                            return 0;
+                        });
+                        pluginStore.reset(arr);
+                        this.appOptions.canPlugins = !pluginStore.isEmpty();
                     }
                 } else if (!uiCustomize){
                     this.appOptions.canPlugins = false;
                 }
+                if (!uiCustomize) this.getApplication().getController('LeftMenu').enablePlugins();
                 if (this.appOptions.canPlugins) {
                     this.getApplication().getController('Common.Controllers.Plugins').setMode(this.appOptions);
-                    if (plugins.autoStartGuid)
-                        this.api.asc_pluginRun(plugins.autoStartGuid, 0, '');
+                    if (plugins.autostart && plugins.autostart.length>0)
+                        this.api.asc_pluginRun(plugins.autostart[0], 0, '');
                 }
-                if (!uiCustomize) this.getApplication().getController('LeftMenu').enablePlugins();
             },
             
             leavePageText: 'You have unsaved changes in this document. Click \'Stay on this Page\' then \'Save\' to save them. Click \'Leave this Page\' to discard all the unsaved changes.',
@@ -2125,7 +2108,7 @@ define([
             errorFrmlWrongReferences: 'The function refers to a sheet that does not exist.<br>Please check the data and try again.',
             textBuyNow: 'Visit website',
             textNoLicenseTitle: 'ONLYOFFICE open source version',
-            warnNoLicense: 'You are using an open source version of ONLYOFFICE. The version has limitations for concurrent connections to the document server (20 connections at a time).<br>If you need more please consider purchasing a commercial license.',
+            warnNoLicense: 'This version of ONLYOFFICE Editors has certain limitations for concurrent connections to the document server.<br>If you need more please consider upgrading your current license or purchasing a commercial one.',
             textContactUs: 'Contact sales',
             confirmPutMergeRange: 'The source data contains merged cells.<br>They will be unmerged before they are pasted into the table.',
             errorViewerDisconnect: 'Connection is lost. You can still view the document,<br>but will not be able to download or print until the connection is restored.',
@@ -2164,7 +2147,10 @@ define([
             txtStyle_Total: 'Total',
             txtStyle_Currency: 'Currency',
             txtStyle_Percent: 'Percent',
-            txtStyle_Comma: 'Comma'
+            txtStyle_Comma: 'Comma',
+            errorLockedCellPivot: 'You cannot change data inside a pivot table.',
+            warnNoLicenseUsers: 'This version of ONLYOFFICE Editors has certain limitations for concurrent users.<br>If you need more please consider upgrading your current license or purchasing a commercial one.',
+            errorMaxPoints: "The maximum number of points in series per chart is 4096."
         }
     })(), SSE.Controllers.Main || {}))
 });

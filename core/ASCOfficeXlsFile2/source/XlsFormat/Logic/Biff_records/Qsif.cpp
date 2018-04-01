@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -39,11 +39,9 @@ Qsif::Qsif()
 {
 }
 
-
 Qsif::~Qsif()
 {
 }
-
 
 BaseObjectPtr Qsif::clone()
 {
@@ -52,8 +50,22 @@ BaseObjectPtr Qsif::clone()
 
 void Qsif::readFields(CFRecord& record)
 {
-	Log::error("Qsif record is not implemented.");
-	record.skipNunBytes(record.getDataSize() - record.getRdPtr());
+	unsigned short flags1, flags2;
+	record >> frtHeaderOld >> flags1 >> flags2 >> idField;
+
+	fUserIns	= GETBIT(flags1, 0);
+	fFillDown	= GETBIT(flags1, 1);
+	fSortDes	= GETBIT(flags1, 2);
+	iSortKey	= GETBITS(flags1, 3, 10);
+	fRowNums	= GETBIT(flags1, 11);
+	fSorted		= GETBIT(flags1, 13);
+
+	fClipped	= GETBIT(flags2, 0);
+
+	if (record.getRdPtr() >= record.getDataSize())
+		return;
+
+	record >> idList >> rgbTitle;
 }
 
 } // namespace XLS

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,33 +31,30 @@
  */
 
 #include "PIVOTCORE.h"
-#include <Logic/Biff_records/SxView.h>
-#include <Logic/Biff_unions/PIVOTVD.h>
-#include <Logic/Biff_unions/PIVOTIVD.h>
-#include <Logic/Biff_unions/PIVOTPI.h>
-#include <Logic/Biff_records/SXDI.h>
-#include <Logic/Biff_unions/PIVOTLI.h>
-#include <Logic/Biff_unions/PIVOTEX.h>
+#include "PIVOTVD.h"
+#include "PIVOTIVD.h"
+#include "PIVOTPI.h"
+#include "PIVOTLI.h"
+#include "PIVOTEX.h"
+
+#include "../Biff_records/SXDI.h"
+#include "../Biff_records/SxView.h"
 
 namespace XLS
 {
 
-
-PIVOTCORE::PIVOTCORE()
+PIVOTCORE::PIVOTCORE() : bOLAP( false)
 {
 }
-
 
 PIVOTCORE::~PIVOTCORE()
 {
 }
 
-
 BaseObjectPtr PIVOTCORE::clone()
 {
 	return BaseObjectPtr(new PIVOTCORE(*this));
 }
-
 
 // PIVOTCORE = SxView *PIVOTVD *2PIVOTIVD [PIVOTPI] *SXDI *PIVOTLI PIVOTEX
 const bool PIVOTCORE::loadContent(BinProcessor& proc)
@@ -68,6 +65,8 @@ const bool PIVOTCORE::loadContent(BinProcessor& proc)
 	}
 	m_SxView = elements_.back();
 	elements_.pop_back();
+
+	SxView* sxView = dynamic_cast<SxView*>(m_SxView.get());
 
 	int count = 0;
 	
@@ -93,12 +92,16 @@ const bool PIVOTCORE::loadContent(BinProcessor& proc)
 	{
 		m_arSXDI.push_back(elements_.front());	elements_.pop_front();
 	}
-	
-	count = proc.repeated<PIVOTLI>(0, 0);
-	while(count--)
+	PIVOTLI rwLines(sxView->cDimRw);
+	if (proc.optional(rwLines))
 	{
 		m_arPIVOTLI.push_back(elements_.front());	elements_.pop_front();
 	}
+	PIVOTLI colLines(sxView->cDimCol);
+	if (proc.optional(colLines))
+	{
+		m_arPIVOTLI.push_back(elements_.front());	elements_.pop_front();
+	}	
 
 	if (proc.mandatory<PIVOTEX>())
 	{

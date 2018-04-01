@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -134,7 +134,7 @@ public:
 			if (position + count > stream->size())
 			{
 				if (position > stream->size())	count = 0;
-				else							count = stream->size() - position;
+				else							count = (unsigned int)(stream->size() - position);
 			}
 			rdBytes = new unsigned char[count];
 		}
@@ -152,7 +152,7 @@ public:
 
 	virtual unsigned long GetPosition() const
 	{
-		return this->position;
+		return (unsigned long)this->position;
 	}
 
 	virtual unsigned long GetSize() const
@@ -161,7 +161,7 @@ public:
 
 		if ( stream != NULL )
 		{
-			size = stream->size();
+			size = (unsigned long)stream->size();
 		}
 
 		return size;
@@ -197,20 +197,20 @@ public:
 			int cchSize = 1;
 			cch = ReadBytes( cchSize, true );
 
-            int xstzSize = DocFormatUtils::FormatUtils::BytesToUChar( cch, 0, cchSize ) * 1;
+            int xstzSize = DocFileFormat::FormatUtils::BytesToUChar( cch, 0, cchSize ) * 1;
 			xstz = ReadBytes(xstzSize, true);
 
-            DocFormatUtils::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &wstrResult, xstz, xstzSize, ENCODING_WINDOWS_1250 );
+            DocFileFormat::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &wstrResult, xstz, xstzSize, ENCODING_WINDOWS_1250 );
 		}
 		else
 		{
 			int cchSize = 2;
 			cch = ReadBytes( cchSize, true );
 
-            int xstzSize = DocFormatUtils::FormatUtils::BytesToInt16( cch, 0, cchSize ) * 2;
+            int xstzSize = DocFileFormat::FormatUtils::BytesToInt16( cch, 0, cchSize ) * 2;
 			xstz = ReadBytes(xstzSize, true);
 
-            DocFormatUtils::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &wstrResult, xstz, xstzSize, ENCODING_UTF16 );
+            DocFileFormat::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &wstrResult, xstz, xstzSize, ENCODING_UTF16 );
 		}
 
 		RELEASEARRAYOBJECTS(xstz);
@@ -234,7 +234,7 @@ public:
 			//dont read the terminating zero
 			unsigned char* stringBytes = ReadBytes( ( cch * 2 ), true );
 
-            DocFormatUtils::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &result, stringBytes, ( ( cch * 2 ) - 2 ), ENCODING_UTF16 );
+            DocFileFormat::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &result, stringBytes, ( ( cch * 2 ) - 2 ), ENCODING_UTF16 );
 
 			RELEASEARRAYOBJECTS( stringBytes );
 		}
@@ -246,7 +246,7 @@ public:
 	/// The string must have the following structure:
 	/// unsigned char 1-4: Character count (cch)
 	/// unsigned char 5-cch+4:   ANSI characters terminated by \0
-	std::wstring ReadLengthPrefixedAnsiString(int max_size)
+	std::wstring ReadLengthPrefixedAnsiString(unsigned int max_size)
 	{
 		std::wstring result;
 
@@ -257,8 +257,8 @@ public:
 		if (cch > max_size)
 		{
 			//error ... skip to 0
-			int pos_orinal = GetPosition();
-			int pos = 0;
+			unsigned int pos_orinal = GetPosition();
+			unsigned int pos = 0;
 		
 			stringBytes = ReadBytes( max_size, true );
 
@@ -278,7 +278,7 @@ public:
 				//dont read the terminating zero
 				stringBytes = ReadBytes( cch, true );
 
-                DocFormatUtils::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &result, stringBytes, ( cch - 1 ), ENCODING_WINDOWS_1250);
+                DocFileFormat::FormatUtils::GetSTLCollectionFromBytes<std::wstring>( &result, stringBytes, ( cch - 1 ), ENCODING_WINDOWS_1250);
 
 			}
 		RELEASEARRAYOBJECTS( stringBytes );

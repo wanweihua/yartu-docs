@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -46,6 +46,12 @@ exports.RIGHTS = {
   View    : 4
 };
 
+exports.LICENSE_MODE = {
+  None: 0,
+  Trial: 1,
+  Developer: 2
+};
+
 exports.LICENSE_RESULT = {
   Error       : 1,
   Expired     : 2,
@@ -53,10 +59,12 @@ exports.LICENSE_RESULT = {
   UnknownUser : 4,
   Connections : 5,
   ExpiredTrial: 6,
-  SuccessLimit: 7
+  SuccessLimit: 7,
+  UsersCount  : 8
 };
 
-exports.LICENSE_CONNECTIONS = 21;
+exports.LICENSE_CONNECTIONS = 20;
+exports.LICENSE_EXPIRE_USERS_ONE_DAY = 24 * 60 * 60; // day in seconds
 
 exports.AVS_OFFICESTUDIO_FILE_UNKNOWN =  0x0000;
 exports.AVS_OFFICESTUDIO_FILE_DOCUMENT = 0x0040;
@@ -145,6 +153,9 @@ exports.CONVERT_PARAMS = -88;
 exports.CONVERT_NEED_PARAMS = -89;
 exports.CONVERT_DRM = -90;
 exports.CONVERT_PASSWORD = -91;
+exports.CONVERT_ICU = -92;
+exports.CONVERT_LIMITS = -93;
+exports.CONVERT_DEAD_LETTER = -99;
 exports.UPLOAD = -100;
 exports.UPLOAD_CONTENT_LENGTH = -101;
 exports.UPLOAD_EXTENSION = -102;
@@ -171,11 +182,13 @@ exports.EDITOR_TYPE_CONVERTATION = 3;
 
 exports.PACKAGE_TYPE_OS = 0;
 exports.PACKAGE_TYPE_I = 1;
+exports.PACKAGE_TYPE_D = 2;
 
 exports.REDIS_KEY_PUBSUB = 'pubsub';
 exports.REDIS_KEY_SAVE_LOCK = 'savelock:';
 exports.REDIS_KEY_PRESENCE_HASH = 'presence:hash:';
 exports.REDIS_KEY_PRESENCE_SET = 'presence:set:';
+exports.REDIS_KEY_PRESENCE_UNIQUE_USERS = 'presence:unique:users';
 exports.REDIS_KEY_LOCKS = 'locks:';
 exports.REDIS_KEY_CHANGES_INDEX = 'changesindex:';
 exports.REDIS_KEY_LOCK_DOCUMENT = 'lockdocument:';
@@ -203,6 +216,8 @@ exports.JWT_EXPIRED_CODE = 4005;
 exports.JWT_EXPIRED_REASON = 'token:';
 exports.JWT_ERROR_CODE = 4006;
 exports.JWT_ERROR_REASON = 'token:';
+exports.DROP_CODE = 4007;
+exports.DROP_REASON = 'drop';
 
 exports.CONTENT_DISPOSITION_INLINE = 'inline';
 exports.CONTENT_DISPOSITION_ATTACHMENT = 'attachment';

@@ -1,16 +1,29 @@
+PRODUCT_NAME ?= core
+PRODUCT_VERSION ?= 0.0.0
+BUILD_NUMBER ?= 0
+PACKAGE_NAME := $(PRODUCT_NAME)
+
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+	ARCHITECTURE := 64
+	ARCH_SUFFIX := x64
+endif
+ifneq ($(filter %86,$(UNAME_M)),)
+	ARCHITECTURE := 32
+	ARCH_SUFFIX := x86
+endif
+
 ifeq ($(OS),Windows_NT)
 	PLATFORM := win
 	EXEC_EXT := .exe
 	SHELL_EXT := .bat
 	SHARED_EXT := .dll
 	LIB_EXT := .lib
+	ARCH_EXT := .zip
 	MAKE := nmake
-	ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
-		ARCHITECTURE := 64
-	endif
-	ifeq ($(PROCESSOR_ARCHITECTURE),x86)
-		ARCHITECTURE := 32
-	endif
+	AR := 7z a -y
+	PACKAGE_VERSION := $(PRODUCT_VERSION).$(BUILD_NUMBER)
+	ARCH_REPO_DIR := windows
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
@@ -19,23 +32,34 @@ else
 		SHELL_EXT := .sh
 		LIB_EXT := .a
 		LIB_PREFIX := lib
-		MAKE := make -j $(shell grep -c ^processor /proc/cpuinfo)
+		ARCH_EXT := .tar.gz
+		MAKE := make
+		AR := tar -zcvf
+		PACKAGE_VERSION := $(PRODUCT_VERSION)-$(BUILD_NUMBER)
+		ARCH_REPO_DIR := linux
 	endif
-	UNAME_M := $(shell uname -m)
-	ifeq ($(UNAME_M),x86_64)
-		ARCHITECTURE := 64
-	endif
-	ifneq ($(filter %86,$(UNAME_M)),)
-		ARCHITECTURE := 32
+	ifeq ($(UNAME_S),Darwin)
+		PLATFORM := mac
+		SHARED_EXT := .dylib
+		SHELL_EXT := .sh
+		LIB_EXT := .a
+		LIB_PREFIX := lib
+		ARCH_EXT := .tar.gz
+		MAKE := make
+		AR := tar -zcvf
+		PACKAGE_VERSION := $(PRODUCT_VERSION)-$(BUILD_NUMBER)
+		ARCH_REPO_DIR := mac
 	endif
 endif
 
 TARGET := $(PLATFORM)_$(ARCHITECTURE)
 
 LIBDIR := build/lib/$(TARGET)
+BINDIR := build/bin/$(TARGET)
 
 ALLFONTSGEN := build/bin/AllFontsGen/$(TARGET)$(EXEC_EXT)
-X2T := build/bin/$(TARGET)/x2t$(EXEC_EXT)
+X2T := $(BINDIR)/x2t$(EXEC_EXT)
+DOCBUILDER := $(BINDIR)/docbuilder$(EXEC_EXT)
 HTMLFILEINTERNAL := $(LIBDIR)/HtmlFileInternal$(EXEC_EXT)
 XLSFORMATLIB := $(LIBDIR)/$(LIB_PREFIX)XlsFormatLib$(LIB_EXT)
 ODFFILEWRITERLIB := $(LIBDIR)/$(LIB_PREFIX)OdfFileWriterLib$(LIB_EXT)
@@ -61,9 +85,11 @@ ASCDOCUMENTSCORE := $(LIBDIR)/$(LIB_PREFIX)ascdocumentscore$(SHARED_EXT)
 LIBXML := $(LIBDIR)/$(LIB_PREFIX)libxml$(LIB_EXT)
 LICENSEMANAGER := $(LIBDIR)/$(LIB_PREFIX)LicenceManager$(LIB_EXT)
 OOXMLSIGNATURE := $(LIBDIR)/$(LIB_PREFIX)ooxmlsignature$(LIB_EXT)
+HUNSPELL := $(LIBDIR)/$(LIB_PREFIX)hunspell$(SHARED_EXT)
 
 TARGETS += $(ALLFONTSGEN)
 TARGETS += $(X2T)
+TARGETS += $(DOCBUILDER)
 TARGETS += $(HTMLFILEINTERNAL)
 TARGETS += $(XLSFORMATLIB)
 TARGETS += $(ODFFILEWRITERLIB)
@@ -89,10 +115,12 @@ TARGETS += $(ASCDOCUMENTSCORE)
 TARGETS += $(LIBXML)
 TARGETS += $(LICENSEMANAGER)
 TARGETS += $(OOXMLSIGNATURE)
+TARGETS += $(HUNSPELL)
 
 X2T_PRO := $(abspath X2tConverter/build/Qt/X2tSLN.pro)
 HTMLFILEINTERNAL_PRO := $(abspath ../desktop-sdk/HtmlFile/Internal/Internal.pro)
 ALLFONTSGEN_PRO := $(abspath DesktopEditor/AllFontsGen/AllFontsGen.pro)
+DOCBUILDER_PRO := $(abspath ../core-ext/docbuilder/test_builder/docbuilder.pro)
 XLSFORMATLIB_PRO := $(abspath ASCOfficeXlsFile2/source/linux/XlsFormatLib.pro)
 ODFFILEWRITERLIB_PRO := $(abspath ASCOfficeOdfFileW/linux/OdfFileWriterLib.pro)
 ODFFILEREADERLIB_PRO := $(abspath ASCOfficeOdfFile/linux/OdfFileReaderLib.pro)
@@ -117,6 +145,7 @@ ASCDOCUMENTSCORE_PRO := $(abspath ../desktop-sdk/ChromiumBasedEditors/lib/AscDoc
 LIBXML_PRO := $(abspath DesktopEditor/xml/build/qt/libxml2.pro)
 LICENSEMANAGER_PRO := $(abspath LicenceManager/linux/LicenseManager.pro)
 OOXMLSIGNATURE_PRO := $(abspath DesktopEditor/xmlsec/src/ooxmlsignature.pro)
+HUNSPELL_PRO := $(abspath DesktopEditor/hunspell-1.3.3/src/qt/hunspell.pro)
 
 # PROS += $(basename $(X2T_PRO)).build
 # PROS += ALLFONTSGEN_PRO
@@ -144,6 +173,7 @@ OOXMLSIGNATURE_PRO := $(abspath DesktopEditor/xmlsec/src/ooxmlsignature.pro)
 QT_PROJ += X2T
 QT_PROJ += HTMLFILEINTERNAL
 QT_PROJ += ALLFONTSGEN
+QT_PROJ += DOCBUILDER
 QT_PROJ += XLSFORMATLIB
 QT_PROJ += ODFFILEWRITERLIB
 QT_PROJ += ODFFILEREADERLIB
@@ -168,6 +198,7 @@ QT_PROJ += ASCDOCUMENTSCORE
 QT_PROJ += LIBXML
 QT_PROJ += LICENSEMANAGER
 QT_PROJ += OOXMLSIGNATURE
+QT_PROJ += HUNSPELL
 
 # X2T_DEP += $(XLSFORMATLIB)
 # X2T_DEP += $(ODFFILEWRITERLIB)
@@ -200,6 +231,8 @@ ALLFONTSGEN_DEP += $(GRAPHICS)
 ALLFONTSGEN_DEP += $(OFFICEUTILS)
 ALLFONTSGEN_DEP += $(UNICODECONVERTER)
 
+DOCBUILDER_DEP += $(DOCTRENDERER)
+
 HTMLFILE_DEP += $(UNICODECONVERTER)
 
 RTFFORMATLIB_DEP += $(UNICODECONVERTER)
@@ -217,12 +250,34 @@ ASCDOCUMENTSCORE_DEP += $(XPSFILE)
 #ASCDOCUMENTSCORE_DEP += $(LICENSEMANAGER)
 ASCDOCUMENTSCORE_DEP += $(LIBXML)
 ASCDOCUMENTSCORE_DEP += $(OOXMLSIGNATURE)
+ASCDOCUMENTSCORE_DEP += $(HUNSPELL)
 
 OOXMLSIGNATURE_DEP += $(LIBXML)
 
 PDFREADER_DEP += $(HTMLRENDERER)
 
 PDFWRITER_DEP += $(UNICODECONVERTER)
+
+ARCHIVE := ./$(PACKAGE_NAME)$(ARCH_EXT)
+
+ARTIFACTS += build/*
+ARTIFACTS += Common/3dParty/*/$(TARGET)/build/*
+
+
+
+ifeq ($(OS),Windows_NT)
+ARTIFACTS += Common/3dParty/v8/v8/out.gn/$(TARGET)/release/*.dat
+ARTIFACTS += Common/3dParty/v8/v8/out.gn/$(TARGET)/release/obj/*
+else
+ARTIFACTS += Common/3dParty/v8/v8/out.gn/$(TARGET)/*.dat
+ARTIFACTS += Common/3dParty/v8/v8/out.gn/$(TARGET)/obj/*
+endif
+
+EXT_TARGET += $(DOCBUILDER)
+
+ifneq ($(PLATFORM),mac)
+EXT_TARGET += $(HTMLFILEINTERNAL)
+endif
 
 #Template for next statment:
 #FOO_MAKE := $(basename $(FOO_PRO)).build/Makefile
@@ -236,15 +291,18 @@ $$(value $(1)): $$(value $(1)_MAKE)
 	cd $$(dir $$(value $(1)_MAKE)) && $(MAKE);
 endef
 
-.PHONY : all bin lib clean
+.PHONY : all bin lib clean deploy
 
+.NOTPARALLEL:
 all: lib bin 
 
 bin: $(X2T) $(ALLFONTSGEN)
 
 lib: $(PDFWRITER) $(DOCTRENDERER) $(HTMLRENDERER) $(PDFREADER) $(DJVUFILE) $(XPSFILE) $(HTMLFILE) $(UNICODECONVERTER)
 
-ext: $(ASCDOCUMENTSCORE) $(HTMLFILEINTERNAL)
+ext: $(EXT_TARGET)
+
+desktop: $(ASCDOCUMENTSCORE)
 
 $(foreach proj, $(QT_PROJ), $(eval $(call build_proj_tmpl, $(proj))))
 
@@ -255,6 +313,8 @@ $(HTMLFILEINTERNAL): $(HTMLFILEINTERNAL_DEP)
 $(XPSFILE): $(XPSFILE_DEP)
 
 $(ALLFONTSGEN): $(ALLFONTSGEN_DEP)
+
+$(DOCBUILDER): $(DOCBUILDER_DEP)
 
 $(HTMLFILE): $(HTMLFILE_DEP)
 
@@ -275,11 +335,24 @@ $(OOXMLSIGNATURE): $(OOXMLSIGNATURE_DEP)
 %.build/Makefile: %.pro
 	mkdir -p $(dir $@) && cd $(dir $@) && qmake -r $<
 
+$(ARCHIVE) : 
+	$(AR) $@ $(ARTIFACTS)
+
 clean:
-	rm -rf $(TARGETS)
+	rm -rf $(TARGETS) $(ARCHIVE)
 	for i in $(PROS); do \
 		if [ -d $$i -a -f $$i/Makefile ]; then \
 			cd $$i && $(MAKE) distclean; \
 		fi \
 done
 
+deploy: $(ARCHIVE)
+	aws s3 cp \
+		$(ARCHIVE) \
+		s3://repo-doc-onlyoffice-com/$(ARCH_REPO_DIR)/$(PACKAGE_NAME)/$(GIT_BRANCH)/$(PACKAGE_VERSION)/$(ARCH_SUFFIX)/ \
+		--acl public-read
+
+	aws s3 sync \
+		s3://repo-doc-onlyoffice-com/$(ARCH_REPO_DIR)/$(PACKAGE_NAME)/$(GIT_BRANCH)/$(PACKAGE_VERSION)/$(ARCH_SUFFIX)/  \
+		s3://repo-doc-onlyoffice-com/$(ARCH_REPO_DIR)/$(PACKAGE_NAME)/$(GIT_BRANCH)/latest/$(ARCH_SUFFIX)/ \
+		--acl public-read --delete

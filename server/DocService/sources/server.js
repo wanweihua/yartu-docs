@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -38,12 +38,12 @@ const config = configCommon.get('services.CoAuthoring');
 //process.env.NODE_ENV = config.get('server.mode');
 const logger = require('./../../Common/sources/logger');
 const co = require('co');
+const license = require('./../../Common/sources/license');
 
 if (cluster.isMaster) {
 	const fs = require('fs');
 
 	//const numCPUs = require('os').cpus().length;
-	const license = require('./../../Common/sources/license');
 
 	//const cfgWorkerPerCpu = config.get('server.workerpercpu');
 	let licenseInfo, workersCount = 0, updateTime;
@@ -125,7 +125,6 @@ if (cluster.isMaster) {
 	const docsCoServer = require('./DocsCoServer');
 	const canvasService = require('./canvasservice');
 	const converterService = require('./converterservice');
-	const fontService = require('./fontservice');
 	const fileUploaderService = require('./fileuploaderservice');
 	const constants = require('./../../Common/sources/constants');
 	const utils = require('./../../Common/sources/utils');
@@ -192,15 +191,9 @@ if (cluster.isMaster) {
 		app.post('/coauthoring/CommandService.ashx', utils.checkClientIp, rawFileParser,
 			docsCoServer.commandFromServer);
 
-		if (config.has('server.fonts_route')) {
-			const fontsRoute = config.get('server.fonts_route');
-			app.get('/' + fontsRoute + 'native/:fontname', fontService.getFont);
-			app.get('/' + fontsRoute + 'js/:fontname', fontService.getFont);
-			app.get('/' + fontsRoute + 'odttf/:fontname', fontService.getFont);
-		}
-
-		app.get('/ConvertService.ashx', utils.checkClientIp, rawFileParser, converterService.convert);
-		app.post('/ConvertService.ashx', utils.checkClientIp, rawFileParser, converterService.convert);
+		app.get('/ConvertService.ashx', utils.checkClientIp, rawFileParser, converterService.convertXml);
+		app.post('/ConvertService.ashx', utils.checkClientIp, rawFileParser, converterService.convertXml);
+		app.post('/converter', utils.checkClientIp, rawFileParser, converterService.convertJson);
 
 
 		app.get('/FileUploader.ashx', utils.checkClientIp, rawFileParser, fileUploaderService.uploadTempFile);
@@ -221,11 +214,25 @@ if (cluster.isMaster) {
 				res.sendStatus(403);
 			}
 		});
-		app.post('/uploadold/:docid/:userid/:index/:jwt?', fileUploaderService.uploadImageFileOld);
-		app.post('/upload/:docid/:userid/:index/:jwt?', rawFileParser, fileUploaderService.uploadImageFile);
+		app.post('/uploadold/:docid/:userid/:index', fileUploaderService.uploadImageFileOld);
+		app.post('/upload/:docid/:userid/:index', rawFileParser, fileUploaderService.uploadImageFile);
 
 		app.post('/downloadas/:docid', rawFileParser, canvasService.downloadAs);
 		app.get('/healthcheck', utils.checkClientIp, docsCoServer.healthCheck);
+
+		app.get('/baseurl', (req, res) => {
+			res.send(utils.getBaseUrlByRequest(req));
+	  });
+
+		app.post('/docbuilder', utils.checkClientIp, rawFileParser, (req, res) => {
+			const licenseInfo = docsCoServer.getLicenseInfo();
+			if (licenseInfo.type !== constants.LICENSE_RESULT.Success) {
+				logger.error('License expired');
+				res.sendStatus(402);
+				return;
+			}
+			converterService.builder(req, res);
+		});
 
 		const sendUserPlugins = (res, data) => {
 			res.setHeader('Content-Type', 'application/json');
@@ -237,8 +244,7 @@ if (cluster.isMaster) {
 				return;
 			}
 
-			if (!config.has('server.static_content') || 
-					!config.has('plugins.uri')) {
+			if (!config.has('server.static_content') || !config.has('plugins.uri')) {
 				res.sendStatus(404);
 				return;
 			}
@@ -246,12 +252,13 @@ if (cluster.isMaster) {
 			let staticContent = config.get('server.static_content');
 			let pluginsUri = config.get('plugins.uri');
 			let pluginsPath = undefined;
+			let pluginsAutostart = config.get('plugins.autostart');
 
 			if (staticContent[pluginsUri]) {
 				pluginsPath = staticContent[pluginsUri].path;
 			}
 
-			let baseUrl = utils.getBaseUrlByRequest(req);
+			let baseUrl = '../../../..';
 			utils.listFolders(pluginsPath, true).then((values) => {
 				return co(function*() {
 					const configFile = 'config.json';
@@ -269,7 +276,7 @@ if (cluster.isMaster) {
 						}
 					}
 
-					userPlugins = {'url': '', 'pluginsData': result};
+					userPlugins = {'url': '', 'pluginsData': result, 'autostart': pluginsAutostart};
 					sendUserPlugins(res, userPlugins);
 				});
 			});

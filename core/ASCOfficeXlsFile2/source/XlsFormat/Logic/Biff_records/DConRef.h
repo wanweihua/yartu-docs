@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -57,9 +57,18 @@ public:
 	unsigned short			cchFile;
 	std::wstring			stFile;
 
-	bool					bFilePath;
-	bool					bSheetName;
+	std::vector<std::wstring>	path;
+	std::wstring				file_name;
+	std::wstring				sheet_name;
 
+	int							index_external;
+
+	void			check_external();
+private:
+	GlobalWorkbookInfoPtr global_info_;
+
+	std::wstring	get_external_path();
+	bool			bFilePath;
 };
 
 } // namespace XLS

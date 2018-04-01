@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -189,13 +189,15 @@ static const struct ActionNamesEmf
 
 		do
 		{
-			if (m_oStream.CanRead() < 8)
+            if (m_oStream.IsEof())
+                break;
+            if (m_oStream.CanRead() < 8)
 				return SetError();
 
 			m_oStream >> ulType;
 			m_oStream >> ulSize;
 
-			if (ulSize < 1) 
+            if (ulSize < 1)
 				continue;
 
 			m_ulRecordPos	= m_oStream.Tell();
@@ -349,7 +351,7 @@ static const struct ActionNamesEmf
 #ifdef _DEBUG
 			if ( need_skip != 0 && !m_pOutput)
 			{
-                                std::wstring name = actionNamesEmf[ulType].actionName;
+				std::wstring name = actionNamesEmf[ulType].actionName;
 
 				std::wcout << name << L"\t\t(" << ulType << L")\t; skiped = " << need_skip << L"\n";
 			}			

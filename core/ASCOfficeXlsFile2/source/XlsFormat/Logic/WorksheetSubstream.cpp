@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,71 +31,70 @@
  */
 
 #include "WorksheetSubstream.h"
-#include <Logic/Biff_records/Uncalced.h>
-#include <Logic/Biff_records/Index.h>
-#include <Logic/Biff_unions/GLOBALS.h>
-#include <Logic/Biff_unions/PAGESETUP.h>
-#include <Logic/Biff_records/Dimensions.h>
-#include <Logic/Biff_records/HFPicture.h>
-#include <Logic/Biff_records/Note.h>
-#include <Logic/Biff_records/DxGCol.h>
-#include <Logic/Biff_records/MergeCells.h>
-#include <Logic/Biff_records/LRng.h>
-#include <Logic/Biff_records/CodeName.h>
-#include <Logic/Biff_records/WebPub.h>
-#include <Logic/Biff_records/Window1.h>
-#include <Logic/Biff_records/CellWatch.h>
-#include <Logic/Biff_records/SheetExt.h>
-#include <Logic/Biff_records/EOF.h>
-#include <Logic/Biff_records/BOF.h>
-#include <Logic/Biff_records/DefaultRowHeight.h>
-#include <Logic/Biff_records/Label.h>
 
-#include <Logic/Biff_unions/BACKGROUND.h>
-#include <Logic/Biff_unions/BIGNAME.h>
-#include <Logic/Biff_unions/PROTECTION_COMMON.h> 
-#include <Logic/Biff_unions/COLUMNS.h>
-#include <Logic/Biff_unions/SCENARIOS.h>
-#include <Logic/Biff_unions/SORTANDFILTER.h>
-#include <Logic/Biff_unions/CELLTABLE.h>
-#include <Logic/Biff_unions/OBJECTS.h>
-#include <Logic/Biff_unions/PIVOTVIEW.h>
-#include <Logic/Biff_unions/DCON.h>
-#include <Logic/Biff_unions/WINDOW.h>
-#include <Logic/Biff_unions/CUSTOMVIEW.h>
-#include <Logic/Biff_unions/SORT.h>
-#include <Logic/Biff_unions/QUERYTABLE.h>
-#include <Logic/Biff_unions/PHONETICINFO.h>
-#include <Logic/Biff_unions/CONDFMTS.h>
-#include <Logic/Biff_unions/HLINK.h>
-#include <Logic/Biff_unions/DVAL.h>
-#include <Logic/Biff_unions/FEAT.h>
-#include <Logic/Biff_unions/FEAT11.h>
-#include <Logic/Biff_unions/RECORD12.h>
-#include <Logic/Biff_unions/SHFMLA_SET.h>
+#include "Biff_records/Uncalced.h"
+#include "Biff_records/Index.h"
+#include "Biff_unions/GLOBALS.h"
+#include "Biff_unions/PAGESETUP.h"
+#include "Biff_records/Dimensions.h"
+#include "Biff_records/HFPicture.h"
+#include "Biff_records/Note.h"
+#include "Biff_records/DxGCol.h"
+#include "Biff_records/MergeCells.h"
+#include "Biff_records/LRng.h"
+#include "Biff_records/CodeName.h"
+#include "Biff_records/WebPub.h"
+#include "Biff_records/Window1.h"
+#include "Biff_records/CellWatch.h"
+#include "Biff_records/SheetExt.h"
+#include "Biff_records/EOF.h"
+#include "Biff_records/BOF.h"
+#include "Biff_records/DefaultRowHeight.h"
+#include "Biff_records/Label.h"
+#include "Biff_records/List12.h"
+#include "Biff_records/PLV.h"
+#include "Biff_records/CFEx.h"
+
+#include "Biff_unions/BACKGROUND.h"
+#include "Biff_unions/BIGNAME.h"
+#include "Biff_unions/PROTECTION_COMMON.h" 
+#include "Biff_unions/COLUMNS.h"
+#include "Biff_unions/SCENARIOS.h"
+#include "Biff_unions/SORTANDFILTER.h"
+#include "Biff_unions/CELLTABLE.h"
+#include "Biff_unions/OBJECTS.h"
+#include "Biff_unions/PIVOTVIEW.h"
+#include "Biff_unions/DCON.h"
+#include "Biff_unions/WINDOW.h"
+#include "Biff_unions/CUSTOMVIEW.h"
+#include "Biff_unions/SORT.h"
+#include "Biff_unions/QUERYTABLE.h"
+#include "Biff_unions/PHONETICINFO.h"
+#include "Biff_unions/CONDFMTS.h"
+#include "Biff_unions/HLINK.h"
+#include "Biff_unions/DVAL.h"
+#include "Biff_unions/FEAT.h"
+#include "Biff_unions/FEAT11.h"
+#include "Biff_unions/RECORD12.h"
+#include "Biff_unions/SHFMLA_SET.h"
 
 #include "Biff_structures/ODRAW/OfficeArtDgContainer.h"
 
 namespace XLS
 {;
 
-
-WorksheetSubstream::WorksheetSubstream(const size_t ws_index)
-:	ws_index_(ws_index)
+WorksheetSubstream::WorksheetSubstream(const size_t ws_index) :	CommonSubstream(ws_index)
 {
 }
-
 
 WorksheetSubstream::~WorksheetSubstream()
 {
 }
 
-
 BaseObjectPtr WorksheetSubstream::clone()
 {
 	return BaseObjectPtr(new WorksheetSubstream(*this));
 }
-
 
 /*
 WORKSHEETCONTENT = [Uncalced] Index GLOBALS PAGESETUP [HeaderFooter] [BACKGROUND] *BIGNAME [PROTECTION] 
@@ -108,11 +107,7 @@ WORKSHEET = BOF WORKSHEETCONTENT
 const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 {
 	global_info_ = proc.getGlobalWorkbookInfo();
-	
-	GlobalWorkbookInfo::_sheet_size_info sheet_size_info;
-	
-	global_info_->sheet_size_info.push_back(sheet_size_info);
-	global_info_->current_sheet = global_info_->sheet_size_info.size();
+	global_info_->current_sheet = ws_index_ + 1; 
 
 	global_info_->cmt_rules	= 0;
 
@@ -140,11 +135,11 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 		{
 			case rt_Uncalced:		proc.optional<Uncalced>();		break;
 			case rt_Index:			proc.optional<Index>();			break;
-			case rt_CalcRefMode:
+			case rt_CalcRefMode://todooo сделать вариативно по всем проверку
 			case rt_CalcMode:
+			case rt_PrintRowCol:
 			{
-				GLOBALS globals(false);
-				if (proc.mandatory(globals))
+				if (proc.mandatory<GLOBALS>())
 				{
 					m_GLOBALS = elements_.back();
 					elements_.pop_back();
@@ -208,8 +203,27 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					elements_.pop_back();
 				}
 			}break;
-			case rt_BigName:		proc.repeated<BIGNAME>(0, 0);		break;
-			case rt_Protect:		proc.optional<PROTECTION_COMMON>();	break;
+			case rt_BigName:		
+			{
+				count = proc.repeated<BIGNAME>(0, 0);
+				while(count > 0)
+				{
+					m_arBIGNAME.insert(m_arNote.begin(), elements_.back());
+					elements_.pop_back();
+					count--;
+				}
+			}break;
+			case rt_Protect:		
+			case rt_ScenarioProtect:		
+			case rt_ObjProtect:		
+			case rt_Password:		
+			{
+				if (proc.optional<PROTECTION_COMMON>())
+				{
+					m_PROTECTION = elements_.back();
+					elements_.pop_back();
+				}
+			}break;
 			case rt_ScenMan:		proc.optional<SCENARIOS>();			break;	
 			case rt_Sort:
 			case rt_AutoFilterInfo:
@@ -220,6 +234,7 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					elements_.pop_back();
 				}	
 			}break;
+			case rt_LabelSst://order_history.xls
 			case rt_Label://file(6).xls
 			case rt_Row:
 			{
@@ -292,9 +307,19 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					m_arPIVOTVIEW.insert(m_arPIVOTVIEW.begin(), elements_.back());
 					elements_.pop_back();
 					count--;
+
+					PIVOTVIEW *view = dynamic_cast<PIVOTVIEW*>(m_arPIVOTVIEW.back().get());
+					mapPivotViews.insert(std::make_pair(view->name, m_arPIVOTVIEW.back()));
 				}
 			}break;
-			case rt_DCon:			proc.optional<DCON>		();			break;
+			case rt_DCon:
+			{
+				if (proc.optional<DCON>())
+				{
+					m_DCON = elements_.back();
+					elements_.pop_back();
+				}
+			}break;
 			case rt_UserSViewBegin:
 			{
 				count = proc.repeated<CUSTOMVIEW>(0, 0);
@@ -323,7 +348,7 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					elements_.pop_back(); 
 					
 					DxGCol* dx = dynamic_cast<DxGCol*>(m_DxGCol.get());
-					global_info_->sheet_size_info.back().defaultColumnWidth = dx->dxgCol / 256.;
+					global_info_->sheets_info.back().defaultColumnWidth = dx->dxgCol / 256.;
 				}
 			}break;				
 			case rt_MergeCells:
@@ -341,8 +366,24 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 				}
 			}break;
 				
-			case rt_LRng:			proc.optional<LRng>			();			break;
-			case rt_Qsi:			proc.repeated<QUERYTABLE>	(0, 0);		break;
+			case rt_LRng:
+			{
+				if (proc.optional<LRng>())
+				{
+					m_LRng = elements_.back();
+					elements_.pop_back(); 
+				}
+			}break;
+			case rt_Qsi:			
+			{
+				count = proc.repeated<QUERYTABLE>(0, 0);
+				while(count > 0)
+				{
+					m_arQUERYTABLE.insert(m_arQUERYTABLE.begin(), elements_.back());
+					elements_.pop_back();
+					count--;
+				}
+			}break;
 			case rt_PhoneticInfo:	proc.optional<PHONETICINFO>	();			break;			
 			case rt_CondFmt:
 			case rt_CondFmt12:
@@ -402,6 +443,10 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					count--;
 				}
 			}break;
+			case rt_List12://LCA BI - Financial Report Usage2010.xls ??
+			{
+				count = proc.repeated<List12>	(0, 0);
+			}break;
 			case rt_FeatHdr11:
 			{
 				count = proc.repeated<FEAT11>	(0, 0);
@@ -412,9 +457,28 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 					count--;
 				}
 			}break;
+			case rt_CFEx:	//Calculadora.xls не в FORMATING
+			{
+				count = proc.repeated<CFEx>	(0, 0);
+			}break;
+			case rt_PLV:	//Calculadora.xls не в FORMATING
+			{
+				if (proc.optional<PLV>())
+				{
+					m_PLV = elements_.back();
+					elements_.pop_back();
+				}
+			}break;
 			case rt_HeaderFooter:		
-				proc.repeated<RECORD12>	(0, 0);		
-				break;
+			{
+				count = proc.repeated<RECORD12>	(0, 0);		
+				while(count > 0)
+				{
+					m_arRECORD12.insert(m_arRECORD12.begin(), elements_.back());
+					elements_.pop_back();
+					count--;
+				}
+			}break;
 			default://unknown .... skip					
 			{
 				proc.SkipRecord();	
@@ -426,48 +490,6 @@ const bool WorksheetSubstream::loadContent(BinProcessor& proc)
 
 	return true;
 }
-void WorksheetSubstream::LoadHFPicture()
-{
-	if (m_arHFPicture.empty()) return;
-
-	int current_size_hf = 0, j = 0;
-	for ( int i = 0; i < m_arHFPicture.size(); i++)
-	{
-		HFPicture* hf = dynamic_cast<HFPicture*>(m_arHFPicture[i].get());
-		if ((hf) && (hf->recordDrawingGroup))
-		{
-			if (!hf->fContinue && current_size_hf > 0)
-			{
-				XLS::CFRecord record(CFRecordType::ANY_TYPE, global_info_);
-				for (; j < i; j++)
-				{
-					hf = dynamic_cast<HFPicture*>(m_arHFPicture[j].get());
-					record.appendRawData(hf->recordDrawingGroup);
-				}
-				ODRAW::OfficeArtDgContainerPtr rgDrawing = ODRAW::OfficeArtDgContainerPtr(new ODRAW::OfficeArtDgContainer(ODRAW::OfficeArtRecord::CA_HF));
-				rgDrawing->loadFields(record);
-				m_arHFPictureDrawing.push_back(rgDrawing);
-				current_size_hf = 0;
-
-			}
-			current_size_hf += hf->recordDrawingGroup->getDataSize();
-		}
-	}
-	if (current_size_hf > 0)
-	{
-		XLS::CFRecord record(ODRAW::OfficeArtRecord::DggContainer, global_info_);
-		for (; j < m_arHFPicture.size(); j++)
-		{
-			HFPicture* hf = dynamic_cast<HFPicture*>(m_arHFPicture[j].get());
-			record.appendRawData(hf->recordDrawingGroup);
-		}
-		ODRAW::OfficeArtDgContainerPtr rgDrawing = ODRAW::OfficeArtDgContainerPtr(new ODRAW::OfficeArtDgContainer(ODRAW::OfficeArtRecord::CA_HF));
-		rgDrawing->loadFields(record);
-		m_arHFPictureDrawing.push_back(rgDrawing);
-	}
-}
-
-
 
 } // namespace XLS
 

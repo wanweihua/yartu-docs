@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,8 +30,6 @@
  *
  */
 #include "calcext_elements.h"
-
-#include <boost/foreach.hpp>
 
 #include <cpdoccore/xml/xmlchar.h>
 
@@ -86,9 +84,9 @@ void calcext_conditional_formats::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			BOOST_FOREACH(const office_element_ptr & item, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				item->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -115,9 +113,9 @@ void calcext_conditional_format::serialize(std::wostream & _Wostream)
         {   
 			CP_XML_ATTR_OPT(L"calcext:target-range-address",calcext_target_range_address_);
 
-			BOOST_REVERSE_FOREACH(const office_element_ptr & item, content_)
+            for (int i = (int)content_.size() - 1; i >= 0; i--)
 			{
-				item->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -142,11 +140,11 @@ void calcext_data_bar::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			calcext_data_bar_attr_.serialize(CP_GET_XML_NODE());
+			attr_.serialize(CP_GET_XML_NODE());
 
-			BOOST_FOREACH(const office_element_ptr & item, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				item->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -170,9 +168,10 @@ void calcext_color_scale::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			BOOST_FOREACH(const office_element_ptr & item, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				item->serialize(CP_XML_STREAM());
+				if (!content_[i]) continue;
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -196,11 +195,11 @@ void calcext_icon_set::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			calcext_icon_set_attr_.serialize(CP_GET_XML_NODE());
+			attr_.serialize(CP_GET_XML_NODE());
 
-			BOOST_FOREACH(const office_element_ptr & item, content_)
+			for (size_t i = 0; i < content_.size(); i++)
 			{
-				item->serialize(CP_XML_STREAM());
+				content_[i]->serialize(CP_XML_STREAM());
 			}
 		}
 	}
@@ -208,8 +207,8 @@ void calcext_icon_set::serialize(std::wostream & _Wostream)
 	
 // calcext_formatting_entry
 //////////////////////////////////////////////////////////////////////////////////////////////////
-const wchar_t * calcext_formatting_entry::ns = L"calcext";
-const wchar_t * calcext_formatting_entry::name = L"formatting-entry";
+const wchar_t * calcext_formatting_entry::ns	= L"calcext";
+const wchar_t * calcext_formatting_entry::name	= L"formatting-entry";
 
 void calcext_formatting_entry::serialize(std::wostream & _Wostream)
 {
@@ -225,8 +224,8 @@ void calcext_formatting_entry::serialize(std::wostream & _Wostream)
 
 // calcext_color_scale_entry
 //////////////////////////////////////////////////////////////////////////////////////////////////
-const wchar_t * calcext_color_scale_entry::ns = L"calcext";
-const wchar_t * calcext_color_scale_entry::name = L"color_scale_entry";
+const wchar_t * calcext_color_scale_entry::ns	= L"calcext";
+const wchar_t * calcext_color_scale_entry::name = L"color-scale-entry";
 
 void calcext_color_scale_entry::serialize(std::wostream & _Wostream)
 {
@@ -242,7 +241,7 @@ void calcext_color_scale_entry::serialize(std::wostream & _Wostream)
 }
 // calcext_condition
 //////////////////////////////////////////////////////////////////////////////////////////////////
-const wchar_t * calcext_condition::ns = L"calcext";
+const wchar_t * calcext_condition::ns	= L"calcext";
 const wchar_t * calcext_condition::name = L"condition";
 
 void calcext_condition::serialize(std::wostream & _Wostream)
@@ -251,7 +250,7 @@ void calcext_condition::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			calcext_condition_attr_.serialize(CP_GET_XML_NODE());
+			attr_.serialize(CP_GET_XML_NODE());
 		}
 	}
 }
@@ -266,7 +265,7 @@ void calcext_date_is::serialize(std::wostream & _Wostream)
     {
 		CP_XML_NODE_SIMPLE()
         {   
-			calcext_date_is_attr_.serialize(CP_GET_XML_NODE());
+			attr_.serialize(CP_GET_XML_NODE());
 		}
 	}
 }

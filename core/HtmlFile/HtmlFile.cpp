@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,6 +35,7 @@
 #include "../DesktopEditor/common/StringBuilder.h"
 #include "../DesktopEditor/common/String.h"
 #include "../DesktopEditor/xml/include/xmlutils.h"
+#include "../DesktopEditor/fontengine/application_generate_fonts_common.h"
 
 #include <vector>
 #include <map>
@@ -242,10 +243,30 @@ int CHtmlFile::Convert(const std::vector<std::wstring>& arFiles, const std::wstr
 
     oBuilder.WriteString(L"</destination>");
 
+    std::vector<std::wstring> arTmpFiles;
     for (std::vector<std::wstring>::const_iterator iter = arFiles.begin(); iter != arFiles.end(); iter++)
     {
         oBuilder.WriteString(L"<file>");
-        oBuilder.WriteEncodeXmlString(CorrectHtmlPath(*iter));
+
+        std::wstring sFilePath = *iter;
+        std::wstring sExt = NSCommon::GetFileExtention(sFilePath);
+        NSCommon::makeUpperW(sExt);
+
+        if (sExt == L"HTML" || sExt == L"HTM" || sExt == L"XHTML")
+            oBuilder.WriteEncodeXmlString(CorrectHtmlPath(sFilePath));
+        else
+        {
+            std::wstring sTmpFile = NSFile::CFileBinary::CreateTempFileWithUniqueName(NSDirectory::GetTempPath(), L"HTM");
+            if (NSFile::CFileBinary::Exists(sTmpFile))
+                NSFile::CFileBinary::Remove(sTmpFile);
+
+            sTmpFile = sTmpFile + L".html";
+
+            NSFile::CFileBinary::Copy(sFilePath, sTmpFile);
+            oBuilder.WriteEncodeXmlString(CorrectHtmlPath(sTmpFile));
+            arTmpFiles.push_back(sTmpFile);
+        }
+
         oBuilder.WriteString(L"</file>");
     }
 
@@ -370,10 +391,11 @@ int CHtmlFile::Convert(const std::vector<std::wstring>& arFiles, const std::wstr
             nargs[0] = sXmlA.c_str();
             nargs[1] = NULL;
 
-            const char* nenv[3];
+            const char* nenv[4];
             nenv[0] = sLibraryDir.c_str();
-            nenv[1] = "DISPLAY=:0";
-            nenv[2] = NULL;
+            nenv[1] = "LD_PRELOAD=./libcef.so";
+            nenv[2] = "DISPLAY=:0";
+            nenv[3] = NULL;
 
             execve(sProgramm.c_str(),
                    (char * const *)nargs,
@@ -390,10 +412,11 @@ int CHtmlFile::Convert(const std::vector<std::wstring>& arFiles, const std::wstr
             nargs[4] = sXmlA.c_str();
             nargs[5] = NULL;
 
-            const char* nenv[3];
+            const char* nenv[4];
             nenv[0] = sLibraryDir.c_str();
-            nenv[1] = NULL;//"DISPLAY=:99";
-            nenv[2] = NULL;
+            nenv[1] = "LD_PRELOAD=./libcef.so";
+            nenv[2] = NULL;//"DISPLAY=:99";
+            nenv[3] = NULL;
 
             execve("/usr/bin/xvfb-run", (char * const *)nargs, (char * const *)nenv);
             exit(EXIT_SUCCESS);
@@ -410,6 +433,12 @@ int CHtmlFile::Convert(const std::vector<std::wstring>& arFiles, const std::wstr
         break;
     }
 #endif
+
+    for (std::vector<std::wstring>::iterator i = arTmpFiles.begin(); i != arTmpFiles.end(); i++)
+    {
+        NSFile::CFileBinary::Remove(*i);
+    }
+    arTmpFiles.clear();
 
     NSFile::CFileBinary::Remove(sTempFileForParams);
     return nReturnCode;

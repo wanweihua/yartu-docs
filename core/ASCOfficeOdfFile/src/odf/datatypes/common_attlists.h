@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -501,6 +501,7 @@ public:
     _CP_OPT(std::wstring)	draw_layer_;
     _CP_OPT(std::wstring)	draw_transform_;
     _CP_OPT(int)			draw_z_index_;
+	_CP_OPT(std::wstring)	drawooo_display_;
 };
 
 class common_draw_position_attlist

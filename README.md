@@ -1,8 +1,8 @@
-[![License](https://img.shields.io/badge/License-GNU%20AGPL%20V3-green.svg?style=flat)](https://www.gnu.org/licenses/agpl-3.0.en.html) ![Release](https://img.shields.io/badge/Release-v4.4-blue.svg?style=flat)
+[![License](https://img.shields.io/badge/License-GNU%20AGPL%20V3-green.svg?style=flat)](https://www.gnu.org/licenses/agpl-3.0.en.html) ![Release](https://img.shields.io/badge/Release-v5.1-blue.svg?style=flat)
 
 ## Overview
 
-Yartu Docs is a free collaborative online office suite comprising viewers and editors for texts, spreadsheets and presentations, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time. Yartu Docs is forked from ONLYOFFICE Document Server. Yartu Docs contains all ONLYOFFICE Document Server features until version 4.4 and also have new super features.
+Yartu Docs is a free collaborative online office suite comprising viewers and editors for texts, spreadsheets and presentations, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time. Yartu Docs is forked from ONLYOFFICE Document Server. Yartu Docs contains all ONLYOFFICE Document Server features until version 5.1 and also have new super features.
 
 ## Components
 

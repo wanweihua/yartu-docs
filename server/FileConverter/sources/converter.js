@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -38,6 +38,8 @@ var url = require('url');
 var childProcess = require('child_process');
 var co = require('co');
 var config = require('config');
+var spawnAsync = require('@expo/spawn-async');
+const bytes = require('bytes');
 var configConverter = config.get('FileConverter.converter');
 
 var commonDefines = require('./../../Common/sources/commondefines');
@@ -55,10 +57,18 @@ var cfgDownloadAttemptMaxCount = configConverter.has('downloadAttemptMaxCount') 
 var cfgDownloadAttemptDelay = configConverter.has('downloadAttemptDelay') ? configConverter.get('downloadAttemptDelay') : 1000;
 var cfgFontDir = configConverter.get('fontDir');
 var cfgPresentationThemesDir = configConverter.get('presentationThemesDir');
-var cfgFilePath = configConverter.get('filePath');
+var cfgX2tPath = configConverter.get('x2tPath');
+var cfgDocbuilderPath = configConverter.get('docbuilderPath');
+var cfgDocbuilderAllFontsPath = configConverter.get('docbuilderAllFontsPath');
 var cfgArgs = configConverter.get('args');
 var cfgErrorFiles = configConverter.get('errorfiles');
+var cfgInputLimits = configConverter.get('inputLimits');
+const cfgStreamWriterBufferSize = configConverter.get('streamWriterBufferSize');
+//cfgMaxRequestChanges was obtained as a result of the test: 84408 changes - 5,16 MB
+const cfgMaxRequestChanges = config.get('services.CoAuthoring.server.maxRequestChanges');
+const cfgMaxRedeliveredCount = configConverter.get('maxRedeliveredCount');
 var cfgTokenEnableRequestOutbox = config.get('services.CoAuthoring.token.enable.request.outbox');
+const cfgForgottenFilesName = config.get('services.CoAuthoring.server.forgottenfilesname');
 
 //windows limit 512(2048) https://msdn.microsoft.com/en-us/library/6e3b887c.aspx
 //Ubuntu 14.04 limit 4096 http://underyx.me/2015/05/18/raising-the-maximum-number-of-file-descriptors.html
@@ -68,10 +78,11 @@ var TEMP_PREFIX = 'ASC_CONVERT';
 var queue = null;
 var clientStatsD = statsDClient.getClient();
 var exitCodesReturn = [constants.CONVERT_NEED_PARAMS, constants.CONVERT_CORRUPTED, constants.CONVERT_DRM,
-  constants.CONVERT_PASSWORD];
+  constants.CONVERT_PASSWORD, constants.CONVERT_LIMITS];
 var exitCodesMinorError = [constants.CONVERT_NEED_PARAMS, constants.CONVERT_DRM, constants.CONVERT_PASSWORD];
 var exitCodesUpload = [constants.NO_ERROR, constants.CONVERT_CORRUPTED, constants.CONVERT_NEED_PARAMS,
   constants.CONVERT_DRM];
+let inputLimitsXmlCache;
 
 function TaskQueueDataConvert(task) {
   var cmd = task.getCmd();
@@ -96,11 +107,12 @@ function TaskQueueDataConvert(task) {
   this.thumbnail = cmd.thumbnail;
   this.doctParams = cmd.getDoctParams();
   this.password = cmd.getPassword();
+  this.noBase64 = cmd.getNoBase64();
   this.timestamp = new Date();
 }
 TaskQueueDataConvert.prototype = {
   serialize: function(fsPath) {
-    var xml = '\ufeff<?xml version="1.0" encoding="utf-8"?>';
+    let xml = '\ufeff<?xml version="1.0" encoding="utf-8"?>';
     xml += '<TaskQueueDataConvert xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"';
     xml += ' xmlns:xsd="http://www.w3.org/2001/XMLSchema">';
     xml += this.serializeXmlProp('m_sKey', this.key);
@@ -122,10 +134,18 @@ TaskQueueDataConvert.prototype = {
       xml += this.serializeThumbnail(this.thumbnail);
     }
     xml += this.serializeXmlProp('m_nDoctParams', this.doctParams);
-    xml += this.serializeXmlProp('m_sPassword', this.password);
     xml += this.serializeXmlProp('m_oTimestamp', this.timestamp.toISOString());
+    xml += this.serializeXmlProp('m_bIsNoBase64', this.noBase64);
+    xml += this.serializeLimit();
     xml += '</TaskQueueDataConvert>';
     fs.writeFileSync(fsPath, xml, {encoding: 'utf8'});
+    let hiddenXml;
+    if (undefined !== this.password) {
+      hiddenXml = '<TaskQueueDataConvert>';
+      hiddenXml += this.serializeXmlProp('m_sPassword', this.password);
+      hiddenXml += '</TaskQueueDataConvert>';
+    }
+    return hiddenXml;
   },
   serializeMailMerge: function(data) {
     var xml = '<m_oMailMergeSend>';
@@ -153,6 +173,32 @@ TaskQueueDataConvert.prototype = {
     xml += '</m_oThumbnail>';
     return xml;
   },
+  serializeLimit: function() {
+    if (!inputLimitsXmlCache) {
+      var xml = '<m_oInputLimits>';
+      for (let i = 0; i < cfgInputLimits.length; ++i) {
+        let limit = cfgInputLimits[i];
+        if (limit.type && limit.zip) {
+          xml += '<m_oInputLimit';
+          xml += this.serializeXmlAttr('type', limit.type);
+          xml += '>';
+          xml += '<m_oZip';
+          if (limit.zip.compressed) {
+            xml += this.serializeXmlAttr('compressed', bytes.parse(limit.zip.compressed));
+          }
+          if (limit.zip.uncompressed) {
+            xml += this.serializeXmlAttr('uncompressed', bytes.parse(limit.zip.uncompressed));
+          }
+          xml += this.serializeXmlAttr('template', limit.zip.template);
+          xml += '/>';
+          xml += '</m_oInputLimit>';
+        }
+      }
+      xml += '</m_oInputLimits>';
+      inputLimitsXmlCache = xml;
+    }
+    return inputLimitsXmlCache;
+  },
   serializeXmlProp: function(name, value) {
     var xml = '';
     if (null != value) {
@@ -161,6 +207,15 @@ TaskQueueDataConvert.prototype = {
       xml += '</' + name + '>';
     } else {
       xml += '<' + name + ' xsi:nil="true" />';
+    }
+    return xml;
+  },
+  serializeXmlAttr: function(name, value) {
+    var xml = '';
+    if (null != value) {
+      xml += ' ' + name + '=\"';
+      xml += utils.encodeXml(value.toString());
+      xml += '\"';
     }
     return xml;
   }
@@ -194,7 +249,7 @@ function* downloadFile(docId, uri, fileFrom) {
       try {
         let authorization;
         if (cfgTokenEnableRequestOutbox) {
-          authorization = utils.fillJwtForRequest();
+          authorization = utils.fillJwtForRequest({url: uri});
         }
         data = yield utils.downloadUrlPromise(uri, cfgDownloadTimeout * 1000, cfgDownloadMaxBytes, authorization);
         res = true;
@@ -210,7 +265,7 @@ function* downloadFile(docId, uri, fileFrom) {
       }
     }
     if (res) {
-      logger.debug('downloadFile complete(id=%s)', docId);
+      logger.debug('downloadFile complete filesize=%d (id=%s)', data.length, docId);
       fs.writeFileSync(fileFrom, data);
     }
   } else {
@@ -218,23 +273,6 @@ function* downloadFile(docId, uri, fileFrom) {
     res = false;
   }
   return res;
-}
-function promiseGetChanges(key, forceSave) {
-  return new Promise(function(resolve, reject) {
-    var time;
-    var index;
-    if (forceSave) {
-      time = forceSave.getTime();
-      index = forceSave.getIndex();
-    }
-    baseConnector.getChanges(key, time, index, function(err, result) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result);
-      }
-    });
-  });
 }
 function* downloadFileFromStorage(id, strPath, dir) {
   var list = yield storage.listObjects(strPath);
@@ -269,98 +307,127 @@ function* downloadFileFromStorage(id, strPath, dir) {
   }
 }
 function* processDownloadFromStorage(dataConvert, cmd, task, tempDirs) {
+  let needConcatFiles = false;
   if (task.getFromOrigin() || task.getFromSettings()) {
     dataConvert.fileFrom = path.join(tempDirs.source, 'origin.' + cmd.getFormat());
   } else {
     //перезаписываем некоторые файлы из m_sKey(например Editor.bin или changes)
     yield* downloadFileFromStorage(cmd.getSaveKey(), cmd.getSaveKey(), tempDirs.source);
     dataConvert.fileFrom = path.join(tempDirs.source, 'Editor.bin');
-    //при необходимости собираем файл из частей, вида EditorN.bin
-    var parsedFrom = path.parse(dataConvert.fileFrom);
-    var list = yield utils.listObjects(parsedFrom.dir, true);
-    list.sort(utils.compareStringByLength);
-    var fsFullFile = null;
-    for (var i = 0; i < list.length; ++i) {
-      var file = list[i];
-      var parsedFile = path.parse(file);
-      if (parsedFile.name !== parsedFrom.name && parsedFile.name.startsWith(parsedFrom.name)) {
-        if (!fsFullFile) {
-          fsFullFile = yield utils.promiseCreateWriteStream(dataConvert.fileFrom);
-        }
-        var fsCurFile = yield utils.promiseCreateReadStream(file);
-        yield utils.pipeStreams(fsCurFile, fsFullFile, false);
-      }
-    }
-    if (fsFullFile) {
-      fsFullFile.end();
-    }
+    needConcatFiles = true;
   }
   //mail merge
-  var mailMergeSend = cmd.getMailMergeSend();
+  let mailMergeSend = cmd.getMailMergeSend();
   if (mailMergeSend) {
     yield* downloadFileFromStorage(mailMergeSend.getJsonKey(), mailMergeSend.getJsonKey(), tempDirs.source);
-    //разбиваем на 2 файла
-    var data = fs.readFileSync(dataConvert.fileFrom);
-    var head = data.slice(0, 11).toString('ascii');
-    var index = head.indexOf(';');
-    if (-1 != index) {
-      var lengthBinary = parseInt(head.substring(0, index));
-      var dataJson = data.slice(index + 1 + lengthBinary);
-      fs.writeFileSync(path.join(tempDirs.source, 'Editor.json'), dataJson);
-      var dataBinary = data.slice(index + 1, index + 1 + lengthBinary);
-      fs.writeFileSync(dataConvert.fileFrom, dataBinary);
-    } else {
-      logger.error('mail merge format (id=%s)', cmd.getDocId());
-    }
+    needConcatFiles = true;
+  }
+  if (needConcatFiles) {
+    yield* concatFiles(tempDirs.source);
   }
   if (task.getFromChanges()) {
-    var changesDir = path.join(tempDirs.source, 'changes');
-    fs.mkdirSync(changesDir);
-    var indexFile = 0;
-    var changesAuthor = null;
-    var changesHistory = {
-      serverVersion: commonDefines.buildVersion,
-      changes: []
-    };
-    //todo writeable stream
-    let changesBuffers = null;
-    let changes = yield promiseGetChanges(cmd.getDocId(), cmd.getForceSave());
-    for (var i = 0; i < changes.length; ++i) {
-      var change = changes[i];
+    yield* processChanges(tempDirs, cmd);
+  }
+}
+
+function* concatFiles(source) {
+  //concatenate EditorN.ext parts in Editor.ext
+  let list = yield utils.listObjects(source, true);
+  list.sort(utils.compareStringByLength);
+  let writeStreams = {};
+  for (let i = 0; i < list.length; ++i) {
+    let file = list[i];
+    if (file.match(/Editor\d+\./)) {
+      let target = file.replace(/(Editor)\d+(\..*)/, '$1$2');
+      let writeStream = writeStreams[target];
+      if (!writeStream) {
+        writeStream = yield utils.promiseCreateWriteStream(target);
+        writeStreams[target] = writeStream;
+      }
+      let readStream = yield utils.promiseCreateReadStream(file);
+      yield utils.pipeStreams(readStream, writeStream, false);
+    }
+  }
+  for (let i in writeStreams) {
+    if (writeStreams.hasOwnProperty(i)) {
+      writeStreams[i].end();
+    }
+  }
+}
+
+function* processChanges(tempDirs, cmd) {
+  let changesDir = path.join(tempDirs.source, 'changes');
+  fs.mkdirSync(changesDir);
+  let indexFile = 0;
+  let changesAuthor = null;
+  let changesHistory = {
+    serverVersion: commonDefines.buildVersion,
+    changes: []
+  };
+  let forceSave = cmd.getForceSave();
+  let forceSaveTime;
+  let forceSaveIndex = Number.MAX_VALUE;
+  if (forceSave) {
+    forceSaveTime = forceSave.getTime();
+    forceSaveIndex = forceSave.getIndex();
+  }
+  let streamObj = yield* streamCreate(cmd.getDocId(), changesDir, indexFile++, {highWaterMark: cfgStreamWriterBufferSize});
+  let curIndexStart = 0;
+  let curIndexEnd = Math.min(curIndexStart + cfgMaxRequestChanges, forceSaveIndex);
+  while (curIndexStart < curIndexEnd) {
+    let changes = yield baseConnector.getChangesPromise(cmd.getDocId(), curIndexStart, curIndexEnd, forceSaveTime);
+    for (let i = 0; i < changes.length; ++i) {
+      let change = changes[i];
       if (null === changesAuthor || changesAuthor !== change.user_id_original) {
         if (null !== changesAuthor) {
-          changesBuffers.push(new Buffer(']', 'utf8'));
-          let dataZipFile = Buffer.concat(changesBuffers);
-          changesBuffers = null;
-          var fileName = 'changes' + (indexFile++) + '.json';
-          var filePath = path.join(changesDir, fileName);
-          fs.writeFileSync(filePath, dataZipFile);
+          yield* streamEnd(streamObj, ']');
+          streamObj = yield* streamCreate(cmd.getDocId(), changesDir, indexFile++);
         }
         changesAuthor = change.user_id_original;
-        var strDate = baseConnector.getDateTime(change.change_date);
-        changesHistory.changes.push({
-          'created': strDate, 'user': {
-            'id': changesAuthor, 'name': change.user_name
-          }
-        });
-        changesBuffers = [];
-        changesBuffers.push(new Buffer('[', 'utf8'));
+        let strDate = baseConnector.getDateTime(change.change_date);
+        changesHistory.changes.push({'created': strDate, 'user': {'id': changesAuthor, 'name': change.user_name}});
+        yield* streamWrite(streamObj, '[');
       } else {
-        changesBuffers.push(new Buffer(',', 'utf8'));
+        yield* streamWrite(streamObj, ',');
       }
-      changesBuffers.push(new Buffer(change.change_data, 'utf8'));
+      yield* streamWrite(streamObj, change.change_data);
+      streamObj.isNoChangesInFile = false;
     }
-    if (null !== changesBuffers) {
-      changesBuffers.push(new Buffer(']', 'utf8'));
-      let dataZipFile = Buffer.concat(changesBuffers);
-      changesBuffers = null;
-      var fileName = 'changes' + (indexFile++) + '.json';
-      var filePath = path.join(changesDir, fileName);
-      fs.writeFileSync(filePath, dataZipFile);
+    if (changes.length === curIndexEnd - curIndexStart) {
+      curIndexStart += cfgMaxRequestChanges;
+      curIndexEnd = Math.min(curIndexStart + cfgMaxRequestChanges, forceSaveIndex);
+    } else {
+      break;
     }
-    cmd.setUserId(changesAuthor);
-    fs.writeFileSync(path.join(tempDirs.result, 'changesHistory.json'), JSON.stringify(changesHistory), 'utf8');
   }
+  yield* streamEnd(streamObj, ']');
+  if (streamObj.isNoChangesInFile) {
+    fs.unlinkSync(streamObj.filePath);
+  }
+  cmd.setUserId(changesAuthor);
+  fs.writeFileSync(path.join(tempDirs.result, 'changesHistory.json'), JSON.stringify(changesHistory), 'utf8');
+}
+
+function* streamCreate(docId, changesDir, indexFile, opt_options) {
+  let fileName = 'changes' + indexFile + '.json';
+  let filePath = path.join(changesDir, fileName);
+  let writeStream = yield utils.promiseCreateWriteStream(filePath, opt_options);
+  writeStream.on('error', function(err) {
+    //todo integrate error handle in main thread (probable: set flag here and check it in main thread)
+    logger.error('WriteStreamError (id=%s)\r\n%s', docId, err.stack);
+  });
+  return {writeStream: writeStream, filePath: filePath, isNoChangesInFile: true};
+}
+
+function* streamWrite(streamObj, text) {
+  if (!streamObj.writeStream.write(text, 'utf8')) {
+    yield utils.promiseWaitDrain(streamObj.writeStream);
+  }
+}
+
+function* streamEnd(streamObj, text) {
+  streamObj.writeStream.end(text, 'utf8');
+  yield utils.promiseWaitClose(streamObj.writeStream);
 }
 function* processUploadToStorage(dir, storagePath) {
   var list = yield utils.listObjects(dir);
@@ -374,21 +441,20 @@ function* processUploadToStorage(dir, storagePath) {
 }
 function* processUploadToStorageChunk(list, dir, storagePath) {
   yield Promise.all(list.map(function (curValue) {
-    var data = fs.readFileSync(curValue);
-    var localValue = storagePath + '/' + curValue.substring(dir.length + 1);
-    return storage.putObject(localValue, data, data.length);
+    let localValue = storagePath + '/' + curValue.substring(dir.length + 1);
+    return storage.uploadObject(localValue, curValue);
   }));
 }
 function writeProcessOutputToLog(docId, childRes, isDebug) {
   if (childRes) {
-    if (childRes.stdout) {
+    if (undefined !== childRes.stdout) {
       if (isDebug) {
         logger.debug('stdout (id=%s):%s', docId, childRes.stdout);
       } else {
         logger.error('stdout (id=%s):%s', docId, childRes.stdout);
       }
     }
-    if (childRes.stderr) {
+    if (undefined !== childRes.stderr) {
       if (isDebug) {
         logger.debug('stderr (id=%s):%s', docId, childRes.stderr);
       } else {
@@ -397,21 +463,17 @@ function writeProcessOutputToLog(docId, childRes, isDebug) {
     }
   }
 }
-function* postProcess(cmd, dataConvert, tempDirs, childRes, error) {
+function* postProcess(cmd, dataConvert, tempDirs, childRes, error, isTimeout) {
   var exitCode = 0;
   var exitSignal = null;
-  var errorCode = null;
   if(childRes) {
     exitCode = childRes.status;
     exitSignal = childRes.signal;
-    if (childRes.error) {
-      errorCode = childRes.error.code;
-    }
   }
   if (0 !== exitCode || null !== exitSignal) {
     if (-1 !== exitCodesReturn.indexOf(-exitCode)) {
       error = -exitCode;
-    } else if('ETIMEDOUT' === errorCode) {
+    } else if(isTimeout) {
       error = constants.CONVERT_TIMEOUT;
     } else {
       error = constants.CONVERT;
@@ -494,7 +556,9 @@ function* ExecuteTask(task) {
   logger.debug('Start Task(id=%s)', dataConvert.key);
   var error = constants.NO_ERROR;
   tempDirs = getTempDir();
-  dataConvert.fileTo = path.join(tempDirs.result, task.getToFile());
+  let fileTo = task.getToFile();
+  dataConvert.fileTo = fileTo ? path.join(tempDirs.result, fileTo) : '';
+  let isBuilder = cmd.getIsBuilder();
   if (cmd.getUrl()) {
     dataConvert.fileFrom = path.join(tempDirs.source, dataConvert.key + '.' + cmd.getFormat());
     var isDownload = yield* downloadFile(dataConvert.key, cmd.getUrl(), dataConvert.fileFrom);
@@ -513,33 +577,88 @@ function* ExecuteTask(task) {
       curDate = new Date();
     }
     yield* processDownloadFromStorage(dataConvert, cmd, task, tempDirs);
+  } else if (cmd.getForgotten()) {
+    yield* downloadFileFromStorage(cmd.getDocId(), cmd.getForgotten(), tempDirs.source);
+    logger.debug('downloadFileFromStorage complete(id=%s)', dataConvert.key);
+    let list = yield utils.listObjects(tempDirs.source, false);
+    if (list.length > 0) {
+      dataConvert.fileFrom = list[0];
+      //store indicator file to determine if opening was from the forgotten file
+      var forgottenMarkPath = tempDirs.result + '/' + cfgForgottenFilesName + '.txt';
+      fs.writeFileSync(forgottenMarkPath, cfgForgottenFilesName, {encoding: 'utf8'});
+    } else {
+      error = constants.UNKNOWN;
+    }
+  } else if (isBuilder) {
+    //in cause script in POST body
+    yield* downloadFileFromStorage(cmd.getDocId(), cmd.getDocId(), tempDirs.source);
+    logger.debug('downloadFileFromStorage complete(id=%s)', dataConvert.key);
+    let list = yield utils.listObjects(tempDirs.source, false);
+    if (list.length > 0) {
+      dataConvert.fileFrom = list[0];
+    }
   } else {
     error = constants.UNKNOWN;
   }
   var childRes = null;
+  let isTimeout = false;
   if (constants.NO_ERROR === error) {
     if(constants.AVS_OFFICESTUDIO_FILE_OTHER_HTMLZIP === dataConvert.formatTo && cmd.getSaveKey() && !dataConvert.mailMergeSend) {
       //todo заглушка.вся конвертация на клиенте, но нет простого механизма сохранения на клиенте
       yield utils.pipeFiles(dataConvert.fileFrom, dataConvert.fileTo);
     } else {
-      var paramsFile = path.join(tempDirs.temp, 'params.xml');
-      dataConvert.serialize(paramsFile);
       var childArgs;
       if (cfgArgs.length > 0) {
         childArgs = cfgArgs.trim().replace(/  +/g, ' ').split(' ');
       } else {
         childArgs = [];
       }
-      childArgs.push(paramsFile);
-      var waitMS = task.getVisibilityTimeout() * 1000 - (new Date().getTime() - getTaskTime.getTime());
-      childRes = childProcess.spawnSync(cfgFilePath, childArgs, {timeout: waitMS});
+      let processPath;
+      if (!isBuilder) {
+        processPath = cfgX2tPath;
+        let paramsFile = path.join(tempDirs.temp, 'params.xml');
+        let hiddenXml = dataConvert.serialize(paramsFile);
+        childArgs.push(paramsFile);
+        if (hiddenXml) {
+          childArgs.push(hiddenXml);
+        }
+      } else {
+        fs.mkdirSync(path.join(tempDirs.result, 'output'));
+        processPath = cfgDocbuilderPath;
+        childArgs.push('--all-fonts-path=' + cfgDocbuilderAllFontsPath);
+        childArgs.push('--save-use-only-names=' + tempDirs.result + '/output');
+        childArgs.push(dataConvert.fileFrom);
+      }
+      let timeoutId;
+      try {
+        let spawnAsyncPromise = spawnAsync(processPath, childArgs);
+        childRes = spawnAsyncPromise.child;
+        let waitMS = task.getVisibilityTimeout() * 1000 - (new Date().getTime() - getTaskTime.getTime());
+        timeoutId = setTimeout(function() {
+          isTimeout = true;
+          timeoutId = undefined;
+          //close stdio streams to enable emit 'close' event even if HtmlFileInternal is hung-up
+          childRes.stdin.end();
+          childRes.stdout.destroy();
+          childRes.stderr.destroy();
+          childRes.kill();
+        }, waitMS);
+        childRes = yield spawnAsyncPromise;
+      } catch (err) {
+        let fLog = null === err.status ? logger.error : logger.debug;
+        fLog.call(logger, 'error spawnAsync(id=%s)\r\n%s', cmd.getDocId(), err.stack);
+        childRes = err;
+      }
+      if (undefined !== timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
     if(clientStatsD) {
       clientStatsD.timing('conv.spawnSync', new Date() - curDate);
       curDate = new Date();
     }
   }
-  resData = yield* postProcess(cmd, dataConvert, tempDirs, childRes, error);
+  resData = yield* postProcess(cmd, dataConvert, tempDirs, childRes, error, isTimeout);
   logger.debug('postProcess (id=%s)', dataConvert.key);
   if(clientStatsD) {
     clientStatsD.timing('conv.postProcess', new Date() - curDate);
@@ -563,26 +682,49 @@ function receiveTask(data, dataRaw) {
   return co(function* () {
     var res = null;
     var task = null;
-    try {
-      task = new commonDefines.TaskQueueData(JSON.parse(data));
-      if (task) {
-        res = yield* ExecuteTask(task);
-      }
-    } catch (err) {
-      logger.error(err);
-    } finally {
+    if (!dataRaw.fields.redelivered) {
       try {
-        if (!res && task) {
-          //если все упало так что даже нет res, все равно пытаемся отдать ошибку.
-          var cmd = task.getCmd();
+        task = new commonDefines.TaskQueueData(JSON.parse(data));
+        if (task) {
+          res = yield* ExecuteTask(task);
+        }
+      } catch (err) {
+        logger.error(err);
+      } finally {
+        try {
+          if (!res && task) {
+            //если все упало так что даже нет res, все равно пытаемся отдать ошибку.
+            var cmd = task.getCmd();
+            cmd.setStatusInfo(constants.CONVERT);
+            res = new commonDefines.TaskQueueData();
+            res.setCmd(cmd);
+          }
+          if(res) {
+            yield queue.addResponse(res);
+          }
+          yield queue.removeTask(dataRaw);
+        } catch (err) {
+          logger.error(err);
+        }
+      }
+    } else {
+      try {
+        logger.warn('receiveTask redelivered data=%j', dataRaw);
+        //remove current task and add new into tail of queue to remove redelivered flag
+        yield queue.removeTask(dataRaw);
+        task = new commonDefines.TaskQueueData(JSON.parse(data));
+        let redeliveredCount = dataRaw.properties.headers['x-redelivered-count'];
+        if (!redeliveredCount || redeliveredCount < cfgMaxRedeliveredCount) {
+          dataRaw.properties.headers['x-redelivered-count'] = redeliveredCount ? redeliveredCount + 1 : 1;
+          yield queue.addTask(task, dataRaw.properties.priority, undefined, dataRaw.properties.headers);
+        } else {
+          //simulate error response
+          let cmd = task.getCmd();
           cmd.setStatusInfo(constants.CONVERT);
           res = new commonDefines.TaskQueueData();
           res.setCmd(cmd);
-        }
-        if(res) {
           yield queue.addResponse(res);
         }
-        yield queue.removeTask(dataRaw);
       } catch (err) {
         logger.error(err);
       }
@@ -592,7 +734,7 @@ function receiveTask(data, dataRaw) {
 function run() {
   queue = new queueService();
   queue.on('task', receiveTask);
-  queue.init(false, true, true, false, function(err) {
+  queue.init(true, true, true, false, function(err) {
     if (null != err) {
       logger.error('createTaskQueue error :\r\n%s', err.stack);
     }

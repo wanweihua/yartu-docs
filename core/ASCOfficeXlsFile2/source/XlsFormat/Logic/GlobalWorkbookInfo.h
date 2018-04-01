@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -35,6 +35,7 @@
 #include <boost/smart_ptr/shared_array.hpp>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 #include "Biff_structures/BorderFillInfo.h"
 
@@ -60,6 +61,13 @@ static const std::wstring DefaultPalette[] = {
 	L"00003366",	L"00339966",	L"00003300",	L"00333300",	L"00993300",	L"00993366",	L"00333399",	L"00333333"
 };
 
+
+struct _sx_name
+{
+	BaseObjectPtr				name;
+	std::vector<BaseObjectPtr>	pair;
+};
+
 class GlobalWorkbookInfo
 {
 public:
@@ -72,67 +80,100 @@ public:
 	void			RegisterPaletteColor(int id, const std::wstring & argb);
     
 	void			GetDigitFontSizePixels();
+	void			CalculateAnchor(int colL, int colR, int rowT, int rowB, _UINT32 & x, _UINT32 &y, _UINT32 &cx, _UINT32 & cy);
+//-----------------------------------------------------------------------------
+	bool									bVbaProjectExist;
+	bool									bMacrosExist;
+	bool									bThemePresent;
+	bool									bWorkbookProtectExist;
 
-	unsigned int	GenerateAXESId();
-
-
-	unsigned short								CodePage;
-	CRYPT::DecryptorPtr							decryptor;
-	std::wstring								password;
+	unsigned short							CodePage;
+	CRYPT::DecryptorPtr						decryptor;
+	std::wstring							password;
 	
-	std::vector<std::wstring>					sheets_state;
-	std::vector<std::wstring>					sheets_names;
-	std::vector<std::wstring>					xti_parsed;
-	std::vector<std::wstring>					AddinUdfs;
-
-	boost::unordered_map<BorderInfo, int>		border_x_ids;
-	boost::unordered_map<FillInfo, int>			fill_x_ids;
+	boost::unordered_map<BorderInfo, int>	border_x_ids;
+	boost::unordered_map<FillInfo, int>		fill_x_ids;
 	
-	std::map<int,  FillInfoExt>					fonts_color_ext;
-	std::map<int, int>							fonts_charsets;
-	std::map<int,  std::wstring>				colors_palette;
+	std::map<int,  FillInfoExt>				fonts_color_ext;
+	std::map<int, int>						fonts_charsets;
+	std::map<int,  std::wstring>			colors_palette;
 
-	std::vector<BaseObjectPtr>					*m_arFonts;
+	std::vector<BaseObjectPtr>				m_arFonts;
 	
-	unsigned int								current_sheet;
+	unsigned int							current_sheet;
 
-	unsigned int								last_AXES_id;
-	const static unsigned int					initial_AXES_id = 0x2000000;
+	unsigned int							last_Axes_id;
+	unsigned int							last_Extern_id;
+
+	std::map<std::wstring, BaseObjectPtr>	mapStrConnection;
+	std::map<int, BaseObjectPtr>			mapIdConnection;
+
+	short									idPivotCache;
+	std::map<int, int>						mapPivotCacheIndex; //streamIdCache, write index order 
+	std::unordered_map<int, BaseObjectPtr>	mapPivotCacheStream;//streamIdCache, object
+	
+	std::vector<BaseObjectPtr>				arPIVOTCACHEDEFINITION;
+
+	std::vector<bool>						arPivotCacheFields;
+	std::vector<bool>						arPivotCacheFieldShortSize;
+
+	std::vector<_sx_name>					arPivotSxNames;
+	std::vector<std::wstring>				arPivotCacheSxNames;
+
+	std::unordered_map<std::wstring, std::wstring>		mapPivotCacheExternal;
 
 	std::map<std::wstring, std::vector<std::wstring>>	mapDefineNames;
 	std::vector<std::wstring>							arDefineNames;
-	std::vector<std::wstring>							arExternalNames;
+	
+	std::vector<std::pair<boost::shared_array<unsigned char>, size_t> >	bin_data;
+	std::pair<boost::shared_array<unsigned char>, size_t>				listdata_data;
+	std::pair<boost::shared_array<unsigned char>, size_t>				controls_data;
 
-	unsigned int								startAddedSharedStrings;
-	std::vector<std::wstring>					arAddedSharedStrings;
-
-	std::vector<std::pair<boost::shared_array<char>, size_t> >	bin_data;
-
-	struct _sheet_size_info
+	struct _xti
 	{
-		_sheet_size_info() : defaultColumnWidth(8.), defaultRowHeight (14.4) {}
-		std::map<int, double>					customColumnsWidth;
-		std::map<int, double>					customRowsHeight;
-		
-		double									defaultColumnWidth;
-		double									defaultRowHeight;		
+		int							iSup;
+		std::wstring				link;
+		std::vector<std::wstring>*	pNames = NULL;
 	};
-	std::vector<_sheet_size_info>				sheet_size_info;
+	std::vector<_xti>				arXti;
+	std::vector<_xti>				arXti_External;
+	
+	unsigned int					startAddedSharedStrings;
+	std::vector<std::wstring>		arAddedSharedStrings;
 
-	std::pair<float, float>						defaultDigitFontSize;
-    CApplicationFonts							*applicationFonts;
-	std::wstring								fontsDirectory;
+	struct _sheet_info
+	{
+		std::wstring				state;
+		std::wstring				name;
 
-	int											Version;
+		std::map<int, double>		customColumnsWidth;
+		std::map<int, double>		customRowsHeight;
+		
+		double						defaultColumnWidth = 8.0;
+		double						defaultRowHeight = 14.4;
+	};
+	std::vector<_sheet_info>		sheets_info;
 
-	int											cmt_rules;
-	int											cellXfs_count;
-	int											cellStyleXfs_count;
-	int											cellStyleDxfs_count;
+	std::pair<float, float>			defaultDigitFontSize;
+    CApplicationFonts				*applicationFonts;
+	std::wstring					fontsDirectory;
 
-	std::wstringstream							users_Dxfs_stream;
+	std::wstring					tempDirectory;
 
-	XlsConverter								*xls_converter;
+	int								Version;
+
+	int								cmt_rules;
+	int								cellXfs_count;
+	int								cellStyleXfs_count;
+	int								cellStyleDxfs_count;
+
+	std::wstringstream				users_Dxfs_stream;
+	std::wstringstream				connections_stream;
+	
+	int								connectionId;
+	std::map<std::wstring, int>		connectionNames;
+
+	XlsConverter					*xls_converter;
 
 };
 

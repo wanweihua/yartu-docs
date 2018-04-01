@@ -43,15 +43,17 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\XlsFormat; ..\Common"
+				AdditionalIncludeDirectories="..\XlsFormat;..\Common;&quot;..\..\..\DesktopEditor\freetype-2.5.2\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;DONT_WRITE_EMBEDDED_FONTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
+				EnableEnhancedInstructionSet="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="4"
+				DisableSpecificWarnings="4005;4311;4312"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -372,6 +374,14 @@
 			</File>
 			<File
 				RelativePath="..\XlsFormat\Logic\ChartSheetSubstream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\XlsFormat\Logic\CommonSubstream.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\XlsFormat\Logic\CommonSubstream.h"
 				>
 			</File>
 			<File
@@ -2434,11 +2444,51 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxBool.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxBool.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDB.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDB.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDBB.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDBB.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDBEx.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDBEx.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXDI.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXDI.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDtr.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXDtr.h"
 					>
 				</File>
 				<File
@@ -2450,11 +2500,35 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxErr.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxErr.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXEx.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXEx.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFDB.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFDB.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFDBType.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFDBType.h"
 					>
 				</File>
 				<File
@@ -2466,11 +2540,79 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxFmla.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxFmla.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SxFormat.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SxFormat.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFormula.cpp"
+					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Debug|x64"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Release|x64"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							ObjectFile="$(IntDir)\$(InputName)1.obj"
+							XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXFormula.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXInt.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXInt.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxIsxoper.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxIsxoper.h"
 					>
 				</File>
 				<File
@@ -2498,6 +2640,38 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxName.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxName.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxNil.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SxNil.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXNum.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXNum.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXPair.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXPair.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXPI.cpp"
 					>
 				</File>
@@ -2511,6 +2685,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_records\SXPIEx.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXRng.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_records\SXRng.h"
 					>
 				</File>
 				<File
@@ -2942,6 +3124,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\AF12CellIcon.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\AF12CellIcon.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\AF12Criteria.cpp"
 					>
 				</File>
@@ -3071,6 +3261,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\BuiltInStyle.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\CachedDiskHeader.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\CachedDiskHeader.h"
 					>
 				</File>
 				<File
@@ -3250,11 +3448,83 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtAdo.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtAdo.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtOledb.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtOledb.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtWeb.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ConnGrbitDbtWeb.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\ControlInfo.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\ControlInfo.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnConnectionOleDb.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnConnectionOleDb.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnConnectionWeb.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnConnectionWeb.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnId.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnId.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnParamBindingValType.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnParamBindingValType.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnParameter.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnParameter.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnStringSequence.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\DConnStringSequence.h"
 					>
 				</File>
 				<File
@@ -3514,6 +3784,30 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11Fmla.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11Fmla.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11WSSListInfo.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11WSSListInfo.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11XMap.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Feat11XMap.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\FeatFormulaErr2.cpp"
 					>
 				</File>
@@ -3575,6 +3869,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\FontIndex.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\FontInfo.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\FontInfo.h"
 					>
 				</File>
 				<File
@@ -3842,6 +4144,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ListParsedFormula.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\ListParsedFormula.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\LongRGB.cpp"
 					>
 				</File>
@@ -3946,6 +4256,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\PBT.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\PBT.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\PhRuns.cpp"
 					>
 				</File>
@@ -3975,6 +4293,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\PictFmlaKey.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\PivotParsedFormula.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\PivotParsedFormula.h"
 					>
 				</File>
 				<File
@@ -4738,6 +5064,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\TxtWf.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\TxtWf.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\URICreateFlags.cpp"
 					>
 				</File>
@@ -4831,6 +5165,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_structures\XLUnicodeRichExtendedString.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Xnum.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_structures\Xnum.h"
 					>
 				</File>
 				<File
@@ -5266,6 +5608,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\DBB.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\DBB.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_unions\DBQUERY.cpp"
 					>
 				</File>
@@ -5335,6 +5685,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_unions\DVAXIS.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\FDB.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\FDB.h"
 					>
 				</File>
 				<File
@@ -5559,6 +5917,14 @@
 				</File>
 				<File
 					RelativePath="..\XlsFormat\Logic\Biff_unions\PIVOTADDL.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\PIVOTCACHE.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\PIVOTCACHE.h"
 					>
 				</File>
 				<File
@@ -6034,6 +6400,38 @@
 					>
 				</File>
 				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXFMLA_bu.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXFMLA_bu.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXFORMULA_bu.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXFORMULA_bu.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXOPER.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXOPER.h"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXRANGE.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\XlsFormat\Logic\Biff_unions\SXRANGE.h"
+					>
+				</File>
+				<File
 					RelativePath="..\XlsFormat\Logic\Biff_unions\SXSRC.cpp"
 					>
 				</File>
@@ -6133,10 +6531,6 @@
 						>
 					</File>
 					<File
-						RelativePath="..\XlsFormat\Logic\SummaryInformationStream\Structures\Property_Structures.cpp"
-						>
-					</File>
-					<File
 						RelativePath="..\XlsFormat\Logic\SummaryInformationStream\Structures\PropertyFactory.cpp"
 						>
 					</File>
@@ -6216,6 +6610,14 @@
 			</File>
 			<File
 				RelativePath="..\XlsFormat\Crypt\RC4Crypt.h"
+				>
+			</File>
+			<File
+				RelativePath="..\XlsFormat\Crypt\XORCrypt.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\XlsFormat\Crypt\XORCrypt.h"
 				>
 			</File>
 			<Filter

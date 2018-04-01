@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  ListView.js
  *
  *  Created by Julia Radzhabova on 2/27/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -72,11 +72,11 @@ define([
                     model: record
                 });
 
-                if (!this.innerEl) {
+                if (!this.innerEl)
                     this.innerEl = $(this.el).find('.inner');
-                    this.innerEl.find('.empty-text').remove();
-                }
+
                 if (view && this.innerEl) {
+                    this.innerEl.find('.empty-text').remove();
                     if (this.options.simpleAddMode) {
                         this.innerEl.append(view.render().el)
                     } else {

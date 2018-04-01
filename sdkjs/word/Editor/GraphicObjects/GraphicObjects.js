@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -195,17 +195,33 @@ CGraphicObjects.prototype =
     handleAdjustmentHit: DrawingObjectsController.prototype.handleAdjustmentHit,
     handleHandleHit: DrawingObjectsController.prototype.handleHandleHit,
     handleMoveHit: DrawingObjectsController.prototype.handleMoveHit,
+    handleEnter: DrawingObjectsController.prototype.handleEnter,
 
     rotateTrackObjects: DrawingObjectsController.prototype.rotateTrackObjects,
     handleRotateTrack: DrawingObjectsController.prototype.handleRotateTrack,
     trackResizeObjects: DrawingObjectsController.prototype.trackResizeObjects,
     resetInternalSelection: DrawingObjectsController.prototype.resetInternalSelection,
     handleTextHit: DrawingObjectsController.prototype.handleTextHit,
+    getConnectorsForCheck: DrawingObjectsController.prototype.getConnectorsForCheck,
+    getConnectorsForCheck2: DrawingObjectsController.prototype.getConnectorsForCheck2,
+    checkDrawingHyperlink: DrawingObjectsController.prototype.checkDrawingHyperlink,
+
+    checkSelectedObjectsAndCallback: function(callback, args, bNoSendProps, nHistoryPointType, aAdditionaObjects)
+    {
+        var check_type = AscCommon.changestype_Drawing_Props;
+        if(editor.WordControl.m_oLogicDocument.Document_Is_SelectionLocked(check_type, null, false, false) === false)
+        {
+            var nPointType = AscFormat.isRealNumber(nHistoryPointType) ? nHistoryPointType : AscDFH.historydescription_CommonControllerCheckSelected;
+            History.Create_NewPoint(nPointType);
+            callback.apply(this, args);
+            this.document.Recalculate();
+        }
+    },
 
     AddContentControl: function(nContentControlType)
     {
         var oTargetDocContent = this.getTargetDocContent();
-        if(oTargetDocContent){
+        if(oTargetDocContent && !oTargetDocContent.bPresentation){
             return oTargetDocContent.AddContentControl(nContentControlType);
         }
 
@@ -1429,30 +1445,19 @@ CGraphicObjects.prototype =
     getDrawingArray: function()
     {
         var ret = [];
-        for(var i = 0; i < this.drawingObjects.length; ++i) {
-            if(this.drawingObjects[i] && this.drawingObjects[i].GraphicObj && !this.drawingObjects[i].GraphicObj.bDeleted){
-                ret.push(this.drawingObjects[i].GraphicObj);
+        var arrDrawings = [].concat(this.drawingObjects);
+        this.checkUseDrawings(arrDrawings);
+        for(var i = 0; i < arrDrawings.length; ++i) {
+            if(arrDrawings[i] && arrDrawings[i].GraphicObj && !arrDrawings[i].GraphicObj.bDeleted){
+                ret.push(arrDrawings[i].GraphicObj);
             }
         }
         return ret;
     },
 
-    getAllSignatures: function(){
-        var _ret = [];
-        this.getAllSignatures2(_ret, this.getDrawingArray());
-        return _ret;
-    },
+    getAllSignatures: AscFormat.DrawingObjectsController.prototype.getAllSignatures,
 
-    getAllSignatures2: function(aRet, spTree){
-        for(var i = 0; i < spTree.length; ++i){
-            if(spTree[i].getObjectType() === AscDFH.historyitem_type_GroupShape){
-                this.getAllSignatures2(aRet, spTree[i].spTree);
-            }
-            else if(spTree[i].signatureLine){
-                aRet.push(spTree[i].signatureLine);
-            }
-        }
-    },
+    getAllSignatures2: AscFormat.DrawingObjectsController.prototype.getAllSignatures2,
 
     addOleObject: function(W, H, nWidthPix, nHeightPix, Img, Data, sApplicationId)
     {
@@ -1495,6 +1500,19 @@ CGraphicObjects.prototype =
         if(content)
         {
             content.AddInlineTable(Cols, Rows);
+        }
+    },
+
+    addImages: function( aImages )
+    {
+        var content = this.getTargetDocContent();
+        if(content && !content.bPresentation)
+        {
+            content.AddImages(aImages);
+        }
+        else{
+            this.resetSelection2();
+            this.document.AddImages(aImages);
         }
     },
 
@@ -2040,6 +2058,12 @@ CGraphicObjects.prototype =
         return content && content.AddTableRow(bBefore);
     },
 
+	distributeTableCells : function(isHorizontally)
+	{
+		var content = this.getTargetDocContent();
+		return content && content.DistributeTableCells(isHorizontally);
+	},
+
 
     documentSearch: function( CurPage, String, search_Common )
     {
@@ -2086,12 +2110,12 @@ CGraphicObjects.prototype =
     selectNextObject: DrawingObjectsController.prototype.selectNextObject,
 
 
-    getCurrentParagraph: function()
+    getCurrentParagraph: function(bIgnoreSelection, arrSelectedParagraphs)
     {
         var content = this.getTargetDocContent();
         if(content)
         {
-            return content.GetCurrentParagraph();
+            return content.GetCurrentParagraph(bIgnoreSelection, arrSelectedParagraphs);
         }
         else
         {
@@ -2821,6 +2845,7 @@ CGraphicObjects.prototype =
     },
 
     resetSelection: DrawingObjectsController.prototype.resetSelection,
+    deselectObject: DrawingObjectsController.prototype.deselectObject,
 
     resetSelection2: function()
     {
@@ -2843,6 +2868,37 @@ CGraphicObjects.prototype =
             }
             this.resetSelection();
             top_obj.parent.GoTo_Text();
+        }
+    },
+
+    moveCursorToSignature: function(sGuid)
+    {
+        var aSignatureShapes = this.getAllSignatures2([], this.getDrawingArray());
+        var oShape, oMainGroup;
+        for(var i = 0; i < aSignatureShapes.length; ++i)
+        {
+            oShape = aSignatureShapes[i];
+            if(oShape && oShape.signatureLine && oShape.signatureLine.id === sGuid)
+            {
+                oMainGroup = oShape.getMainGroup();
+                if(oMainGroup)
+                {
+                    if(oMainGroup.parent)
+                    {
+                        this.resetSelection();
+                        oMainGroup.parent.GoTo_Text(true, true);
+                    }
+                }
+                else
+                {
+                    if(oShape.parent)
+                    {
+                        this.resetSelection();
+                        oShape.parent.GoTo_Text(true, true);
+                    }
+                }
+                return;
+            }
         }
     },
 
@@ -3247,6 +3303,13 @@ CGraphicObjects.prototype =
                     nPageIndex = obj.PageNum;
                 }
             }
+            else
+            {
+                if(AscFormat.isRealNumber(obj.PageNum))
+                {
+                    nPageIndex = obj.PageNum;
+                }
+            }
             obj.GraphicObj.select(this, nPageIndex);
         }
 
@@ -3328,7 +3391,10 @@ CGraphicObjects.prototype =
     addNewParagraph: DrawingObjectsController.prototype.addNewParagraph,
 
 
-    paragraphClearFormatting: DrawingObjectsController.prototype.paragraphClearFormatting,
+    paragraphClearFormatting: function()
+    {
+        this.applyDocContentFunction(CDocumentContent.prototype.ClearParagraphFormatting, [], CTable.prototype.ClearParagraphFormatting);
+    },
 
     applyDocContentFunction: DrawingObjectsController.prototype.applyDocContentFunction,
     applyTextFunction: DrawingObjectsController.prototype.applyTextFunction,

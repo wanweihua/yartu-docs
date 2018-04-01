@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="8,00"
 	Name="OdfFileWriterTest"
 	ProjectGUID="{FBA8446A-150F-4A10-B4DA-1022048D6473}"
 	RootNamespace="ASCOfficeOdfFileWTest"
@@ -43,11 +43,13 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="../../DesktopEditor/xml/libxml2/include;../../DesktopEditor/xml/build/vs2005;../../DesktopEditor/freetype-2.5.2/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;USE_LITE_READER;_USE_XMLLITE_READER_;_USE_LIBXML2_READER_;LIBXML_READER_ENABLED;__WORDSIZE=32;DONT_WRITE_EMBEDDED_FONTS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
+				ProgramDataBaseFileName="$(IntDir)\OdfFileWriterTest.pdb"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
@@ -65,7 +67,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="&#x0D;&#x0A;Rpcrt4.lib"
 				LinkIncremental="2"
-				IgnoreDefaultLibraryNames="LIBCMTD.lib"
+				IgnoreDefaultLibraryNames="MSVCRTD.lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -449,6 +451,14 @@
 				<File
 					RelativePath="..\..\ASCOfficeDocxFile2\DocWrapper\XlsxSerializer.cpp"
 					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							AdditionalOptions="/bigobj"
+						/>
+					</FileConfiguration>
 				</File>
 			</Filter>
 		</Filter>

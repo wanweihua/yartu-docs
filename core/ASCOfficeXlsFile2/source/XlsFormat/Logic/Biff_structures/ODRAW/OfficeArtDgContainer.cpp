@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,8 +36,7 @@
 namespace ODRAW
 {
 
-OfficeArtDgContainer::OfficeArtDgContainer(const OfficeArtClientAnchorType anchor_type)
-:	OfficeArtContainer(0x0F, DgContainer, anchor_type)
+OfficeArtDgContainer::OfficeArtDgContainer(const OfficeArtClientAnchorType anchor_type) : OfficeArtContainer(0x0F, DgContainer, anchor_type)
 {
 }
 
@@ -73,12 +72,20 @@ void OfficeArtDgContainer::loadFields(XLS::CFRecord& record)
 {
 	try
 	{
+		OfficeArtRecordHeader rh_test;
+		record >> rh_test;
+		record.RollRdPtrBack(8);//sizeof(OfficeArtRecordHeader)
+		
+		if ((rh_test.recType & 0xF000) != 0xF000)
+		{
+			return;
+		}
 		OfficeArtContainer::loadFields(record);
 	}catch(...)
 	{
 	}
 	
-    for (int i = 0 ; i < child_records.size(); i++)
+    for (size_t i = 0 ; i < child_records.size(); i++)
 	{
 		switch(child_records[i]->rh_own.recType)
 		{
@@ -87,7 +94,7 @@ void OfficeArtDgContainer::loadFields(XLS::CFRecord& record)
 				OfficeArtDgContainer * dg = dynamic_cast<OfficeArtDgContainer *>(child_records[i].get());
 				if (dg)
 				{
-					for (int i = 0 ; i < dg->child_records.size(); i++)
+					for (size_t i = 0 ; i < dg->child_records.size(); i++)
 					{
 						child_records.push_back(dg->child_records[i]);
 					}
@@ -126,7 +133,8 @@ void OfficeArtDgContainer::loadFields(XLS::CFRecord& record)
 		//		m_OfficeArtSpgrContainerFileBlock = OfficeArtContainerPtr(art_container);
 		//		child_records.erase(child_records.begin() + i,child_records.begin() + i + 1);
 		//	}break;		
-
+		default:
+			break;
 		}
 	}
 

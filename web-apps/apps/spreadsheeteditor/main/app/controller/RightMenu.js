@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -34,7 +34,7 @@
  *  RightMenu.js
  *
  *  Created by Julia Radzhabova on 3/27/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -100,7 +100,6 @@ define([
                     panel.ChangeSettings.call(panel, props);
             }
             Common.NotificationCenter.trigger('layout:changed', 'rightmenu');
-            Common.NotificationCenter.trigger('edit:complete', this.rightmenu);
         },
 
         onSelectionChanged: function(info) {

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,10 +32,7 @@
 
 #include "office_binary_data.h"
 
-#include <boost/foreach.hpp>
-
 #include <cpdoccore/xml/xmlchar.h>
-#include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/attributes.h>
 
 namespace cpdoccore { 
@@ -63,7 +60,34 @@ void office_binary_data::add_child_element( xml::sax * Reader, const std::wstrin
 
 void office_binary_data::add_text(const std::wstring & Text)
 {
-    base64Binary_ = Text;
+	base64Binary_ = std::string(Text.begin(), Text.end());
+}
+
+std::wstring office_binary_data::write_to(const std::wstring & path)
+{
+	std::wstring result;
+
+	NSFile::CBase64Converter base64;
+	int nLength = 0;
+	unsigned char *pData = NULL;
+
+	NSFile::CBase64Converter::Decode(base64Binary_.c_str(), base64Binary_.length(), pData, nLength);
+	if (pData)
+	{
+		NSFile::CFileBinary file;
+
+		std::wstring bin_file = file.CreateTempFileWithUniqueName(path + FILE_SEPARATOR_STR, L"bin");
+		if (file.CreateFileW(bin_file))
+		{
+			file.WriteFile(pData, nLength);
+			file.CloseFile();
+
+			int pos = bin_file.rfind(FILE_SEPARATOR_STR);
+			result = bin_file.substr(pos + 1);
+		}
+		delete []pData; pData = NULL;
+	}
+	return result;
 }
 
 }

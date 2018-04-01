@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -45,6 +45,12 @@ exports.getObject = function(strPath) {
 exports.putObject = function(strPath, buffer, contentLength) {
   return storage.putObject(getStoragePath(strPath), buffer, contentLength);
 };
+exports.uploadObject = function(strPath, filePath) {
+  return storage.uploadObject(strPath, filePath);
+};
+exports.copyObject = function(sourceKey, destinationKey) {
+  return storage.copyObject(sourceKey, destinationKey);
+};
 exports.listObjects = function(strPath) {
   return storage.listObjects(getStoragePath(strPath)).catch(function(e) {
     logger.error('storage.listObjects:\r\n%s', e.stack);
@@ -65,13 +71,13 @@ exports.deletePath = function(strPath) {
     return exports.deleteObjects(list);
   });
 };
-exports.getSignedUrl = function(baseUrl, strPath, optUrlExpires, optFilename, opt_type) {
-  return storage.getSignedUrl(baseUrl, getStoragePath(strPath), optUrlExpires, optFilename, opt_type);
+exports.getSignedUrl = function(baseUrl, strPath, urlType, optFilename, opt_type) {
+  return storage.getSignedUrl(baseUrl, getStoragePath(strPath), urlType, optFilename, opt_type);
 };
-exports.getSignedUrls = function(baseUrl, strPath, optUrlExpires) {
+exports.getSignedUrls = function(baseUrl, strPath, urlType) {
   return exports.listObjects(getStoragePath(strPath)).then(function(list) {
     return Promise.all(list.map(function(curValue) {
-      return exports.getSignedUrl(baseUrl, curValue, optUrlExpires);
+      return exports.getSignedUrl(baseUrl, curValue, urlType);
     })).then(function(urls) {
       var outputMap = {};
       for (var i = 0; i < list.length && i < urls.length; ++i) {
@@ -81,10 +87,13 @@ exports.getSignedUrls = function(baseUrl, strPath, optUrlExpires) {
     });
   });
 };
-exports.getSignedUrlsByArray = function(baseUrl, list, optPath, optUrlExpires) {
+exports.getSignedUrlsArrayByArray = function(baseUrl, list, urlType, opt_type) {
   return Promise.all(list.map(function(curValue) {
-    return exports.getSignedUrl(baseUrl, curValue, optUrlExpires);
-  })).then(function(urls) {
+    return exports.getSignedUrl(baseUrl, curValue, urlType, undefined, opt_type);
+  }));
+};
+exports.getSignedUrlsByArray = function(baseUrl, list, optPath, urlType) {
+  return exports.getSignedUrlsArrayByArray(baseUrl, list, urlType).then(function(urls) {
     var outputMap = {};
     for (var i = 0; i < list.length && i < urls.length; ++i) {
       if (optPath) {

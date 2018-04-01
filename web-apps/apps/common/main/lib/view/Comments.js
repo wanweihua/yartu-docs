@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  View
  *
  *  Created by Alexey Musinov on 16.01.14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -759,7 +759,8 @@ define([
         },
         loadText: function () {
             if (this.textVal && this.commentsView) {
-                this.commentsView.getTextBox().val(this.textVal);
+                var textBox = this.commentsView.getTextBox();
+                textBox && textBox.val(this.textVal);
             }
         },
         getEditText: function () {

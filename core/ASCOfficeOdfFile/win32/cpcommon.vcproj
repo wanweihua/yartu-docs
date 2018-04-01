@@ -43,17 +43,17 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../include;../src/odf/datatypes"
+				AdditionalIncludeDirectories="..\include;..\src\odf\datatypes;..\..\DesktopEditor\freetype-2.5.2\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough=""
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
-				DisableSpecificWarnings="4311;4267;4996;4172"
+				DisableSpecificWarnings="4005;4311;4312"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -386,6 +386,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\odf\datatypes\chartlabelposition.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\chartlabelposition.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\odf\datatypes\chartregressiontype.cpp"
 				>
 			</File>
@@ -439,6 +447,14 @@
 			</File>
 			<File
 				RelativePath="..\src\odf\datatypes\common_attlists.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\dategroup.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\dategroup.h"
 				>
 			</File>
 			<File
@@ -555,6 +571,14 @@
 			</File>
 			<File
 				RelativePath="..\src\odf\datatypes\gradientstyle.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\grandtotal.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\grandtotal.h"
 				>
 			</File>
 			<File
@@ -679,6 +703,14 @@
 			</File>
 			<File
 				RelativePath="..\src\odf\datatypes\mathvariant.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\membertype.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\membertype.h"
 				>
 			</File>
 			<File
@@ -894,11 +926,43 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\odf\datatypes\tablefunction.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tablefunction.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\odf\datatypes\tablemode.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\src\odf\datatypes\tablemode.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tableorder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tableorder.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tableorientation.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tableorientation.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tabletype.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\src\odf\datatypes\tabletype.h"
 				>
 			</File>
 			<File
@@ -1045,10 +1109,6 @@
 		</File>
 		<File
 			RelativePath="..\include\cpdoccore\CPColorUtils.h"
-			>
-		</File>
-		<File
-			RelativePath="..\include\cpdoccore\CPHash.h"
 			>
 		</File>
 		<File

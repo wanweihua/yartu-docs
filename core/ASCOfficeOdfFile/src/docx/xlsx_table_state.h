@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -89,6 +89,11 @@ public:
 	void non_empty_row	();
     bool is_empty_row	() const;
     void end_row		();
+
+	void add_empty_row(int count);
+
+	void set_end_table(){ bEndTable = true; }
+	bool get_end_table(){ return bEndTable; }
     
 	std::wstring current_row_style			() const;
     std::wstring default_row_cell_style		() const;
@@ -115,13 +120,15 @@ public:
     xlsx_table_metrics					& get_table_metrics()					{ return xlsx_table_metrics_; }
     xlsx_drawing_context				& get_drawing_context()					{ return xlsx_drawing_context_; }
     xlsx_comments_context				& get_comments_context()				{ return xlsx_comments_context_; }
-	xlsx_conditionalFormatting_context	& get_conditionalFormatting_context()	{return xlsx_conditionalFormatting_context_;}
+	xlsx_conditionalFormatting_context	& get_conditionalFormatting_context()	{ return xlsx_conditionalFormatting_context_;}
 
     void	table_column_last_width(double w) { table_column_last_width_ = w; }
-    double	table_column_last_width()	const { return table_column_last_width_; };
+    double	table_column_last_width() const { return table_column_last_width_; };
 
     void			start_hyperlink	();
-	std::wstring	end_hyperlink	(std::wstring const & ref, std::wstring const & href, std::wstring const & display);
+	std::wstring	end_hyperlink (std::wstring const & ref, std::wstring const & href, std::wstring const & display);
+
+	void set_background (std::wstring rId) { tableBackground_ = rId; }
 
 	void serialize_conditionalFormatting	(std::wostream & _Wostream);
 	void serialize_table_format				(std::wostream & _Wostream);
@@ -129,6 +136,7 @@ public:
     void serialize_hyperlinks				(std::wostream & _Wostream);
     void serialize_ole_objects				(std::wostream & _Wostream);
 	void serialize_page_properties			(std::wostream & _Wostream);
+	void serialize_background				(std::wostream & _Wostream);
 
 	void dump_rels_hyperlinks				(rels & Rels);
 	void dump_rels_ole_objects				(rels & Rels);
@@ -148,10 +156,12 @@ public:
 	friend class xlsx_table_context;
 
 private:	
+	bool								bEndTable;
     xlsx_conversion_context *			context_;    
 
     std::wstring						tableName_;
 	int									tableId_;
+    std::wstring						tableBackground_;
 
     std::wstring						table_style_;
     std::wstring						table_row_style_;

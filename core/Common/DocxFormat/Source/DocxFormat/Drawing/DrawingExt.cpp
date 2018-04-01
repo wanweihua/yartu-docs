@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -39,6 +39,10 @@ namespace OOX
 {
 	namespace Drawing
 	{
+		CCompatExt::~CCompatExt()
+		{
+		}
+
 		COfficeArtExtension::~COfficeArtExtension()
 		{
 			m_oSparklineGroups.reset();
@@ -111,16 +115,18 @@ namespace OOX
             std::wstring sResult = _T("<");
             sResult += sNamespace;
             sResult += _T("ext");
-            sResult += m_sAdditionalNamespace;
 
             if ( m_sUri.IsInit() )
 			{
-                sResult += _T(" uri=\"");
-                sResult += m_sUri.get2();
-				sResult += _T("\">");
+                sResult += L" uri=\"" + m_sUri.get2() + L"\"";
 			}
-			else
-				sResult += _T(">");
+
+			if (!m_sAdditionalNamespace.empty())
+			{
+				sResult += L" " + m_sAdditionalNamespace;
+			}
+			
+			sResult += _T(">");
 
 			if(m_oCompatExt.IsInit())
 			{

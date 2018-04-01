@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,7 +33,6 @@
 #include "table.h"
 
 #include <cpdoccore/xml/xmlchar.h>
-#include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/attributes.h>
 #include <cpdoccore/xml/utils.h>
 #include <cpdoccore/odf/odf_document.h>
@@ -78,12 +77,26 @@ int table_table_cell_content::xlsx_convert(oox::xlsx_conversion_context & Contex
 
 void table_table_row::xlsx_convert(oox::xlsx_conversion_context & Context)
 {
+	bool bEndTable = Context.get_table_context().state()->get_end_table();
+	
+	if (attlist_.table_number_rows_repeated_ > 1 && empty())
+	{
+		Context.get_table_context().state()->add_empty_row(attlist_.table_number_rows_repeated_);
+		return;
+	}
+	if (attlist_.table_number_rows_repeated_ > 0x0f00 && empty_content_cells() || bEndTable)//0xf000 - conv_KDZO3J3xLIbZ5fC0HR0__xlsx.ods
+	{
+		Context.get_table_context().state()->set_end_table();
+		Context.get_table_context().state()->add_empty_row(attlist_.table_number_rows_repeated_);
+		return;		//conv_hSX8n3lVbhALjt0aafg__xlsx.ods, conv_MA2CauoNfX_7ejKS5eg__xlsx.ods
+	}
+
     std::wostream & strm = Context.current_sheet().sheetData();
 ///обработка чтилей для роу -
 	size_t Default_Cell_style_in_row_ = 0; 
 
-    const std::wstring rowStyleName			= table_table_row_attlist_.table_style_name_.get_value_or(L"");
-    const std::wstring defaultCellStyleName = table_table_row_attlist_.table_default_cell_style_name_.get_value_or( L"");
+    const std::wstring rowStyleName			= attlist_.table_style_name_.get_value_or(L"");
+    const std::wstring defaultCellStyleName = attlist_.table_default_cell_style_name_.get_value_or( L"");
 
 	style_instance * instStyle_CellDefault = 
 				Context.root()->odf_context().styleContainer().style_by_name(defaultCellStyleName, style_family::TableCell,false/*false*/);
@@ -140,9 +153,9 @@ void table_table_row::xlsx_convert(oox::xlsx_conversion_context & Context)
 	}
 	int row_current = Context.current_table_row() + 1;
 
-    bool hidden = table_table_row_attlist_.table_visibility_.get_type() == table_visibility::Collapse;
+    bool hidden = attlist_.table_visibility_.get_type() == table_visibility::Collapse;
 
-    for (unsigned int i = 0; i < table_table_row_attlist_.table_number_rows_repeated_; ++i)
+    for (unsigned int i = 0; i < attlist_.table_number_rows_repeated_; ++i)
     {
         Context.start_table_row(rowStyleName, defaultCellStyleName);
         
@@ -214,20 +227,20 @@ void table_table_row::xlsx_convert(oox::xlsx_conversion_context & Context)
 		if (Context.is_empty_row())
 		{
             skip_next_row = true;  
-			if (table_table_row_attlist_.table_number_rows_repeated_ > 0xf000)
+			if (attlist_.table_number_rows_repeated_ > 0xf000)
 				break;//Уведомление_о_вручении.ods (1 лист)
 		}
-		if (content_.size() > 0 && table_table_row_attlist_.table_number_rows_repeated_ > 1000)
+		if (content_.size() > 0 && attlist_.table_number_rows_repeated_ > 1000)
 		{
 			table_table_cell * table_cell = dynamic_cast<table_table_cell *>(content_[0].get());
-			if ((table_cell) && (table_cell->table_table_cell_attlist_.table_number_columns_repeated_ > 1000))
+			if ((table_cell) && (table_cell->attlist_.table_number_columns_repeated_ > 1000))
 			{
 				break;//Уведомление_о_вручении.ods  (2 лист)
 			}
 		}
     }
 
-    Context.get_table_metrics().add_rows(table_table_row_attlist_.table_number_rows_repeated_, !hidden ? row_height : 0.0);
+    Context.get_table_metrics().add_rows(attlist_.table_number_rows_repeated_, !hidden ? row_height : 0.0);
 
 }
 
@@ -253,26 +266,20 @@ void table_rows::xlsx_convert(oox::xlsx_conversion_context & Context)
         table_table_rows_->xlsx_convert(Context);
     else
     {
-		if (table_table_row_.size() > 1)
+		while (table_table_row_.size() > 1)
 		{
-			//check 2 last rows for repeate > 65000 & 1024 
 			table_table_row* row_last	= dynamic_cast<table_table_row*>(table_table_row_[table_table_row_.size() - 1].get());
 			table_table_row* row_last_1	= dynamic_cast<table_table_row*>(table_table_row_[table_table_row_.size() - 2].get());
 
-			if (row_last->table_table_row_attlist_.table_number_rows_repeated_		> 1000 && 
-				row_last_1->table_table_row_attlist_.table_number_rows_repeated_	> 1000 || 
-				row_last_1->table_table_row_attlist_.table_number_rows_repeated_	> 0xf000)
-			{
-				std::wstring style		= row_last->table_table_row_attlist_.table_style_name_.get_value_or(L"");
-				std::wstring style_1	= row_last->table_table_row_attlist_.table_style_name_.get_value_or(L"");
+			std::wstring style		= row_last->attlist_.table_style_name_.get_value_or(L"");
+			std::wstring style_1	= row_last->attlist_.table_style_name_.get_value_or(L"");
 				
-				if (style == style_1)//check for empty also ????
-				{
-					row_last_1->table_table_row_attlist_.table_number_rows_repeated_ = 1024;
-					table_table_row_.pop_back();
-				}
-			}
+			if (style != style_1)break;			
+			if (row_last_1->empty_content_cells() == false) break;				
+			if (row_last->empty_content_cells() == false) break;
 
+			row_last_1->attlist_.table_number_rows_repeated_ += row_last->attlist_.table_number_rows_repeated_;
+			table_table_row_.pop_back();
 		}
    		for (size_t i = 0; i < table_table_row_.size(); i++)
         {
@@ -301,11 +308,11 @@ void table_rows_and_groups::xlsx_convert(oox::xlsx_conversion_context & Context)
 
 void table_table_row_group::xlsx_convert(oox::xlsx_conversion_context & Context)
 {
-	int count = table_rows_and_groups_.get_count();
+	size_t count = table_rows_and_groups_.content_.size();
 
 	int level = 1;
 	
-	Context.set_table_row_group(count,table_table_row_group_attlist_.table_display_,level);
+	Context.set_table_row_group( (int)count, table_table_row_group_attlist_.table_display_, level);
 	table_rows_and_groups_.xlsx_convert(Context);
 }
 
@@ -328,6 +335,27 @@ void table_table::xlsx_convert(oox::xlsx_conversion_context & Context)
     Context.start_table(tableName, tableStyleName);
 
 	table_columns_and_groups_.xlsx_convert(Context);
+
+// check last rows for equal style and empties - collapsed
+
+//<table:table-row table:style-name="ro3" table:number-rows-repeated="65353">
+// <table:table-cell table:style-name="ce14" table:number-columns-repeated="5"/>
+// <table:table-cell table:number-columns-repeated="1019"/>
+//</table:table-row>
+//<table:table-row table:style-name="ro3" table:number-rows-repeated="983017">
+// <table:table-cell table:number-columns-repeated="1024"/>
+//</table:table-row>
+//<table:table-row table:style-name="ro3">
+// <table:table-cell table:number-columns-repeated="1024"/>
+//</table:table-row>
+
+	if (table_rows_and_groups_.content_.empty() == false && table_rows_and_groups_.content_.back()->get_type() == typeTableTableRowNoGroup)
+	{
+		table_rows_no_group * rows = dynamic_cast<table_rows_no_group*>(table_rows_and_groups_.content_.back().get());
+		rows->table_rows_1_.remove_equals_empty();
+		rows->table_rows_2_.remove_equals_empty();
+	}
+
     table_rows_and_groups_.xlsx_convert(Context);
 
     if (table_shapes_)
@@ -464,7 +492,6 @@ void table_table_column::xlsx_convert(oox::xlsx_conversion_context & Context)
 
 							size_t style_ = Context.get_style_manager().xfId(NULL,NULL, &cellFormatProperties, NULL, L"", set_default);	
 
-							if (style_>=0)
 							//if (set_default)
 								CP_XML_ATTR(L"style", style_ );
 						}
@@ -607,11 +634,11 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
 {
     std::wostream & strm = Context.current_sheet().sheetData();
     
-	const common_value_and_type_attlist & attr	= table_table_cell_attlist_.common_value_and_type_attlist_;
+	const common_value_and_type_attlist & attr	= attlist_.common_value_and_type_attlist_;
 
  	office_value_type::type	odf_value_type	= office_value_type::Custom;
 	oox::XlsxCellType::type	t_val			= oox::XlsxCellType::s;
-	std::wstring formula					= table_table_cell_attlist_.table_formula_.get_value_or(L"");
+	std::wstring formula					= attlist_.table_formula_.get_value_or(L"");
     
 	std::wstring			number_val;
     _CP_OPT(bool)			bool_val;
@@ -626,11 +653,11 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
 	bool	is_data_visible		= false;
 // вычислить стиль для ячейки
 
-    std::wstring cellStyleName		= table_table_cell_attlist_.table_style_name_.get_value_or(L"");
+    std::wstring cellStyleName		= attlist_.table_style_name_.get_value_or(L"");
 	std::wstring columnStyleName	= Context.get_table_context().default_column_cell_style();
 	std::wstring rowStyleName		= Context.get_table_context().default_row_cell_style();
 
-	if (table_table_cell_attlist_.table_number_columns_repeated_ > 1)
+	if (attlist_.table_number_columns_repeated_ > 1)
 		columnStyleName.clear(); // могут быть разные стили колонок Book 24.ods
 
 	odf_read_context & odfContext = Context.root()->odf_context();   
@@ -706,7 +733,307 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
             int y, m, d;
             if (oox::parseDate(attr.office_date_value_.get(), y, m, d))
             {
-                number_val = boost::lexical_cast<std::wstring>(oox::convertDate(y, m, d));
+				boost::int64_t intDate = oox::convertDate(y, m, d);
+				if (intDate > 0)
+				{
+					number_val = boost::lexical_cast<std::wstring>(intDate);
+				}
+				else
+				{
+					str_val = attr.office_date_value_.get();
+				}
+            }
+        }
+    }
+    else if ((odf_value_type == office_value_type::Time) ||
+			 (odf_value_type == office_value_type::Custom && attr.office_time_value_))
+    {
+        t_val = oox::XlsxCellType::n;
+        if (attr.office_time_value_)
+        {
+            const std::wstring tv = attr.office_time_value_.get();
+            int h, m;
+            double s;
+            if (oox::parseTime(tv, h, m, s))
+            {
+				boost::int64_t intTime = oox::convertTime(h, m, s);
+				if (intTime > 0)
+				{
+					number_val = boost::lexical_cast<std::wstring>(intTime);
+				}
+				else
+				{
+					str_val = tv;
+				}
+            }                
+        }
+    }
+    else if ((odf_value_type == office_value_type::Boolean) ||
+			 (odf_value_type == office_value_type::Custom && attr.office_boolean_value_))
+    {
+        t_val = oox::XlsxCellType::b;
+        if (attr.office_boolean_value_)	bool_val = oox::parseBoolVal(attr.office_boolean_value_.get());
+    }
+    else if ((odf_value_type == office_value_type::String) ||
+			 (odf_value_type == office_value_type::Custom && attr.office_string_value_))
+    {
+        t_val = oox::XlsxCellType::str;
+		if (attr.office_string_value_)	str_val = attr.office_string_value_.get();
+    }
+
+    if (!data_style.empty())
+    {
+        office_element_ptr elm			= odfContext.numberStyles().find_by_style_name(data_style);
+		number_style_base *num_style	= dynamic_cast<number_style_base*>(elm.get());
+      
+		if (num_style)
+		{
+            Context.get_num_format_context().start_complex_format();
+				num_style->oox_convert(Context.get_num_format_context());
+            Context.get_num_format_context().end_complex_format();
+            
+			num_format = Context.get_num_format_context().get_last_format();
+        }
+    }
+
+    oox::xlsx_cell_format cellFormat;
+    
+	cellFormat.set_cell_type(t_val);
+    cellFormat.set_num_format(oox::odf_string_to_build_in(odf_value_type));
+    
+	is_style_visible = (!cellStyleName.empty() || defaultColumnCellStyle) ? true : false;
+
+	if ( content_.elements_.size() > 0	|| attlist_.table_content_validation_name_ || !formula.empty()	||
+		(	t_val == oox::XlsxCellType::n										&& !number_val.empty()) || 
+		(	t_val == oox::XlsxCellType::b										&& bool_val) ||
+		((	t_val == oox::XlsxCellType::str || oox::XlsxCellType::inlineStr)	&& str_val))	
+	{
+		is_data_visible = true;
+	}
+
+	if (attlist_.table_number_columns_repeated_ < 199 && last_cell_)	last_cell_ = false;
+	
+	int cell_repeated_max = Context.current_table_column() + attlist_.table_number_columns_repeated_ + 1;
+
+	if (cell_repeated_max >= 1024 && cellStyleName.empty() && last_cell_ && !is_data_visible)
+	{//Book 24.ods
+		return;
+	}
+    
+	if (is_style_visible)
+	{
+		xfId_last_set = Context.get_style_manager().xfId(&textFormatProperties, &parFormatProperties, &cellFormatProperties, &cellFormat, num_format, false, is_style_visible);
+	}
+
+	for (unsigned int r = 0; r < attlist_.table_number_columns_repeated_; ++r)
+    {
+        Context.start_table_cell (	formula,	attlist_extra_.table_number_columns_spanned_	- 1 ,
+												attlist_extra_.table_number_rows_spanned_		- 1	);
+		
+		if (is_style_visible)
+			Context.set_current_cell_style_id(xfId_last_set);
+		
+		const int sharedStringId = content_.xlsx_convert(Context, &textFormatProperties);
+
+		if (t_val == oox::XlsxCellType::str && sharedStringId >=0)
+			t_val = oox::XlsxCellType::s;//в случае текста, если он есть берем кэшированное значение
+			
+		if (skip_next_cell)break;
+	
+	// пустые ячейки пропускаем.
+        if ( is_data_visible || ((cellStyle || defaultColumnCellStyle) && is_style_visible))
+        {
+			std::wstring ref = oox::getCellAddress(Context.current_table_column(), Context.current_table_row());
+			if (attlist_.table_content_validation_name_)
+			{
+				Context.get_dataValidations_context().activate(*attlist_.table_content_validation_name_, ref);
+			}   
+			CP_XML_WRITER(strm)
+            {
+                CP_XML_NODE(L"c")
+                {
+                    CP_XML_ATTR(L"r", ref);
+                    CP_XML_ATTR(L"t", oox::cellType2Str(t_val));
+                    CP_XML_ATTR(L"s", xfId_last_set);
+
+                    if (!formula.empty())
+                    {
+                        const std::wstring xlsxFormula = formulas_converter.convert(formula);
+                        if (!xlsxFormula.empty())
+                        {
+                            CP_XML_NODE(L"f")
+                            {
+								if (attlist_extra_.table_number_matrix_columns_spanned_ && attlist_extra_.table_number_matrix_rows_spanned_)
+								{
+									std::wstring ref = oox::getCellAddress(Context.current_table_column(), Context.current_table_row());
+									ref += L":";
+									ref += oox::getCellAddress(Context.current_table_column() + *attlist_extra_.table_number_matrix_columns_spanned_ - 1,
+										 Context.current_table_row() + *attlist_extra_.table_number_matrix_rows_spanned_ - 1);
+									CP_XML_ATTR(L"ref", ref);
+									CP_XML_ATTR(L"t", L"array");
+									CP_XML_ATTR(L"aca", false);
+								}
+                                CP_XML_CONTENT(xlsxFormula);
+                            }
+                        }
+                    }
+
+					if (sharedStringId >= 0 && t_val == oox::XlsxCellType::s)
+                    {
+                        CP_XML_NODE(L"v")	{ CP_XML_CONTENT(sharedStringId); }
+                    }
+					else if ((t_val == oox::XlsxCellType::str || t_val == oox::XlsxCellType::inlineStr)  && str_val) 
+                    {    
+						CP_XML_NODE(L"v")	{ CP_XML_CONTENT(str_val.get()); }
+					}
+                    else if (t_val == oox::XlsxCellType::n && !number_val.empty())
+                    {
+                        CP_XML_NODE(L"v")	{ CP_XML_CONTENT(number_val);}
+					}
+                    else if (t_val == oox::XlsxCellType::b && bool_val)
+                    {
+                        CP_XML_NODE(L"v")   { CP_XML_CONTENT((int)(bool_val.get())); }
+                    }
+
+                }
+				if ( is_data_visible || (cellStyle && is_style_visible && !last_cell_))
+				{
+					Context.non_empty_row();
+					empty_cell_count = 0 ;					
+				} 
+				else
+				{
+					empty_cell_count++;
+					//Уведомление_о_вручении.ods - 13 повторов пустых с cellStyle=NULL - нужные !!!
+					if (empty_cell_count > 19 && last_cell_&& (attlist_.table_number_columns_repeated_> 299 || cellStyle == NULL)) 
+					{//пишем простыню только если задан стиль тока для этих ячеек
+						skip_next_cell = true;
+					}
+				}				
+			}
+		}
+        else
+        {
+            if (last_cell_) // Vehicle log book.ods (row = 24 and more)
+				skip_next_cell = true;
+        }
+
+        Context.end_table_cell();
+    }
+}
+
+void table_covered_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
+{
+    std::wostream & strm = Context.current_sheet().sheetData();
+    
+	const common_value_and_type_attlist & attr	= attlist_.common_value_and_type_attlist_;
+
+ 	office_value_type::type	odf_value_type	= office_value_type::Custom;
+	oox::XlsxCellType::type	t_val			= oox::XlsxCellType::s;
+	std::wstring formula					= attlist_.table_formula_.get_value_or(L"");
+    
+	std::wstring			number_val;
+    _CP_OPT(bool)			bool_val;
+	_CP_OPT(std::wstring)	str_val;
+   
+	std::wstring			num_format;
+
+	size_t	xfId_last_set		= 0;
+	int		empty_cell_count	= 0;
+	bool	skip_next_cell		= false;
+	bool	is_style_visible	= true;
+	bool	is_data_visible		= false;
+// вычислить стиль для ячейки
+
+    std::wstring cellStyleName		= attlist_.table_style_name_.get_value_or(L"");
+	std::wstring columnStyleName	= Context.get_table_context().default_column_cell_style();
+	std::wstring rowStyleName		= Context.get_table_context().default_row_cell_style();
+
+	if (attlist_.table_number_columns_repeated_ > 1)
+		columnStyleName.clear(); // могут быть разные стили колонок Book 24.ods
+
+	odf_read_context & odfContext = Context.root()->odf_context();   
+
+	style_instance *defaultCellStyle=NULL, *defaultColumnCellStyle = NULL,  *defaultRowCellStyle =NULL, *cellStyle = NULL;
+	try
+	{
+		defaultCellStyle		= odfContext.styleContainer().style_default_by_type(style_family::TableCell);
+
+		defaultColumnCellStyle	= odfContext.styleContainer().style_by_name(columnStyleName,	style_family::TableCell, false);
+		defaultRowCellStyle		= odfContext.styleContainer().style_by_name(rowStyleName,		style_family::TableCell, false);        
+		cellStyle				= odfContext.styleContainer().style_by_name(cellStyleName,		style_family::TableCell, false);
+	}
+	catch(...)
+	{
+        _CP_LOG << L"[error]: style wrong\n";
+	}
+
+    std::wstring data_style = CalcCellDataStyle(Context, columnStyleName, rowStyleName, cellStyleName);
+
+    // стили не наследуются
+    std::vector<const style_instance *> instances;
+    instances.push_back(defaultCellStyle);
+
+    if (defaultColumnCellStyle)
+        instances.push_back(defaultColumnCellStyle);
+
+    if (defaultRowCellStyle)
+    {
+        if (instances.size() > 1)
+            instances[1] = defaultRowCellStyle;
+        else
+            instances.push_back(defaultRowCellStyle);
+    }
+
+    if (cellStyle)
+    {
+        if (instances.size() > 1)
+            instances[1] = cellStyle;
+        else
+            instances.push_back(cellStyle);
+    }
+
+    text_format_properties_content		textFormatProperties	= calc_text_properties_content		(instances);          
+	paragraph_format_properties			parFormatProperties		= calc_paragraph_properties_content	(instances);
+    style_table_cell_properties_attlist cellFormatProperties	= calc_table_cell_properties		(instances);
+
+	if (attr.office_value_type_)
+		odf_value_type = attr.office_value_type_->get_type();
+	
+	if ((odf_value_type == office_value_type::Float) || 
+		(odf_value_type == office_value_type::Custom && attr.office_value_))
+    {
+        t_val = oox::XlsxCellType::n;
+        number_val = attr.office_value_.get_value_or(L"");
+    }
+    else if (odf_value_type == office_value_type::Percentage)
+    {
+        t_val		= oox::XlsxCellType::n;
+        number_val	= attr.office_value_.get_value_or(L"");
+    }
+    else if (odf_value_type == office_value_type::Currency)
+    {
+        t_val		= oox::XlsxCellType::n;
+        number_val	= attr.office_value_.get_value_or(L"");
+    }
+    else if ((odf_value_type == office_value_type::Date) || 
+			 (odf_value_type == office_value_type::Custom && attr.office_date_value_))
+    { 
+        t_val = oox::XlsxCellType::n;              
+        if (attr.office_date_value_)
+        {
+            int y, m, d;
+            if (oox::parseDate(attr.office_date_value_.get(), y, m, d))
+            {
+				boost::int64_t intDate = oox::convertDate(y, m, d);
+				if (intDate > 0)
+				{
+					number_val = boost::lexical_cast<std::wstring>(intDate);
+				}
+				else
+				{
+					str_val = attr.office_date_value_.get();
+				}
             }
         }
     }
@@ -760,15 +1087,15 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
     
 	is_style_visible = (!cellStyleName.empty() || defaultColumnCellStyle) ? true : false;
 
-	if ( table_table_cell_content_.elements_.size() > 0	|| 
+	if ( content_.elements_.size() > 0	|| 
 		!formula.empty()	||
 		(	t_val == oox::XlsxCellType::n										&& !number_val.empty()) || 
 		(	t_val == oox::XlsxCellType::b										&& bool_val) ||
 		((	t_val == oox::XlsxCellType::str || oox::XlsxCellType::inlineStr)	&& str_val))	is_data_visible = true;
 
-	if (table_table_cell_attlist_.table_number_columns_repeated_ < 199 && last_cell_)	last_cell_ = false;
+	if (attlist_.table_number_columns_repeated_ < 199 && last_cell_)	last_cell_ = false;
 	
-	int cell_repeated_max = Context.current_table_column() + table_table_cell_attlist_.table_number_columns_repeated_ + 1;
+	int cell_repeated_max = Context.current_table_column() + attlist_.table_number_columns_repeated_ + 1;
 
 	if (cell_repeated_max >= 1024 && cellStyleName.empty() && last_cell_ && !is_data_visible)
 	{//Book 24.ods
@@ -780,15 +1107,14 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
 		xfId_last_set = Context.get_style_manager().xfId(&textFormatProperties, &parFormatProperties, &cellFormatProperties, &cellFormat, num_format, false, is_style_visible);
 	}
 
-	for (unsigned int r = 0; r < table_table_cell_attlist_.table_number_columns_repeated_; ++r)
+	for (unsigned int r = 0; r < attlist_.table_number_columns_repeated_; ++r)
     {
-        Context.start_table_cell (	formula,	table_table_cell_attlist_extra_.table_number_columns_spanned_	- 1 ,
-												table_table_cell_attlist_extra_.table_number_rows_spanned_		- 1	);
+        Context.start_table_covered_cell ();
 		
 		if (is_style_visible)
 			Context.set_current_cell_style_id(xfId_last_set);
 		
-		const int sharedStringId = table_table_cell_content_.xlsx_convert(Context, &textFormatProperties);
+		const int sharedStringId = content_.xlsx_convert(Context, &textFormatProperties);
 
 		if (t_val == oox::XlsxCellType::str && sharedStringId >=0)
 			t_val = oox::XlsxCellType::s;//в случае текста, если он есть берем кэшированное значение
@@ -813,16 +1139,6 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
                         {
                             CP_XML_NODE(L"f")
                             {
-								if (table_table_cell_attlist_extra_.table_number_matrix_columns_spanned_ && table_table_cell_attlist_extra_.table_number_matrix_rows_spanned_)
-								{
-									std::wstring ref = oox::getCellAddress(Context.current_table_column(), Context.current_table_row());
-									ref += L":";
-									ref += oox::getCellAddress(Context.current_table_column() + *table_table_cell_attlist_extra_.table_number_matrix_columns_spanned_ - 1,
-										 Context.current_table_row() + *table_table_cell_attlist_extra_.table_number_matrix_rows_spanned_ - 1);
-									CP_XML_ATTR(L"ref", ref);
-									CP_XML_ATTR(L"t", L"array");
-									CP_XML_ATTR(L"aca", false);
-								}
                                 CP_XML_CONTENT(xlsxFormula);
                             }
                         }
@@ -854,7 +1170,7 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
 				{
 					empty_cell_count++;
 					//Уведомление_о_вручении.ods - 13 повторов пустых с cellStyle=NULL - нужные !!!
-					if (empty_cell_count > 19 && last_cell_&& (table_table_cell_attlist_.table_number_columns_repeated_> 299 || cellStyle == NULL)) 
+					if (empty_cell_count > 19 && last_cell_&& (attlist_.table_number_columns_repeated_> 299 || cellStyle == NULL)) 
 					{//пишем простыню только если задан стиль тока для этих ячеек
 						skip_next_cell = true;
 					}
@@ -867,46 +1183,42 @@ void table_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
 				skip_next_cell = true;
         }
 
-        Context.end_table_cell();
-    }
-}
-
-void table_covered_table_cell::xlsx_convert(oox::xlsx_conversion_context & Context)
-{
-    std::wostream & strm = Context.current_sheet().sheetData();
-
-	const int sharedStringId = table_table_cell_content_.xlsx_convert(Context, NULL);
-    
-	for (unsigned int r = 0; r < table_table_cell_attlist_.table_number_columns_repeated_; ++r)
-    {
-        Context.start_table_covered_cell();
-        const int xfId = Context.get_current_cell_style_id();
-
-
-        CP_XML_WRITER(strm)
-        {
-            CP_XML_NODE(L"c")
-            {
-                CP_XML_ATTR(L"r", Context.current_cell_address());
-                
-                if (xfId >= 0)
-				{
-                    CP_XML_ATTR(L"s", xfId);  
-				}
-
-				if (sharedStringId >=0) 
-				{
-                    CP_XML_NODE(L"v")
-                    {
-						CP_XML_CONTENT(sharedStringId);
-                    }
-				}
-            } // c
-        }
-
         Context.end_table_covered_cell();
     }
 }
 
+void table_content_validations::xlsx_convert(oox::xlsx_conversion_context & Context) 
+{
+	for (size_t i = 0 ; i < content_.size(); i++)
+	{
+		content_[i]->xlsx_convert(Context);
+    }
+}
+void table_content_validation::xlsx_convert(oox::xlsx_conversion_context & Context) 
+{
+	std::wstring name = table_name_.get_value_or(L"");
+	
+	Context.get_dataValidations_context().add(name, table_base_cell_address_.get_value_or(L""));
+	Context.get_dataValidations_context().add_formula(name, table_condition_.get_value_or(L""));
+	
+	for (size_t i = 0 ; i < content_.size(); i++)
+	{
+		if (content_[i]->get_type() == typeTableErrorMassage)
+		{
+			Context.get_dataValidations_context().add_error_msg(name, true);
+		}
+		else if (content_[i]->get_type() == typeTableErrorMassage)
+		{
+			Context.get_dataValidations_context().add_help_msg(name, true);
+		}
+		content_[i]->xlsx_convert(Context);
+    }
+}
+void table_error_message::xlsx_convert(oox::xlsx_conversion_context & Context) 
+{
+}
+void table_help_message::xlsx_convert(oox::xlsx_conversion_context & Context) 
+{
+}
 }
 }

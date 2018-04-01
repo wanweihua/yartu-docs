@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -108,10 +108,6 @@ CShape.prototype.recalcBrush = function()
     this.recalcInfo.recalculateBrush = true;
 };
 
-CShape.prototype.isEmptyPlaceholder = function()
-{
-    return false;
-};
 
 CShape.prototype.recalcPen = function()
 {
@@ -228,6 +224,10 @@ CShape.prototype.handleUpdateLn = function()
 {
     this.recalcLine();
     this.recalcPen();
+    this.recalcBounds();
+    this.recalcWrapPolygon();
+    this.recalcContent();
+    this.recalcTransformText();
     this.addToRecalculate();
 };
 CShape.prototype.handleUpdateGeometry = function()
@@ -532,18 +532,10 @@ CShape.prototype.recalculateShapeStyleForParagraph = function()
 {
     var styles = editor.WordControl.m_oLogicDocument.Styles;
 
-
     this.textStyleForParagraph = {TextPr: g_oDocumentDefaultTextPr.Copy(), ParaPr: g_oDocumentDefaultParaPr.Copy()};
     this.textStyleForParagraph.ParaPr.Merge( styles.Default.ParaPr.Copy() );
     this.textStyleForParagraph.TextPr.Merge( styles.Default.TextPr.Copy() );
-    var DefId = styles.Default.Paragraph;
-    var DefaultStyle = styles.Style[DefId];
 
-    if(DefaultStyle)
-    {
-        this.textStyleForParagraph.ParaPr.Merge( DefaultStyle.ParaPr );
-        this.textStyleForParagraph.TextPr.Merge( DefaultStyle.TextPr );
-    }
     if(this.style && this.style.fontRef)
     {
         //this.textStyleForParagraph.ParaPr.Spacing.Line = 1;
@@ -648,8 +640,11 @@ CShape.prototype.Get_TableStyleForPara = function()
 {
     return null;
 };
-CShape.prototype.Is_Cell = function()
+CShape.prototype.IsCell = function(isReturnCell)
 {
+	if (true === isReturnCell)
+		return null;
+
     return false;
 };
 
@@ -914,11 +909,6 @@ CShape.prototype.Get_Numbering = function()
 CShape.prototype.Get_TableStyleForPara = function()
 {
     return editor.WordControl.m_oLogicDocument.Get_TableStyleForPara();
-};
-
-CShape.prototype.Is_Cell = function()
-{
-    return false;
 };
 
 CShape.prototype.Is_DrawingShape = function(bRetShape)

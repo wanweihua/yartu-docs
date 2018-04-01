@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -92,6 +92,58 @@ AscFonts.CFontFileLoader.prototype.LoadFontAsync = function(basePath, _callback,
 	xhr.send(null);
 };
 
+window["DesktopUploadFileToUrl"] = function(url, dst, hash, pass)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', "ascdesktop://fonts/" + url, true);
+    xhr.responseType = 'arraybuffer';
+
+    if (xhr.overrideMimeType)
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
+    else
+        xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
+
+    xhr.onload = function()
+    {
+        if (this.status != 200)
+        {
+            // error
+            return;
+        }
+
+        var fileData = new Uint8Array(this.response);
+
+        var req = new XMLHttpRequest();
+        req.open("PUT", dst, true);
+
+        req.onload = function()
+		{
+			if (this.response && this.status == 200)
+			{
+				try
+				{
+					var data = {
+						"accounts": this.response ? JSON.parse(this.response) : undefined,
+						"hash": hash,
+						"password" : pass,
+						"type": "share"
+					};
+
+					window["AscDesktopEditor"]["sendSystemMessage"](data);
+					window["AscDesktopEditor"]["CallInAllWindows"]("function(){ if (window.DesktopUpdateFile) { window.DesktopUpdateFile(undefined); } }");
+				}
+				catch (err)
+				{
+				}
+			}
+        };
+
+        req.send(fileData);
+    };
+
+    xhr.send(null);
+};
+
 /////////////////////////////////////////////////////////
 //////////////       IMAGES      ////////////////////////
 /////////////////////////////////////////////////////////
@@ -135,6 +187,9 @@ prot.getUrl = function(strPath){
 
 	if (window.editor && window.editor.ThemeLoader && window.editor.ThemeLoader.ThemesUrl != "" && strPath.indexOf(window.editor.ThemeLoader.ThemesUrl) == 0)
 		return null;
+
+	if (strPath == "Editor.xlsx")
+		return this.documentUrl + "/" + strPath;
 
 	return this.documentUrl + "/media/" + strPath;
 };
@@ -198,15 +253,117 @@ window["NativeCorrectImageUrlOnPaste"] = function(url)
 
 window["UpdateInstallPlugins"] = function()
 {
-	var _plugins = JSON.parse(window["AscDesktopEditor"]["GetInstallPlugins"]());
-	_plugins["url"] = _plugins["url"].replace(" ", "%20");
+	var _pluginsTmp = JSON.parse(window["AscDesktopEditor"]["GetInstallPlugins"]());
+	_pluginsTmp[0]["url"] = _pluginsTmp[0]["url"].split(" ").join("%20");
+	_pluginsTmp[1]["url"] = _pluginsTmp[1]["url"].split(" ").join("%20");
 
-	var _len = _plugins["pluginsData"].length;
-	for (var i = 0; i < _len; i++)
-		_plugins["pluginsData"][i]["baseUrl"] = _plugins["url"] + _plugins["pluginsData"][i]["guid"].substring(4) + "/";
+	var _plugins = { "url" : _pluginsTmp[0]["url"], "pluginsData" : [] };
+	for (var k = 0; k < 2; k++)
+	{
+		var _pluginsCur = _pluginsTmp[k];
+
+		var _len = _pluginsCur["pluginsData"].length;
+		for (var i = 0; i < _len; i++)
+		{
+			_pluginsCur["pluginsData"][i]["baseUrl"] = _pluginsCur["url"] + _pluginsCur["pluginsData"][i]["guid"].substring(4) + "/";
+			_plugins["pluginsData"].push(_pluginsCur["pluginsData"][i]);
+		}
+	}
+
+	for (var i = 0; i < _plugins["pluginsData"].length; i++)
+	{
+		var _plugin = _plugins["pluginsData"][i];
+		//_plugin["baseUrl"] = _plugins["url"] + _plugin["guid"].substring(4) + "/";
+
+		var isSystem = false;
+		for (var j = 0; j < _plugin["variations"].length; j++)
+		{
+			var _variation = _plugin["variations"][j];
+			if (_variation["initDataType"] == "desktop")
+			{
+				isSystem = true;
+				break;
+			}
+		}
+
+		if (isSystem)
+		{
+			_plugins["pluginsData"].splice(i, 1);
+			--i;
+		}
+	}
 
 	var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+
+	if (!window.IsFirstPluginLoad)
+	{
+		_editor.asc_registerCallback("asc_onPluginsReset", function ()
+		{
+
+			if (_editor.pluginsManager)
+			{
+				_editor.pluginsManager.unregisterAll();
+			}
+
+		});
+
+		window.IsFirstPluginLoad = true;
+	}
+
+	_editor.sendEvent("asc_onPluginsReset");
 	_editor.sendEvent("asc_onPluginsInit", _plugins);
+};
+
+window["UpdateSystemPlugins"] = function()
+{
+	var _plugins = JSON.parse(window["AscDesktopEditor"]["GetInstallPlugins"]());
+	_plugins[0]["url"] = _plugins[0]["url"].replace(" ", "%20");
+	_plugins[1]["url"] = _plugins[1]["url"].replace(" ", "%20");
+
+	for (var k = 0; k < 2; k++)
+	{
+		var _pluginsCur = _plugins[k];
+
+		var _len = _pluginsCur["pluginsData"].length;
+		for (var i = 0; i < _len; i++)
+			_pluginsCur["pluginsData"][i]["baseUrl"] = _pluginsCur["url"] + _pluginsCur["pluginsData"][i]["guid"].substring(4) + "/";
+	}
+
+	var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+
+	var _array = [];
+
+	for (var k = 0; k < 2; k++)
+	{
+		var _pluginsCur = _plugins[k];
+		var _len = _pluginsCur["pluginsData"].length;
+
+		for (var i = 0; i < _len; i++)
+		{
+			var _plugin = _pluginsCur["pluginsData"][i];
+			for (var j = 0; j < _plugin["variations"].length; j++)
+			{
+				var _variation = _plugin["variations"][j];
+				if (_variation["initDataType"] == "desktop")
+				{
+					_array.push(_plugin);
+					break;
+				}
+			}
+		}
+	}
+
+	var _arraySystem = [];
+	for (var i = 0; i < _array.length; i++)
+	{
+		var plugin = new Asc.CPlugin();
+		plugin["deserialize"](_array[i]);
+
+		_arraySystem.push(plugin);
+	}
+
+	window.g_asc_plugins.registerSystem("", _arraySystem);
+	window.g_asc_plugins.runAllSystem();
 };
 
 AscCommon.InitDragAndDrop = function(oHtmlElement, callback) {
@@ -232,9 +389,16 @@ AscCommon.InitDragAndDrop = function(oHtmlElement, callback) {
 	}
 }
 
-window["asc_initAdvancedOptions"] = function(_code)
+window["asc_initAdvancedOptions"] = function(_code, _file_hash)
 {
     var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+
+    if ((_code == 90 || _code == 91) && window.g_asc_plugins && window.g_asc_plugins.isRunned("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}"))
+	{
+		window.g_asc_plugins.init("asc.{F2402876-659F-47FB-A646-67B49F2B57D0}", { "type" : "getPasswordByFile", "hash" : _file_hash });
+		return;
+	}
+
 	_editor._onNeedParams(undefined, (_code == 90 || _code == 91) ? true : undefined);
 };
 
@@ -244,7 +408,19 @@ window["DesktopOfflineAppDocumentSignatures"] = function(_json)
 
 	_editor.signatures = [];
 
-	var _signatures = JSON.parse(_json);
+	var _signatures = [];
+	if ("" != _json)
+	{
+		try
+		{
+			_signatures = JSON.parse(_json);
+		}
+		catch (err)
+		{
+			_signatures = [];
+		}
+	}
+
 	var _count = _signatures["count"];
 	var _data = _signatures["data"];
 	var _sign;
@@ -262,6 +438,9 @@ window["DesktopOfflineAppDocumentSignatures"] = function(_json)
 		_add_sign.image = "data:image/png;base64," + _add_sign.image;
 		_add_sign.signer1 = _sign["name"];
 		_add_sign.id = i;
+		_add_sign.date = _sign["date"];
+		_add_sign.isvisible = window["asc_IsVisibleSign"](_add_sign.guid);
+		_add_sign.correct();
 
 		_editor.signatures.push(_add_sign);
 
@@ -284,12 +463,32 @@ window["DesktopOfflineAppDocumentSignatures"] = function(_json)
 			_api.sendEvent("asc_onUpdateSignatures", _api.asc_getSignatures(), _api.asc_getRequestSignatures());
 
 		});
+		_editor.asc_registerCallback("asc_onUpdateSignatures", function (signatures, requested)
+		{
+
+			var _api = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+			if (_api.editorId == AscCommon.c_oEditorId.Word || _api.editorId == AscCommon.c_oEditorId.Presentation)
+			{
+				if (0 == signatures.length)
+					_api.asc_setRestriction(Asc.c_oAscRestrictionType.None);
+				else
+					_api.asc_setRestriction(Asc.c_oAscRestrictionType.OnlySignatures);
+			}
+			else
+			{
+				//_api.asc_setViewMode((0 == signatures.length) ? false : true);
+				_api.collaborativeEditing.m_bGlobalLock = (0 == signatures.length) ? false : true;
+			}
+
+		});
 	}
 	window.FirstSignaturesCall = true;
 
 	_editor.ImageLoader.LoadImagesWithCallback(_images_loading, function() {
 		if (this.WordControl)
 			this.WordControl.OnRePaintAttack();
+		else if (this._onShowDrawingObjects)
+			this._onShowDrawingObjects();
 	}, null);
 
 	_editor.sendEvent("asc_onUpdateSignatures", _editor.asc_getSignatures(), _editor.asc_getRequestSignatures());
@@ -301,6 +500,10 @@ window["DesktopSaveQuestionReturn"] = function(isNeedSaved)
 	{
 		var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
 		_editor.asc_Save(false);
+	}
+	else
+	{
+		window.SaveQuestionObjectBeforeSign = null;
 	}
 };
 
@@ -316,28 +519,68 @@ window["OnNativeOpenFilenameDialog"] = function(file)
 	delete window.on_native_open_filename_dialog;
 };
 
+window["asc_IsVisibleSign"] = function(guid)
+{
+	var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+
+	var isVisible = false;
+	// detect visible/unvisible
+	var _req = _editor.asc_getAllSignatures();
+	for (var i = 0; i < _req.length; i++)
+	{
+		if (_req[i].id == guid)
+		{
+			isVisible = true;
+			break;
+		}
+	}
+
+	return isVisible;
+};
+
+window["asc_LocalRequestSign"] = function(guid, width, height, isView)
+{
+	if (isView !== true && width === undefined)
+	{
+		width = 100;
+		height = 100;
+	}
+
+	var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+	var _length = _editor.signatures.length;
+	for (var i = 0; i < _length; i++)
+	{
+		if (_editor.signatures[i].guid == guid)
+		{
+			if (isView === true)
+			{
+				window["AscDesktopEditor"]["ViewCertificate"](_editor.signatures[i].id);
+			}
+			return;
+		}
+	}
+
+	var isModify = false;
+	if (_editor.asc_isDocumentModified)
+		isModify = _editor.asc_isDocumentModified();
+	else
+		isModify = _editor.isDocumentModified();
+
+	if (!isModify)
+	{
+		_editor.sendEvent("asc_onSignatureClick", guid, width, height, window["asc_IsVisibleSign"](guid));
+		return;
+	}
+
+	window.SaveQuestionObjectBeforeSign = { guid : guid, width : width, height : height };
+	window["AscDesktopEditor"]["SaveQuestion"]();
+};
+
 window["DesktopAfterOpen"] = function(_api)
 {
 	_api.asc_registerCallback("asc_onSignatureDblClick", function (guid, width, height)
 	{
-		var _length = _api.signatures.length;
-		for (var i = 0; i < _length; i++)
-		{
-			if (_api.signatures[i].guid == guid)
-			{
-				window["AscDesktopEditor"]["ViewCertificate"](_api.signatures[i].id);
-				return;
-			}
-		}
-
-		if (!_api.isDocumentModify)
-		{
-			_api.sendEvent("asc_onSignatureClick", guid, width, height);
-			return;
-		}
-
-		window.SaveQuestionObjectBeforeSign = { guid : guid, width : width, height : height };
-		window["AscDesktopEditor"]["SaveQuestion"]();
+		window["asc_LocalRequestSign"](guid, width, height, true);
 	});
 
 	_api.sendEvent('asc_onSpellCheckInit', [
@@ -374,6 +617,90 @@ window["DesktopAfterOpen"] = function(_api)
 		"3082"
 	]);
 };
+
+function getBinaryArray(_data, _len)
+{
+	var _array = new Uint8Array(_len);
+	var _index = 0;
+	var _written = 0;
+
+	var _data_len = _data.length;
+	while (_index < _data_len)
+	{
+		var dwCurr = 0;
+		var i;
+		var nBits = 0;
+		for (i=0; i<4; i++)
+		{
+			if (_index >= _data_len)
+				break;
+			var nCh = DecodeBase64Char(_data.charCodeAt(_index++));
+			if (nCh == -1)
+			{
+				i--;
+				continue;
+			}
+			dwCurr <<= 6;
+			dwCurr |= nCh;
+			nBits += 6;
+		}
+
+		dwCurr <<= 24-nBits;
+		for (i=0; i<nBits/8; i++)
+		{
+			_array[_written++] = ((dwCurr & 0x00ff0000) >>> 16);
+			dwCurr <<= 8;
+		}
+	}
+
+	return _array;
+}
+
+// OnlyPass ----------------------------------
+var _proto = Asc['asc_docs_api'] ? Asc['asc_docs_api'] : Asc['spreadsheet_api'];
+_proto.prototype["pluginMethod_OnlyPass"] = function(obj)
+{
+	var _editor = window["Asc"]["editor"] ? window["Asc"]["editor"] : window.editor;
+	switch (obj.type)
+	{
+		case "generatePassword":
+		{
+			if ("" == obj["password"])
+			{
+				AscCommon.History.UserSavedIndex = _editor.LastUserSavedIndex;
+
+				if (window.editor)
+					_editor.UpdateInterfaceState();
+				else
+					_editor.onUpdateDocumentModified(AscCommon.History.Have_Changes());
+
+				_editor.LastUserSavedIndex = undefined;
+
+				_editor.sendEvent("asc_onError", "There is no connection with the blockchain", c_oAscError.Level.Critical);
+				return;
+			}
+
+			window["DesktopOfflineAppDocumentStartSave"](window.doadssIsSaveAs, obj["password"], true);
+			break;
+		}
+		case "getPasswordByFile":
+		{
+			if ("" != obj["password"])
+			{
+				var _param = ("<m_sPassword>" + AscCommon.CopyPasteCorrectString(obj["password"]) + "</m_sPassword>");
+				_editor.currentPassword = obj["password"];
+
+				window["AscDesktopEditor"]["SetAdvancedOptions"](_param);
+			}
+			else
+			{
+				this._onNeedParams(undefined, true);
+			}
+			break;
+		}
+	}
+};
+// -------------------------------------------
 
 // меняем среду
 //AscBrowser.isSafari = false;

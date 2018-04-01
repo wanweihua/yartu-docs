@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *    Controller
  *
  *    Created by Maxim Kadushkin on 10 April 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -166,7 +166,7 @@ define([
                 this.leftMenu.btnChat.hide();
                 this.leftMenu.btnComments.hide();
             }
-            this.mode.isTrial && this.leftMenu.setDeveloperMode(true);
+            this.mode.trialMode && this.leftMenu.setDeveloperMode(this.mode.trialMode);
             /** coauthoring end **/
             Common.util.Shortcuts.resumeEvents();
             this.leftMenu.btnThumbs.toggle(true);
@@ -179,7 +179,7 @@ define([
                 this.leftMenu.setOptionsPanel('plugins', this.getApplication().getController('Common.Controllers.Plugins').getView('Common.Views.Plugins'));
             } else
                 this.leftMenu.btnPlugins.hide();
-            this.mode.isTrial && this.leftMenu.setDeveloperMode(true);
+            this.mode.trialMode && this.leftMenu.setDeveloperMode(this.mode.trialMode);
         },
 
         clickMenuFileItem: function(menu, action, isopts) {
@@ -369,12 +369,12 @@ define([
         },
 
         onApiCountPages: function(count) {
-            if (this._state.no_slides !== (count<=0) && this.mode.isEdit) {
+            if (this._state.no_slides !== (count<=0)) {
                 this._state.no_slides = (count<=0);
                 /** coauthoring begin **/
-                this.leftMenu.btnComments.setDisabled(this._state.no_slides);
+                this.leftMenu.btnComments && this.leftMenu.btnComments.setDisabled(this._state.no_slides);
                 /** coauthoring end **/
-                this.leftMenu.btnSearch.setDisabled(this._state.no_slides);
+                this.leftMenu.btnSearch && this.leftMenu.btnSearch.setDisabled(this._state.no_slides);
             }
         },
 

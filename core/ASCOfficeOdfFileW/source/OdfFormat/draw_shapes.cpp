@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -384,8 +384,8 @@ void draw_equation::serialize(std::wostream & _Wostream)
 }
 int draw_enhanced_geometry::parsing(_CP_OPT(std::wstring) val) 
 {
-	int pos=0, res=-1;
-	if (!val)return res;
+	int res = -1;
+	if (!val) return res;
 
 	BOOST_FOREACH(wchar_t c, val.get())
     {
@@ -393,7 +393,9 @@ int draw_enhanced_geometry::parsing(_CP_OPT(std::wstring) val)
 			return res;
 	}
 
-	if ((pos = val->find(L"$"))>=0)return res;
+	if (std::wstring::npos != val->find(L"$"))
+		return res;
+
 	res = boost::lexical_cast<int>(val.get());
 	return res;
 }
@@ -430,16 +432,15 @@ void draw_enhanced_geometry::serialize(std::wostream & _Wostream)
 			CP_XML_ATTR_OPT(L"svg:viewBox", svg_viewbox_);
 			draw_enhanced_geometry_attlist_.serialize(CP_GET_XML_NODE());
 			
-			BOOST_FOREACH(office_element_ptr & elm, draw_equation_)
+			for (size_t i = 0; i < draw_equation_.size(); i++)
 			{
-				elm->serialize(CP_XML_STREAM());
+				draw_equation_[i]->serialize(CP_XML_STREAM());
 			}		
 			
-			BOOST_FOREACH(office_element_ptr & elm, draw_handle_)
+			for (size_t i = 0; i < draw_handle_.size(); i++)
 			{
-				elm->serialize(CP_XML_STREAM());
+				draw_handle_[i]->serialize(CP_XML_STREAM());
 			}
-
 		}
 	}
 }

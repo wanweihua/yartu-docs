@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -74,7 +74,7 @@ void draw_shape::add_child_element( xml::sax * Reader, const std::wstring & Ns, 
 }
 void draw_shape::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
-	CP_APPLY_ATTR(L"draw:id",			draw_id_);//или сюда draw_shape_attlist_???
+	CP_APPLY_ATTR(L"draw:id", draw_id_);//или сюда draw_shape_attlist_???
 	
 	common_draw_attlists_.shape_with_text_and_styles_.add_attributes(Attributes);
     common_draw_attlists_.position_.add_attributes(Attributes);
@@ -87,6 +87,7 @@ void draw_shape::add_attributes( const xml::attributes_wc_ptr & Attributes )
 void draw_rect_attlist::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
     CP_APPLY_ATTR(L"draw:filter-name", draw_filter_name_);
+	CP_APPLY_ATTR(L"draw:corner-radius",draw_corner_radius_);
 }
 
 const wchar_t * draw_rect::ns = L"draw";
@@ -98,6 +99,9 @@ void draw_rect::add_attributes( const xml::attributes_wc_ptr & Attributes )
 	draw_shape::add_attributes(Attributes);
 
 	sub_type_ = 2;
+
+	if (draw_rect_attlist_.draw_corner_radius_)
+		sub_type_ = 9;
 }
 
 
@@ -603,9 +607,8 @@ void draw_caption::add_attributes( const xml::attributes_wc_ptr & Attributes )
 void draw_connector_attlist::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {
     CP_APPLY_ATTR(L"svg:d",			svg_d_);
-    CP_APPLY_ATTR(L"svg:viewBox",	svg_viewbox_);
+    CP_APPLY_ATTR(L"svg:viewBox",	svg_viewbox_);	
     CP_APPLY_ATTR(L"draw:type",		draw_type_);
-
 }
 // draw:connector
 const wchar_t * draw_connector::ns = L"draw";
@@ -664,6 +667,43 @@ void draw_connector::reset_svg_path()
 	}
 }
 ///////////////////////////////////////
+
+// dr3d:scene
+const wchar_t * dr3d_scene::ns = L"dr3d";
+const wchar_t * dr3d_scene::name = L"scene";
+
+void dr3d_scene::add_attributes( const xml::attributes_wc_ptr & Attributes )
+{
+	draw_shape::add_attributes(Attributes);
+
+	sub_type_ = 10; 
+	
+}
+// dr3d:extrude
+const wchar_t * dr3d_extrude::ns = L"dr3d";
+const wchar_t * dr3d_extrude::name = L"extrude";
+
+void dr3d_extrude::add_attributes( const xml::attributes_wc_ptr & Attributes )
+{
+    CP_APPLY_ATTR(L"svg:d",			svg_d_);
+    CP_APPLY_ATTR(L"svg:viewBox",	svg_viewbox_);	
+}
+void dr3d_extrude::reset_svg_path()
+{
+	if (!svg_d_) return;
+
+}
+// dr3d:light
+const wchar_t * dr3d_light::ns = L"dr3d";
+const wchar_t * dr3d_light::name = L"light";
+
+void dr3d_light::add_attributes( const xml::attributes_wc_ptr & Attributes )
+{
+	CP_APPLY_ATTR(L"dr3d:diffuse_color", dr3d_diffuse_color_);
+	CP_APPLY_ATTR(L"dr3d:direction",	dr3d_direction_);
+	CP_APPLY_ATTR(L"dr3d:specular",		dr3d_specular_);
+	CP_APPLY_ATTR(L"dr3d:enabled",		dr3d_enabled_);
+}
 
 }
 }

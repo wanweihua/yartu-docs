@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -79,7 +79,7 @@ Asc['asc_docs_api'].prototype.asc_RejectChanges = function(Change)
 };
 Asc['asc_docs_api'].prototype.asc_HaveRevisionsChanges = function()
 {
-    this.WordControl.m_oLogicDocument.Have_RevisionChanges();
+    return this.WordControl.m_oLogicDocument.Have_RevisionChanges();
 };
 Asc['asc_docs_api'].prototype.asc_HaveNewRevisionsChanges = function()
 {
@@ -219,7 +219,7 @@ CDocument.prototype.private_GetRevisionsChangeParagraph = function(Direction, Cu
             return SearchEngine;
     }
 
-    var oFootnote = CurrentPara.Parent ? CurrentPara.Parent.Get_TopDocumentContent() : null;
+    var oFootnote = CurrentPara.Parent ? CurrentPara.Parent.GetTopDocumentContent() : null;
     if (!(oFootnote instanceof CFootEndnote))
     	oFootnote = null;
 
@@ -473,10 +473,10 @@ CDocument.prototype.RejectRevisionChangesBySelection = function()
 
     this.Get_NextRevisionChange();
 };
-CDocument.prototype.Accept_AllRevisionChanges = function()
+CDocument.prototype.Accept_AllRevisionChanges = function(isSkipCheckLock)
 {
     var RelatedParas = this.TrackRevisionsManager.Get_AllChangesRelatedParagraphs(true);
-    if (false === this.Document_Is_SelectionLocked(AscCommon.changestype_None, { Type : changestype_2_ElementsArray_and_Type, Elements : RelatedParas, CheckType : AscCommon.changestype_Paragraph_Content}))
+    if (true === isSkipCheckLock || false === this.Document_Is_SelectionLocked(AscCommon.changestype_None, { Type : changestype_2_ElementsArray_and_Type, Elements : RelatedParas, CheckType : AscCommon.changestype_Paragraph_Content}))
     {
         this.Create_NewHistoryPoint(AscDFH.historydescription_Document_AcceptAllRevisionChanges);
         var LogicDocuments = this.TrackRevisionsManager.Get_AllChangesLogicDocuments();
@@ -489,7 +489,7 @@ CDocument.prototype.Accept_AllRevisionChanges = function()
             }
         }
 
-        if (true === this.History.Is_LastPointEmpty())
+        if (true !== isSkipCheckLock && true === this.History.Is_LastPointEmpty())
         {
             this.History.Remove_LastPoint();
             return;
@@ -502,10 +502,10 @@ CDocument.prototype.Accept_AllRevisionChanges = function()
         this.Document_UpdateInterfaceState();
     }
 };
-CDocument.prototype.Reject_AllRevisionChanges = function()
+CDocument.prototype.Reject_AllRevisionChanges = function(isSkipCheckLock)
 {
     var RelatedParas = this.TrackRevisionsManager.Get_AllChangesRelatedParagraphs(false);
-    if (false === this.Document_Is_SelectionLocked(AscCommon.changestype_None, { Type : changestype_2_ElementsArray_and_Type, Elements : RelatedParas, CheckType : AscCommon.changestype_Paragraph_Content}))
+    if (true === isSkipCheckLock || false === this.Document_Is_SelectionLocked(AscCommon.changestype_None, { Type : changestype_2_ElementsArray_and_Type, Elements : RelatedParas, CheckType : AscCommon.changestype_Paragraph_Content}))
     {
         this.Create_NewHistoryPoint(AscDFH.historydescription_Document_RejectAllRevisionChanges);
         var LogicDocuments = this.TrackRevisionsManager.Get_AllChangesLogicDocuments();
@@ -518,7 +518,7 @@ CDocument.prototype.Reject_AllRevisionChanges = function()
             }
         }
 
-        if (true === this.History.Is_LastPointEmpty())
+        if (true !== isSkipCheckLock && true === this.History.Is_LastPointEmpty())
         {
             this.History.Remove_LastPoint();
             return;

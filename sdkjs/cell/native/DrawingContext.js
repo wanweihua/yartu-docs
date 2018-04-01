@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -628,6 +628,16 @@
 
     DrawingContext.prototype.clear = function () {
         this.clearRect(0, 0, this.getWidth(), this.getHeight());
+        return this;
+    };
+ 
+    DrawingContext.prototype.AddClipRect = function () {
+ 
+        return this;
+    };
+ 
+    DrawingContext.prototype.RemoveClipRect = function (x, y, w, h) {
+ 
         return this;
     };
 

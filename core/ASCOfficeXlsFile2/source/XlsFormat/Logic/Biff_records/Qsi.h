@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,12 +32,11 @@
 #pragma once
 
 #include "BiffRecord.h"
+#include "../Biff_structures/BiffString.h"
 
 namespace XLS
 {
 
-
-// Logical representation of Qsi record in BIFF8
 class Qsi: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(Qsi)
@@ -47,11 +46,32 @@ public:
 	~Qsi();
 
 	BaseObjectPtr clone();
-
 	
 	void readFields(CFRecord& record);
 
-	static const ElementType	type = typeQsi;
+	static const ElementType type = typeQsi;
+
+	bool			fTitles;
+	bool			fRowNums;
+	bool			fDisableRefresh;
+	bool			fAsync;
+	bool			fNewAsync;
+	bool			fAutoRefresh;
+	bool			fShrink;
+	bool			fFill;
+	bool			fAutoFormat;
+	bool			fSaveData;
+	bool			fDisableEdit;
+	bool			fOverwrite;
+	unsigned short	itblAutoFmt;		//AutoFmt8
+	bool			fibitAtrNum;
+	bool			fibitAtrFnt;
+	bool			fibitAtrAlc;
+	bool			fibitAtrBdr;
+	bool			fibitAtrPat;
+	bool			fibitAtrProt;
+	
+	XLUnicodeString	rgchName;
 };
 
 } // namespace XLS

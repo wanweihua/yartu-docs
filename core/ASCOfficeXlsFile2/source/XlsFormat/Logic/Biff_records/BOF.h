@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -59,12 +59,12 @@ public:
 
 	typedef enum
 	{
-		st_Workbook = 0x0005,
-		st_Globals = st_Workbook,
-		st_Dialog = 0x0010,
-		st_Worksheet = st_Dialog,
-		st_Chart = 0x0020,
-		st_Macro = 0x040
+		st_Workbook		= 0x0005,
+		st_Globals		= st_Workbook,
+		st_Dialog		= 0x0010,
+		st_Worksheet	= st_Dialog,
+		st_Chart		= 0x0020,
+		st_Macro		= 0x040
 	} SubstreamType;
 
 

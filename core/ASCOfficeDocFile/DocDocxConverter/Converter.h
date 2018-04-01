@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -48,7 +48,7 @@ namespace DocFileFormat
 
 		std::wstring m_sTempFolder;
 
-		long LoadAndConvert(const std::wstring & strSrcFile, const std::wstring &  strDstDirectory, const std::wstring & password, const ProgressCallback* progress);
+		long LoadAndConvert(const std::wstring & strSrcFile, const std::wstring &  strDstDirectory, const std::wstring & password, const ProgressCallback* progress, bool &bMacros);
 	
 	private:
 		long Convert(WordDocument* doc, WordprocessingDocument* docx, const ProgressCallback* progress);	

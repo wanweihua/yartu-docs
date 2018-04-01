@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -91,7 +91,7 @@ define([
                 enableKeyEvents: false,
                 itemTemplate: _.template([
                     '<div id="<%= id %>" class="item-plugins" style="display: block;">',
-                        '<div class="plugin-icon" style="background-image: url(' + '<%= baseUrl %>' + '<%= variations[currentVariation].get("icons")[(window.devicePixelRatio > 1) ? 1 : 0] %>);"></div>',
+                        '<div class="plugin-icon" style="background-image: url(' + '<% print(baseUrl.replace(/(\\(|\\))/g,"\\\\$1")) %>' + '<%= variations[currentVariation].get("icons")[(window.devicePixelRatio > 1) ? 1 : 0] %>);"></div>',
                         '<% if (variations.length>1) { %>',
                         '<div class="plugin-caret img-commonctrl"></div>',
                         '<% } %>',
@@ -136,7 +136,7 @@ define([
             }
         },
 
-        openInsideMode: function(name, url) {
+        openInsideMode: function(name, url, frameId) {
             if (!this.pluginsPanel) return false;
 
             this.pluginsPanel.toggleClass('hidden', true);
@@ -145,8 +145,8 @@ define([
             this.pluginName.text(name);
             if (!this.iframePlugin) {
                 this.iframePlugin = document.createElement("iframe");
-                this.iframePlugin.id           = 'plugin_iframe';
-                this.iframePlugin.name         = 'pluginFrameEditor',
+                this.iframePlugin.id           = (frameId === undefined) ? 'plugin_iframe' : frameId;
+                this.iframePlugin.name         = 'pluginFrameEditor';
                 this.iframePlugin.width        = '100%';
                 this.iframePlugin.height       = '100%';
                 this.iframePlugin.align        = "top";
@@ -183,7 +183,7 @@ define([
         },
 
         closeNotVisualMode: function() {
-            this.viewPluginsList.cmpEl.find('.selected').removeClass('selected');
+            this.viewPluginsList && this.viewPluginsList.cmpEl.find('.selected').removeClass('selected');
         },
 
         _onLoad: function() {
@@ -207,7 +207,7 @@ define([
 
             var header_footer = (_options.buttons && _.size(_options.buttons)>0) ? 85 : 34;
             if (!_options.header) header_footer -= 34;
-            this.bordersOffset = 25;
+            this.bordersOffset = 40;
             _options.width = (Common.Utils.innerWidth()-this.bordersOffset*2-_options.width)<0 ? Common.Utils.innerWidth()-this.bordersOffset*2: _options.width;
             _options.height += header_footer;
             _options.height = (Common.Utils.innerHeight()-this.bordersOffset*2-_options.height)<0 ? Common.Utils.innerHeight()-this.bordersOffset*2: _options.height;
@@ -230,6 +230,7 @@ define([
             _options.tpl = _.template(this.template)(_options);
 
             this.url = options.url || '';
+            this.frameId = options.frameId || 'plugin_iframe';
             Common.UI.Window.prototype.initialize.call(this, _options);
         },
 
@@ -243,7 +244,7 @@ define([
             this._headerFooterHeight += ((parseInt(this.$window.css('border-top-width')) + parseInt(this.$window.css('border-bottom-width'))));
 
             var iframe = document.createElement("iframe");
-            iframe.id           = 'plugin_iframe';
+            iframe.id           = this.frameId;
             iframe.name         = 'pluginFrameEditor';
             iframe.width        = '100%';
             iframe.height       = '100%';
@@ -299,7 +300,7 @@ define([
             Common.UI.Window.prototype.setWidth.call(this, width + borders_width);
 
             this.$window.css('left',(maxWidth - width - borders_width) / 2);
-            this.$window.css('top',((maxHeight - height - this._headerFooterHeight) / 2) * 0.9);
+            this.$window.css('top',(maxHeight - height - this._headerFooterHeight) / 2);
         },
 
         onWindowResize: function() {

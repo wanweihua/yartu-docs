@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -90,13 +90,20 @@ var ApplicationController = new(function(){
         if (docConfig) {
             permissions = $.extend(permissions, docConfig.permissions);
 
-            var docInfo = new Asc.asc_CDocInfo();
+            var _permissions = $.extend({}, docConfig.permissions),
+                docInfo = new Asc.asc_CDocInfo();
             docInfo.put_Id(docConfig.key);
             docInfo.put_Url(docConfig.url);
             docInfo.put_Title(docConfig.title);
             docInfo.put_Format(docConfig.fileType);
             docInfo.put_VKey(docConfig.vkey);
             docInfo.put_Token(docConfig.token);
+            docInfo.put_Permissions(_permissions);
+
+            var type = /^(?:(pdf|djvu|xps))$/.exec(docConfig.fileType);
+            if (type && typeof type[1] === 'string') {
+                permissions.edit = permissions.review = false;
+            }
 
             if (api) {
                 api.asc_registerCallback('asc_onGetEditorPermissions', onEditorPermissions);
@@ -209,6 +216,8 @@ var ApplicationController = new(function(){
     }
 
     function onDocumentContentReady() {
+        Common.Gateway.documentReady();
+
         hidePreloader();
 
         if ( !embedConfig.shareUrl )
@@ -498,7 +507,7 @@ var ApplicationController = new(function(){
             Common.Gateway.on('init',               loadConfig);
             Common.Gateway.on('opendocument',       loadDocument);
             Common.Gateway.on('showmessage',        onExternalMessage);
-            Common.Gateway.ready();
+            Common.Gateway.appReady();
         }
 
         return me;

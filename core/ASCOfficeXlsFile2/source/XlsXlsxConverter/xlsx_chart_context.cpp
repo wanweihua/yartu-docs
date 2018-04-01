@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -33,8 +33,6 @@
 #include "oox_rels.h"
 #include "mediaitems_utils.h"
 
-//#include <boost/lexical_cast.hpp>
-#include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 
 #include <simple_xml_writer.h>
@@ -66,9 +64,19 @@ public:
    
 	void dump_rels(rels & Rels)
     {
-        BOOST_FOREACH(rel_ const & r, chartRels_)
+		for (size_t i = 0; i < chartRels_.size(); i++)
         {
-			if (r.type_ == external_items::typeImage)
+			rel_ & r = chartRels_[i];
+			if (r.type_ == external_items::typeHyperlink)
+			{
+				Rels.add(relationship(
+							r.rid_,
+							L"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+							r.target_,
+							L"External")
+				);
+			}
+			else
 			{
 				Rels.add(relationship(
 							r.rid_,
@@ -77,15 +85,6 @@ public:
 							(r.is_internal_ ? L"" : L"External")
 							) 
 					);
-			}
- 			else if (r.type_ == external_items::typeHyperlink)
-			{
-				Rels.add(relationship(
-							r.rid_,
-							L"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
-							r.target_,
-							L"External")
-				);
 			}
 		}
     }
@@ -99,8 +98,9 @@ public:
     {
 		bool present = false;
         
-		BOOST_FOREACH(rel_ const & r, chartRels_)
-        {		
+		for (size_t i = 0; i < chartRels_.size(); i++)
+        {
+			rel_ & r = chartRels_[i];
 			if (r.rid_ == rid && r.target_ == target)
 				present = true;
 		}

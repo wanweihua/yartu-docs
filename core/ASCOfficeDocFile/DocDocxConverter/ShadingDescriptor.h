@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -174,9 +174,9 @@ namespace DocFileFormat
 					//it's a Word 97 SPRM
 					short val	=	FormatUtils::BytesToInt16(bytes, 0, size);
 
-					icoFore		=	(val & 0x1F);						
-					icoBack		=	((val >> 5) & 0x1F);					
-					ipat		=	(ShadingPattern) ((val >> 10) & 0x3F);
+					icoFore		=	GETBITS(val, 0, 4);						
+					icoBack		=	GETBITS(val, 5, 9);						
+					ipat		=	(ShadingPattern) GETBITS(val, 10, 15);	
 
 					shadingType	=	shadingTypeShd80;
 
@@ -209,7 +209,7 @@ namespace DocFileFormat
 						else if (0x0F == icoFore) { cvFore = RGB2 (0x80, 0x80, 0x80); }
 						else if (0x10 == icoFore) { cvFore = RGB2 (0xC0, 0xC0, 0xC0); }
 
-						if (0x00 == icoBack)	{ cvBack = RGB2 (0x00, 0x00, 0x00); cvBackAuto = true; }
+						if (0x00 == icoBack)	{ cvBack = RGB2 (0xFF, 0xFF, 0xFF); cvBackAuto = true; }
 						else if (0x01 == icoBack) { cvBack = RGB2 (0x00, 0x00, 0x00); }
 						else if (0x02 == icoBack) { cvBack = RGB2 (0x00, 0x00, 0xFF); }
 						else if (0x03 == icoBack) { cvBack = RGB2 (0x00, 0xFF, 0xFF); }

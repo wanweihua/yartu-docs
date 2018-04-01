@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -30,7 +30,6 @@
  *
  */
 
-
 #include "xlsx_utils.h"
 
 #include <boost/lexical_cast.hpp>
@@ -45,6 +44,14 @@
 namespace cpdoccore {
 
 namespace oox {
+
+bool IsNumber(const std::wstring &value)
+{
+	boost::wregex rule(L"^\\-{0,1}[0-9]*[.,]{0,1}[0-9]*$");
+	boost::match_results<std::wstring::const_iterator> results;
+
+	return boost::regex_search(value/*.begin(), value.end(), results*/, rule);
+}
 
 std::wstring getColAddress(size_t col)
 {
@@ -61,8 +68,6 @@ std::wstring getColAddress(size_t col)
     else
         return std::wstring(1, (wchar_t)(L'A' + col));
 }
-
-
 
 std::wstring getRowAddress(size_t row)
 {
@@ -190,7 +195,14 @@ std::wstring cellType2Str(XlsxCellType::type type)
 
 boost::int64_t convertDate(int Year, int Month, int Day)
 {
-    boost::int64_t daysFrom1900  =  boost::gregorian::date_duration(boost::gregorian::date(Year, Month, Day) - boost::gregorian::date(1900, 1, 1)).days() + 1;
+	if (Year < 1400 || Year >10000)
+		return - 1;
+ 	if (Month < 1 || Month > 12)
+		return - 1;
+	if (Day < 1 || Day > 31)
+		return - 1;
+	
+	boost::int64_t daysFrom1900  =  boost::gregorian::date_duration(boost::gregorian::date(Year, Month, Day) - boost::gregorian::date(1900, 1, 1)).days() + 1;
 
     if (Year <= 1900 && 
         Month <= 2 &&

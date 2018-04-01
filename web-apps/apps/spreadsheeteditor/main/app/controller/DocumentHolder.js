@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *  DocumentHolder controller
  *
  *  Created by Julia Radzhabova on 3/28/14
- *  Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *  Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -1229,12 +1229,12 @@ define([
         onSelectionChanged: function(info){
             if (!this.mouse.isLeftButtonDown && !this.rangeSelectionMode &&
                 this.currentMenu && this.currentMenu.isVisible()){
-                (this.permissions.isEdit) ? this.fillMenuProps(info, true, event) : this.fillViewMenuProps(info, true, event);
+                (this.permissions.isEdit) ? this.fillMenuProps(info, true) : this.fillViewMenuProps(info, true);
             }
         },
 
         fillMenuProps: function(cellinfo, showMenu, event){
-            var iscellmenu, isrowmenu, iscolmenu, isallmenu, ischartmenu, isimagemenu, istextshapemenu, isshapemenu, istextchartmenu,
+            var iscellmenu, isrowmenu, iscolmenu, isallmenu, ischartmenu, isimagemenu, istextshapemenu, isshapemenu, istextchartmenu, isimageonly,
                 documentHolder      = this.documentHolder,
                 seltype             = cellinfo.asc_getFlags().asc_getSelectionType(),
                 isCellLocked        = cellinfo.asc_getLocked(),
@@ -1277,6 +1277,8 @@ define([
                         if (shapeprops) {
                             if (shapeprops.asc_getFromChart())
                                 ischartmenu = true;
+                            else if (shapeprops.asc_getFromImage())
+                                isimageonly = true;
                             else {
                                 documentHolder.mnuShapeAdvanced.shapeInfo = elValue;
                                 isshapemenu = true;
@@ -1300,7 +1302,7 @@ define([
                 documentHolder.mnuChartEdit.setDisabled(isObjLocked);
                 documentHolder.pmiImgCut.setDisabled(isObjLocked);
                 documentHolder.pmiImgPaste.setDisabled(isObjLocked);
-                documentHolder.mnuImgAdvanced.setVisible(isimagemenu && !isshapemenu && !ischartmenu);
+                documentHolder.mnuImgAdvanced.setVisible(isimagemenu && (!isshapemenu || isimageonly) && !ischartmenu);
                 documentHolder.mnuImgAdvanced.setDisabled(isObjLocked);
                 if (showMenu) this.showPopupMenu(documentHolder.imgMenu, {}, event);
                 documentHolder.mnuShapeSeparator.setVisible(documentHolder.mnuShapeAdvanced.isVisible() || documentHolder.mnuChartEdit.isVisible() || documentHolder.mnuImgAdvanced.isVisible());
@@ -1446,6 +1448,8 @@ define([
                 documentHolder.pmiInsertCells.menu.items[1].setDisabled(isApplyAutoFilter);
                 documentHolder.pmiDeleteCells.menu.items[1].setDisabled(isApplyAutoFilter);
 
+                var inPivot = !!cellinfo.asc_getPivotTableInfo();
+
                 _.each(documentHolder.ssMenu.items, function(item) {
                     item.setDisabled(isCellLocked);
                 });
@@ -1456,9 +1460,12 @@ define([
                 documentHolder.pmiDeleteEntire.setDisabled(isCellLocked || isTableLocked);
                 documentHolder.pmiDeleteCells.setDisabled(isCellLocked || isTableLocked);
                 documentHolder.pmiDeleteTable.setDisabled(isCellLocked || isTableLocked);
-                documentHolder.pmiFilterCells.setDisabled(isCellLocked || isTableLocked|| (filterInfo==null));
-                documentHolder.pmiSortCells.setDisabled(isCellLocked || isTableLocked|| (filterInfo==null));
+                documentHolder.pmiFilterCells.setDisabled(isCellLocked || isTableLocked|| (filterInfo==null) || inPivot);
+                documentHolder.pmiSortCells.setDisabled(isCellLocked || isTableLocked|| (filterInfo==null) || inPivot);
                 documentHolder.pmiReapply.setDisabled(isCellLocked || isTableLocked|| (isApplyAutoFilter!==true));
+                documentHolder.menuHyperlink.setDisabled(isCellLocked || inPivot);
+                documentHolder.menuAddHyperlink.setDisabled(isCellLocked || inPivot);
+
                 if (showMenu) this.showPopupMenu(documentHolder.ssMenu, {}, event);
             } else if (this.permissions.isEditDiagram && seltype == Asc.c_oAscSelectionType.RangeChartText) {
                 if (!showMenu && !documentHolder.textInShapeMenu.isVisible()) return;
@@ -1486,6 +1493,9 @@ define([
                 iscellmenu = (seltype==Asc.c_oAscSelectionType.RangeCells) && !this.permissions.isEditMailMerge && !this.permissions.isEditDiagram,
                 iscelledit = this.api.isCellEdited;
 
+            if (!documentHolder.viewModeMenu)
+                documentHolder.createDelayedElementsViewer();
+
             if (!showMenu && !documentHolder.viewModeMenu.isVisible()) return;
 
             documentHolder.menuViewUndo.setVisible(this.permissions.canCoAuthoring && this.permissions.canComments);
@@ -1499,7 +1509,7 @@ define([
         },
 
         showPopupMenu: function(menu, value, event){
-            if (!_.isUndefined(menu) && menu !== null){
+            if (!_.isUndefined(menu) && menu !== null && event){
                 Common.UI.Menu.Manager.hideAll();
 
                 var me                  = this,

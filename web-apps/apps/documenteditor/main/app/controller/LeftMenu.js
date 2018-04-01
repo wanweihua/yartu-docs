@@ -1,6 +1,6 @@
 /*
  *
- * (c) Copyright Ascensio System Limited 2010-2017
+ * (c) Copyright Ascensio System Limited 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,7 +36,7 @@
  *    Controller
  *
  *    Created by Maxim Kadushkin on 19 February 2014
- *    Copyright (c) 2014 Ascensio System SIA. All rights reserved.
+ *    Copyright (c) 2018 Ascensio System SIA. All rights reserved.
  *
  */
 
@@ -174,7 +174,7 @@ define([
             if (this.mode.canUseHistory)
                 this.leftMenu.setOptionsPanel('history', this.getApplication().getController('Common.Controllers.History').getView('Common.Views.History'));
 
-            this.mode.isTrial && this.leftMenu.setDeveloperMode(true);
+            this.mode.trialMode && this.leftMenu.setDeveloperMode(this.mode.trialMode);
 
             Common.util.Shortcuts.resumeEvents();
             return this;
@@ -186,7 +186,7 @@ define([
                 this.leftMenu.setOptionsPanel('plugins', this.getApplication().getController('Common.Controllers.Plugins').getView('Common.Views.Plugins'));
             } else
                 this.leftMenu.btnPlugins.hide();
-            this.mode.isTrial && this.leftMenu.setDeveloperMode(true);
+            this.mode.trialMode && this.leftMenu.setDeveloperMode(this.mode.trialMode);
         },
 
         clickMenuFileItem: function(menu, action, isopts) {

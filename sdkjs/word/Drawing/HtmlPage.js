@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -75,7 +75,13 @@ var GlobalSkinTeamlab = {
 	RulerMarkersFillColor  : "#E7E7E7",
 	PageOutline            : "#81878F",
 	STYLE_THUMBNAIL_WIDTH  : 80,
-	STYLE_THUMBNAIL_HEIGHT : 40
+	STYLE_THUMBNAIL_HEIGHT : 40,
+	ContentControlsBack	   : "#F1F1F1",
+	ContentControlsHover   : "#D8DADC",
+	ContentControlsActive  : "#7C838A",
+	ContentControlsText    : "#444444",
+	ContentControlsTextActive   : "#FFFFFF",
+	ContentControlsAnchorActive : "#CFCFCF"
 };
 var GlobalSkinFlat    = {
 	Name                   : "flat",
@@ -90,10 +96,37 @@ var GlobalSkinFlat    = {
 	PageOutline            : "#BBBEC2",
 	STYLE_THUMBNAIL_WIDTH  : 104,
 	STYLE_THUMBNAIL_HEIGHT : 38,
-	isNeedInvertOnActive   : false
+	isNeedInvertOnActive   : false,
+	ContentControlsBack	   : "#F1F1F1",
+	ContentControlsHover   : "#D8DADC",
+	ContentControlsActive  : "#7C838A",
+	ContentControlsText    : "#444444",
+	ContentControlsTextActive   : "#FFFFFF",
+	ContentControlsAnchorActive : "#CFCFCF"
+};
+var GlobalSkinFlat2    = {
+	Name                   : "flat",
+	RulersButton           : false,
+	NavigationButtons      : false,
+	BackgroundColor        : "#E2E2E2",
+	RulerDark              : "#CFCFCF",
+	RulerLight             : "#FFFFFF",
+	BackgroundScroll       : "#E2E2E2",
+	RulerOutline           : "#BBBEC2",
+	RulerMarkersFillColor  : "#FFFFFF",
+	PageOutline            : "#BBBEC2",
+	STYLE_THUMBNAIL_WIDTH  : 104,
+	STYLE_THUMBNAIL_HEIGHT : 38,
+	isNeedInvertOnActive   : false,
+	ContentControlsBack	   : "#F1F1F1",
+	ContentControlsHover   : "#D8DADC",
+	ContentControlsActive  : "#7C838A",
+	ContentControlsText    : "#444444",
+	ContentControlsTextActive   : "#FFFFFF",
+	ContentControlsAnchorActive : "#CFCFCF"
 };
 
-var GlobalSkin = GlobalSkinFlat;
+var GlobalSkin = GlobalSkinFlat2;
 if (AscCommon.TEMP_STYLE_THUMBNAIL_WIDTH !== undefined && AscCommon.TEMP_STYLE_THUMBNAIL_HEIGHT !== undefined)
 {
 	// TODO: переделать.
@@ -561,8 +594,13 @@ function CEditorPage(api)
 		 window.onkeyup = this.onKeyUp;
 		 */
 
-		this.m_oBody.HtmlElement.oncontextmenu = function()
+		this.m_oBody.HtmlElement.oncontextmenu = function(e)
 		{
+			if (AscCommon.AscBrowser.isVivaldiLinux)
+			{
+				AscCommon.Window_OnMouseUp(e);
+			}
+			AscCommon.stopEvent(e);
 			return false;
 		};
 		//window.oncontextmenu = function() { return false; };
@@ -825,7 +863,7 @@ function CEditorPage(api)
 				};
 			}
 		}
-	}
+	};
 
 	this.onButtonRulersClick       = function()
 	{
@@ -1001,6 +1039,12 @@ function CEditorPage(api)
 
 		if (this.MobileTouchManager)
 			this.MobileTouchManager.Resize_After();
+
+		if (this.m_oApi.watermarkDraw)
+		{
+			this.m_oApi.watermarkDraw.zoom = this.m_nZoomValue / 100;
+			this.m_oApi.watermarkDraw.Generate();
+		}
 	};
 
 	this.zoom_Out = function()
@@ -1593,6 +1637,7 @@ function CEditorPage(api)
 					if (-1 == oWordControl.m_oTimerScrollSelect)
 						oWordControl.m_oTimerScrollSelect = setInterval(oWordControl.SelectWheel, 20);
 
+					AscCommon.stopEvent(e);
 					return;
 				}
 
@@ -1633,17 +1678,18 @@ function CEditorPage(api)
 		if (false === oThis.m_oApi.bInit_word_control || (AscCommon.isTouch && undefined === isTouch) || oThis.m_oApi.isLongAction())
 			return;
 
-		if (e.preventDefault)
-			e.preventDefault();
-		else
-			e.returnValue = false;
+		if (e)
+		{
+			if (e.preventDefault)
+				e.preventDefault();
+			else
+				e.returnValue = false;
+
+			AscCommon.check_MouseMoveEvent(e);
+		}
 
 		var oWordControl = oThis;
 
-		//if (this.id == "id_viewer" && oThis.m_oOverlay.HtmlElement.style.display == "block")
-		//    return;
-
-		AscCommon.check_MouseMoveEvent(e);
 		var pos = null;
 		if (oWordControl.m_oDrawingDocument.AutoShapesTrackLockPageNum == -1)
 			pos = oWordControl.m_oDrawingDocument.ConvertCoordsFromCursor2(global_mouseEvent.X, global_mouseEvent.Y);
@@ -2439,7 +2485,7 @@ function CEditorPage(api)
 		global_keyboardEvent.CtrlKey  = false;
 		global_keyboardEvent.ShiftKey = false;
 		global_keyboardEvent.AltGr    = false;
-	}
+	};
 	this.onKeyPress = function(e)
 	{
 		if (AscCommon.g_clipboardBase.IsWorking())
@@ -2549,7 +2595,7 @@ function CEditorPage(api)
 			return;
 
 		var oWordControl                       = oThis;
-		oWordControl.m_dScrollX                = scrollPositionX;
+		oWordControl.m_dScrollX                = Math.max(0, Math.min(scrollPositionX, maxX));
 		oWordControl.m_dScrollX_max            = maxX;
 		oWordControl.m_bIsUpdateHorRuler       = true;
 		oWordControl.m_bIsUpdateTargetNoAttack = true;
@@ -2565,29 +2611,34 @@ function CEditorPage(api)
 		}
 	};
 
-	this.UpdateScrolls = function()
+	this.CreateScrollSettings = function()
 	{
-		if (window["NATIVE_EDITOR_ENJINE"])
-			return;
+		var settings = new AscCommon.ScrollSettings();
+		settings.screenW = this.m_oEditor.HtmlElement.width;
+		settings.screenH = this.m_oEditor.HtmlElement.height;
+		settings.vscrollStep = 45;
+		settings.hscrollStep = 45;
+		settings.isNeedInvertOnActive = GlobalSkin.isNeedInvertOnActive;
 
-		var settings = {
-			showArrows           : true,
-			animateScroll        : false,
-			//                scrollBackgroundColor: GlobalSkin.BackgroundScroll,
-			//                scrollerColor:"#EDEDED",
-			screenW              : this.m_oEditor.HtmlElement.width,
-			screenH              : this.m_oEditor.HtmlElement.height,
-			vscrollStep          : 45,
-			hscrollStep          : 45,
-			isNeedInvertOnActive : GlobalSkin.isNeedInvertOnActive
-		};
+		settings.scrollBackgroundColor = GlobalSkin.BackgroundScroll;
+		settings.scrollBackgroundColorHover = GlobalSkin.BackgroundScroll;
+		settings.scrollBackgroundColorActive = GlobalSkin.BackgroundScroll;
 
 		if (this.bIsRetinaSupport)
 		{
 			settings.screenW = AscCommon.AscBrowser.convertToRetinaValue(settings.screenW);
 			settings.screenH = AscCommon.AscBrowser.convertToRetinaValue(settings.screenH);
 		}
+		return settings;
+	};
 
+	this.UpdateScrolls = function()
+	{
+		var settings;
+		if (window["NATIVE_EDITOR_ENJINE"])
+			return;
+
+		settings = this.CreateScrollSettings();
 		if (this.m_oScrollHor_)
 			this.m_oScrollHor_.Repos(settings, this.m_bIsHorScrollVisible);
 		else
@@ -2598,18 +2649,19 @@ function CEditorPage(api)
 			{
 				AscCommon.check_MouseDownEvent(evt, true);
 				global_mouseEvent.LockMouse();
-			}
+			};
 			this.m_oScrollHor_.offLockMouse = function(evt)
 			{
 				AscCommon.check_MouseUpEvent(evt);
-			}
+			};
 			this.m_oScrollHor_.bind("scrollhorizontal", function(evt)
 			{
 				oThis.horizontalScroll(this, evt.scrollD, evt.maxScrollX);
-			})
+			});
 			this.m_oScrollHorApi = this.m_oScrollHor_;
 		}
 
+		settings = this.CreateScrollSettings();
 		if (this.m_oScrollVer_)
 		{
 			this.m_oScrollVer_.Repos(settings, undefined, true);
@@ -2622,11 +2674,11 @@ function CEditorPage(api)
 			{
 				AscCommon.check_MouseDownEvent(evt, true);
 				global_mouseEvent.LockMouse();
-			}
+			};
 			this.m_oScrollVer_.offLockMouse = function(evt)
 			{
 				AscCommon.check_MouseUpEvent(evt);
-			}
+			};
 			this.m_oScrollVer_.bind("scrollvertical", function(evt)
 			{
 				oThis.verticalScroll(this, evt.scrollD, evt.maxScrollY);
@@ -2939,6 +2991,17 @@ function CEditorPage(api)
 					var drawPage = drDoc.m_arrPages[_page].drawingPage;
 					drDoc.m_arrPages[_page].DrawTableOutline(overlay,
 						drawPage.left, drawPage.top, drawPage.right - drawPage.left, drawPage.bottom - drawPage.top, drDoc.TableOutlineDr);
+				}
+				if (true)
+				{
+					var _lastBounds = drDoc.TableOutlineDr.getLastPageBounds();
+					_page = _lastBounds.Page;
+					if (_page >= drDoc.m_lDrawingFirst && _page <= drDoc.m_lDrawingEnd)
+					{
+						var drawPage = drDoc.m_arrPages[_page].drawingPage;
+						drDoc.m_arrPages[_page].DrawTableOutline(overlay,
+							drawPage.left, drawPage.top, drawPage.right - drawPage.left, drawPage.bottom - drawPage.top, drDoc.TableOutlineDr, _lastBounds);
+					}
 				}
 			}
 
@@ -3557,23 +3620,6 @@ function CEditorPage(api)
 		this.IsInitControl = true;
 	};
 
-	this.OpenDocument = function(info)
-	{
-		this.m_oDrawingDocument.m_oWordControl   = this;
-		this.m_oDrawingDocument.m_oLogicDocument = this.m_oLogicDocument;
-
-		this.m_oLogicDocument.fromJfdoc(info);
-
-		this.CalculateDocumentSize();
-		//setInterval(this.onTimerScroll, 40);
-		this.StartMainTimer();
-
-		this.m_oHorRuler.CreateBackground(this.m_oDrawingDocument.m_arrPages[0]);
-		this.m_oVerRuler.CreateBackground(this.m_oDrawingDocument.m_arrPages[0]);
-		this.UpdateHorRuler();
-		this.UpdateVerRuler();
-	};
-
 	this.AnimationFrame = function()
 	{
 		var now = Date.now();
@@ -3867,6 +3913,7 @@ var _message_update = "zero_delay_update";
 window['AscCommon']                      = window['AscCommon'] || {};
 window['AscCommonWord']                  = window['AscCommonWord'] || {};
 window['AscCommonWord'].GlobalSkinFlat   = GlobalSkinFlat;
+window['AscCommonWord'].GlobalSkinFlat2 = GlobalSkinFlat2;
 window['AscCommonWord'].GlobalSkin       = GlobalSkin;
 window['AscCommonWord'].updateGlobalSkin = updateGlobalSkin;
 window['AscCommonWord'].CEditorPage      = CEditorPage;

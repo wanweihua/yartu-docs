@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -687,6 +687,7 @@ void common_shape_draw_attlist::add_attributes( const xml::attributes_wc_ptr & A
     CP_APPLY_ATTR(L"draw:transform",	draw_transform_);
     CP_APPLY_ATTR(L"draw:name",			draw_name_);    
     CP_APPLY_ATTR(L"draw:text-style-name", draw_text_style_name_);
+	CP_APPLY_ATTR(L"drawooo:display",	drawooo_display_);
 }
 void common_shape_draw_attlist::apply_from(const common_shape_draw_attlist & Other)
 {
@@ -698,6 +699,7 @@ void common_shape_draw_attlist::apply_from(const common_shape_draw_attlist & Oth
     _CP_APPLY_PROP2(draw_transform_);
     _CP_APPLY_PROP2(draw_name_);    
     _CP_APPLY_PROP2(draw_text_style_name_);
+    _CP_APPLY_PROP2(drawooo_display_);
 }
 
 void common_shape_draw_attlist::serialize(CP_ATTR_NODE)
@@ -710,6 +712,7 @@ void common_shape_draw_attlist::serialize(CP_ATTR_NODE)
     CP_XML_ATTR_OPT(L"draw:transform",		draw_transform_);
     CP_XML_ATTR_OPT(L"draw:name",			draw_name_);
     CP_XML_ATTR_OPT(L"draw:text-style-name", draw_text_style_name_);
+	CP_XML_ATTR_OPT(L"drawooo:display",		drawooo_display_);
 }
 void common_draw_shape_with_text_and_styles_attlist::add_attributes( const xml::attributes_wc_ptr & Attributes )
 {

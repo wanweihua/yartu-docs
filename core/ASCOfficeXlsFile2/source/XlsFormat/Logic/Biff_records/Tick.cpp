@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -37,6 +37,7 @@ namespace XLS
 
 Tick::Tick()
 {
+	iReadingOrder = 0;
 }
 
 
@@ -59,11 +60,11 @@ void Tick::readFields(CFRecord& record)
 	record.skipNunBytes(16); // reserved
 	record >> flags >> icv >> trot;
 
-	fAutoCo = GETBIT(flags, 0);
-	fAutoMode = GETBIT(flags, 1);
-	rot = GETBITS(flags, 2, 4);
-	fAutoRot = GETBIT(flags, 5);
-	iReadingOrder = GETBITS(flags, 14, 15);
+	fAutoCo			= GETBIT(flags, 0);
+	fAutoMode		= GETBIT(flags, 1);
+	rot				= GETBITS(flags, 2, 4);
+	fAutoRot		= GETBIT(flags, 5);
+	iReadingOrder	= GETBITS(flags, 14, 15);
 
 	_rott = rot;
 }

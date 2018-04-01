@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -36,20 +36,24 @@
 namespace XLS
 {
 
-
-// Logical representation of PIVOTLI union of records 
 class PIVOTLI: public CompositeObject
 {
 	BASE_OBJECT_DEFINE_CLASS_NAME(PIVOTLI)
 public:
-	PIVOTLI();
+	PIVOTLI(int count_lines_);
 	~PIVOTLI();
 
 	BaseObjectPtr clone();
 
 	virtual const bool loadContent(BinProcessor& proc);
 
-	static const ElementType	type = typePIVOTLI;
+	int serialize(std::wostream & strm);
+
+	static const ElementType type = typePIVOTLI;
+	
+	BaseObjectPtr m_SXLI;
+
+	int count_lines;
 };
 
 } // namespace XLS

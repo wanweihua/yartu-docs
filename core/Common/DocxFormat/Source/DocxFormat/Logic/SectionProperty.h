@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -227,10 +227,9 @@ namespace ComplexTypes
 
 			void ReadAttributes(XmlUtils::CXmlLiteReader& oReader)
 			{
-				// Читаем атрибуты
 				WritingElement_ReadAttributes_Start( oReader )
-				WritingElement_ReadAttributes_Read_if     ( oReader, (L"r:id"),   m_oId )
-				WritingElement_ReadAttributes_Read_else_if( oReader, (L"w:type"), m_oType )
+					WritingElement_ReadAttributes_Read_if     ( oReader, (L"r:id"),   m_oId )
+					WritingElement_ReadAttributes_Read_else_if( oReader, (L"w:type"), m_oType )
 				WritingElement_ReadAttributes_End( oReader )
 			}
 
@@ -1716,7 +1715,7 @@ namespace OOX
 			{
 				ClearItems();
 			}
-			void ClearItems()
+			virtual void ClearItems()
 			{
 				for ( unsigned int nIndex = 0; nIndex < m_arrFooterReference.size(); nIndex++ )
 				{

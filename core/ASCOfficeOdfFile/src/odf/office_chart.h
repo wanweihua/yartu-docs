@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -60,7 +60,10 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    office_element_ptr_array content_;
+	office_element_ptr			tracked_changes_;
+	office_element_ptr			content_validations_;
+    
+	office_element_ptr_array	content_;
 
 };
 
@@ -72,7 +75,6 @@ class common_chart_attlist
 public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
-public:
     _CP_OPT(std::wstring)		chart_style_name_;
 };
 
@@ -82,12 +84,12 @@ class chart_chart_attlist
 public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
-public:
     odf_types::common_draw_size_attlist	common_draw_size_attlist_;
     common_chart_attlist				common_attlist_;
     std::wstring						chart_class_;
     _CP_OPT(std::wstring)				chart_column_mapping_;
     _CP_OPT(std::wstring)				chart_row_mapping_;
+	_CP_OPT(std::wstring)				loext_data_pilot_source_;
 };
 
 //  chart:chart
@@ -105,8 +107,12 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_chart_attlist chart_chart_attlist_;
-	office_element_ptr_array content_;
+    chart_chart_attlist			attlist_;
+	
+	office_element_ptr			tracked_changes_;
+	office_element_ptr			content_validations_;
+	
+	office_element_ptr_array	content_;
 };
 
 CP_REGISTER_OFFICE_ELEMENT2(chart_chart);
@@ -117,7 +123,6 @@ class chart_title_attlist
 public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
-public:
     _CP_OPT(std::wstring)					table_cell_range_;
     odf_types::common_draw_position_attlist common_draw_position_attlist_;
     common_chart_attlist					common_attlist_;
@@ -139,7 +144,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_title_attlist chart_title_attlist_;
+    chart_title_attlist attlist_;
     office_element_ptr	text_p_;
 };
 
@@ -160,8 +165,8 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_title_attlist chart_title_attlist_;
-    office_element_ptr text_p_;
+    chart_title_attlist	attlist_;
+    office_element_ptr	text_p_;
 
 };
 
@@ -183,7 +188,7 @@ private:
 
 public:
     common_chart_attlist		common_attlist_;
-	office_element_ptr text_p_;
+	office_element_ptr			text_p_;
 
 };
 
@@ -194,13 +199,13 @@ class chart_legend_attlist
 public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
-public:
-    _CP_OPT(std::wstring) chart_legend_position_;
-    _CP_OPT(std::wstring) chart_legend_align_;
-    odf_types::common_draw_position_attlist common_draw_position_attlist_;
-    _CP_OPT(std::wstring) style_legend_expansion_;
-    _CP_OPT(double) style_legend_expansion_aspect_ratio_;
-    common_chart_attlist		common_attlist_;
+    _CP_OPT(std::wstring)		chart_legend_position_;
+    _CP_OPT(std::wstring)		chart_legend_align_;
+    _CP_OPT(std::wstring)		style_legend_expansion_;
+    _CP_OPT(double)				style_legend_expansion_aspect_ratio_;
+	
+	odf_types::common_draw_position_attlist		common_draw_position_attlist_;
+	common_chart_attlist						common_attlist_;
 
 };
 
@@ -219,7 +224,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_legend_attlist chart_legend_attlist_;
+    chart_legend_attlist attlist_;
 
 };
 
@@ -234,7 +239,7 @@ public:
 public:
     odf_types::common_draw_position_attlist common_draw_position_attlist_;
     odf_types::common_draw_size_attlist		common_draw_size_attlist_;
-    common_chart_attlist			common_attlist_;
+    common_chart_attlist					common_attlist_;
     
 	_CP_OPT(std::wstring) table_cell_range_address_;
     _CP_OPT(std::wstring) chart_data_source_has_labels_;
@@ -257,9 +262,8 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_plot_area_attlist chart_plot_area_attlist_;
-
-	office_element_ptr_array content_;
+    chart_plot_area_attlist		attlist_;
+	office_element_ptr_array	content_;
 };
 
 CP_REGISTER_OFFICE_ELEMENT2(chart_plot_area);
@@ -270,7 +274,7 @@ public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
 public:
-    _CP_OPT(odf_types::length)				svg_width_;
+    _CP_OPT(odf_types::length)	svg_width_;
     common_chart_attlist		common_attlist_;
 
 };
@@ -289,7 +293,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_wall_attlist	chart_wall_attlist_;
+    chart_wall_attlist	attlist_;
 
 };
 CP_REGISTER_OFFICE_ELEMENT2(chart_wall);
@@ -310,7 +314,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    common_chart_attlist		common_attlist_;
+    common_chart_attlist	common_attlist_;
 
 };
 
@@ -322,8 +326,8 @@ public:
     void add_attributes( const xml::attributes_wc_ptr & Attributes );
 
 public:
-    _CP_OPT(std::wstring) chart_dimension_;
-    _CP_OPT(std::wstring) chart_name_;
+    _CP_OPT(std::wstring)		chart_dimension_;
+    _CP_OPT(std::wstring)		chart_name_;
     common_chart_attlist		common_attlist_;
 };
 
@@ -342,9 +346,8 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_axis_attlist chart_axis_attlist_;
-
-    office_element_ptr_array content_; 
+    chart_axis_attlist			attlist_;
+    office_element_ptr_array	content_; 
 
 };
 
@@ -376,7 +379,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_grid_attlist chart_grid_attlist_;
+    chart_grid_attlist attlist_;
 
 };
 
@@ -432,9 +435,8 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_series_attlist chart_series_attlist_;
-
-	office_element_ptr_array content_;
+    chart_series_attlist		attlist_;
+	office_element_ptr_array	content_;
 
 };
 
@@ -486,7 +488,7 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    chart_data_point_attlist chart_data_point_attlist_;
+    chart_data_point_attlist attlist_;
 
 };
 
@@ -550,8 +552,8 @@ private:
     virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
 
 public:
-    common_chart_attlist		common_attlist_;
-	_CP_OPT(bool) display_r_square_;
+    common_chart_attlist	common_attlist_;
+	_CP_OPT(bool)			display_r_square_;
 
 };
 

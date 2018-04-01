@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -159,6 +159,12 @@ public:
 	SHORT        m_shLineGap;        // Межсимвольный интервал
 	SHORT        m_shXHeight;        // Высота буквы 'x' (в нижнем регистре)
 	SHORT        m_shCapHeight;      // Высота буквы 'H' (в верхнем регистре)
+
+#ifdef BUILD_FONT_NAMES_DICTIONARY
+	std::vector<std::wstring> names;
+
+	void ReadNames(FT_Face pFace);
+#endif
 };
 
 namespace NSCharsets
@@ -280,6 +286,26 @@ public:
 #endif
 
 	CFontManager* GenerateFontManager();
+};
+
+class CApplicationFontsSymbolsChecker
+{
+public:
+	virtual void Check(const int& nCode, const unsigned int& nIndex) = 0;
+};
+
+class CApplicationFontsSymbols_Private;
+class CApplicationFontsSymbols
+{
+private:
+	CApplicationFontsSymbols_Private* m_internal;
+
+public:
+	CApplicationFontsSymbols();
+	~CApplicationFontsSymbols();
+
+public:
+	void CheckSymbols(const std::wstring& sFile, const int& nFaceIndex, CApplicationFontsSymbolsChecker* pChecker);
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -64,7 +64,7 @@ StartAddNewShape.prototype =
     onMouseDown: function(e, x, y)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         this.startX = x;
         this.startY = y;
         this.drawingObjects.arrPreTrackObjects.length = 0;
@@ -639,7 +639,7 @@ RotateState.prototype =
                     aCopies.push(copy);
 
                     tracks[i].originalObject = copy;
-                    tracks[i].trackEnd(false, false);
+                    tracks[i].trackEnd(false, true);
                     this.drawingObjects.selectObject(copy, 0);
                     if(!(this.drawingObjects.drawingObjects && this.drawingObjects.drawingObjects.cSld))
                     {
@@ -655,77 +655,36 @@ RotateState.prototype =
             }
             else
             {
-                this.drawingObjects.checkSelectedObjectsAndCallback(
-                    function()
-                    {
-                        var i, j;
-                        if(e.CtrlKey && oThis instanceof MoveInGroupState)
+                var i, j;
+                if(e.CtrlKey && oThis instanceof MoveInGroupState)
+                {
+                    this.drawingObjects.checkSelectedObjectsAndCallback(function(){
+                        var oIdMap = {};
+                        var aCopies = [];
+                        group.resetSelection();
+                        for(i = 0; i < tracks.length; ++i)
                         {
+                            if(tracks[i].originalObject.getObjectType() === AscDFH.historyitem_type_GroupShape){
 
-                            var oIdMap = {};
-                            var aCopies = [];
-                            group.resetSelection();
-                            for(i = 0; i < tracks.length; ++i)
+                                copy = tracks[i].originalObject.copy(oIdMap);
+                            }
+                            else{
+
+                                copy = tracks[i].originalObject.copy();
+                            }
+                            aCopies.push(copy);
+                            oThis.drawingObjects.drawingObjects.getWorksheetModel && copy.setWorksheet(oThis.drawingObjects.drawingObjects.getWorksheetModel());
+                            if(oThis.drawingObjects.drawingObjects && oThis.drawingObjects.drawingObjects.cSld)
                             {
-                                if(tracks[i].originalObject.getObjectType() === AscDFH.historyitem_type_GroupShape){
-
-                                    copy = tracks[i].originalObject.copy(oIdMap);
-                                }
-                                else{
-
-                                    copy = tracks[i].originalObject.copy();
-                                }
-                                aCopies.push(copy);
-                                oThis.drawingObjects.drawingObjects.getWorksheetModel && copy.setWorksheet(oThis.drawingObjects.drawingObjects.getWorksheetModel());
-                                if(oThis.drawingObjects.drawingObjects && oThis.drawingObjects.drawingObjects.cSld)
-                                {
-                                    copy.setParent2(oThis.drawingObjects.drawingObjects);
-                                }
-                                copy.setGroup(tracks[i].originalObject.group);
-                                copy.group.addToSpTree(copy.group.length, copy);
-                                tracks[i].originalObject = copy;
-                                tracks[i].trackEnd(false);
-                                group.selectObject(copy, 0);
+                                copy.setParent2(oThis.drawingObjects.drawingObjects);
                             }
-                            AscFormat.fResetConnectorsIds(aCopies, oIdMap);
+                            copy.setGroup(tracks[i].originalObject.group);
+                            copy.group.addToSpTree(copy.group.length, copy);
+                            tracks[i].originalObject = copy;
+                            tracks[i].trackEnd(false);
+                            group.selectObject(copy, 0);
                         }
-                        else
-                        {
-                            var oOriginalObjects = [];
-                            var oMapOriginalsId = {};
-                            for(i = 0; i < tracks.length; ++i)
-                            {
-                                tracks[i].trackEnd(false, ((oThis instanceof MoveInGroupState) || (oThis instanceof MoveState)));
-                                if(tracks[i].originalObject && !tracks[i].processor3D){
-                                    oOriginalObjects.push(tracks[i].originalObject);
-                                    oMapOriginalsId[tracks[i].originalObject.Get_Id()] = true;
-                                    if(Array.isArray(tracks[i].originalObject.arrGraphicObjects)){
-                                        for(j = 0; j < tracks[i].originalObject.arrGraphicObjects.length; ++j){
-                                            oMapOriginalsId[tracks[i].originalObject.arrGraphicObjects[j].Get_Id()] = true;
-                                        }
-                                    }
-                                }
-                            }
-                            var aAllConnectors = drawingObjects.getAllConnectorsByDrawings(oOriginalObjects, [],  undefined, true);
-                            var oGroupMaps = {};
-                            for(i = 0; i < aAllConnectors.length; ++i){
-
-                                var stSp = AscCommon.g_oTableId.Get_ById(aAllConnectors[i].getStCxnId());
-                                var endSp = AscCommon.g_oTableId.Get_ById(aAllConnectors[i].getEndCxnId());
-                                if((stSp && !oMapOriginalsId[stSp.Get_Id()]) || (endSp && !oMapOriginalsId[endSp.Get_Id()]) || !oMapOriginalsId[aAllConnectors[i].Get_Id()]){
-                                    aAllConnectors[i].calculateTransform(((oThis instanceof MoveInGroupState) || (oThis instanceof MoveState)));
-                                    var oGroup = aAllConnectors[i].getMainGroup();
-                                    if(oGroup){
-                                        oGroupMaps[oGroup.Id] = oGroup;
-                                    }
-                                }
-                            }
-                            for(var key in oGroupMaps){
-                                if(oGroupMaps.hasOwnProperty(key)){
-                                    oGroupMaps[key].updateCoordinatesAfterInternalResize();
-                                }
-                            }
-                        }
+                        AscFormat.fResetConnectorsIds(aCopies, oIdMap);
                         if(group)
                         {
                             group.updateCoordinatesAfterInternalResize();
@@ -778,7 +737,138 @@ RotateState.prototype =
                             }
                             oThis.drawingObjects.drawingObjects.checkGraphicObjectPosition(0, 0, Math.max.apply(Math, arr_x2), Math.max.apply(Math, arr_y2));
                         }
-                    }, [], false, AscDFH.historydescription_CommonDrawings_EndTrack);
+                    }, [], false, AscDFH.historydescription_CommonDrawings_EndTrack)
+                }
+                else{
+                    var oOriginalObjects = [];
+                    var oMapOriginalsId = {};
+                    var oMapAdditionalForCheck = {};
+                    for(i = 0; i < tracks.length; ++i)
+                    {
+                        if(tracks[i].originalObject && !tracks[i].processor3D){
+                            oOriginalObjects.push(tracks[i].originalObject);
+                            oMapOriginalsId[tracks[i].originalObject.Get_Id()] = true;
+                            var oGroup = tracks[i].originalObject.getMainGroup();
+                            if(oGroup){
+                                if(!oGroup.selected){
+                                    oMapAdditionalForCheck[oGroup.Get_Id()] = oGroup;
+                                }
+                            }
+                            else{
+                                if(!tracks[i].originalObject.selected){
+                                    oMapAdditionalForCheck[tracks[i].originalObject.Get_Id()] = tracks[i].originalObject;
+                                }
+                            }
+
+                            if(Array.isArray(tracks[i].originalObject.arrGraphicObjects)){
+                                for(j = 0; j < tracks[i].originalObject.arrGraphicObjects.length; ++j){
+                                    oMapOriginalsId[tracks[i].originalObject.arrGraphicObjects[j].Get_Id()] = true;
+                                }
+                            }
+                        }
+                    }
+                    var aAllConnectors = drawingObjects.getAllConnectorsByDrawings(oOriginalObjects, [],  undefined, true);
+                    var bFlag = ((oThis instanceof MoveInGroupState) || (oThis instanceof MoveState));
+                    var aConnectors = [];
+                    for(i = 0; i < aAllConnectors.length; ++i){
+
+                        var stSp = AscCommon.g_oTableId.Get_ById(aAllConnectors[i].getStCxnId());
+                        var endSp = AscCommon.g_oTableId.Get_ById(aAllConnectors[i].getEndCxnId());
+                        if((stSp && !oMapOriginalsId[stSp.Get_Id()]) || (endSp && !oMapOriginalsId[endSp.Get_Id()]) || !oMapOriginalsId[aAllConnectors[i].Get_Id()]){
+                            var oGroup = aAllConnectors[i].getMainGroup();
+                            aConnectors.push(aAllConnectors[i]);
+                            if(oGroup){
+                                oMapAdditionalForCheck[oGroup.Id] = oGroup;
+                            }
+                            else{
+                                oMapAdditionalForCheck[aAllConnectors[i].Get_Id()] = aAllConnectors[i];
+                            }
+                        }
+                    }
+                    var aAdditionalForCheck = [];
+                    for(i in oMapAdditionalForCheck){
+                        if(oMapAdditionalForCheck.hasOwnProperty(i)){
+                            if(!oMapAdditionalForCheck[i].selected){
+                                aAdditionalForCheck.push(oMapAdditionalForCheck[i]);
+                            }
+                        }
+                    }
+                    this.drawingObjects.checkSelectedObjectsAndCallback(
+                        function () {
+
+                            for(i = 0; i < tracks.length; ++i){
+                                tracks[i].trackEnd(false, bFlag);
+                            }
+                            var oGroupMaps = {};
+                            for(i = 0; i < aConnectors.length; ++i){
+                                aConnectors[i].calculateTransform(bFlag);
+                                var oGroup = aConnectors[i].getMainGroup();
+                                if(oGroup){
+                                    oGroupMaps[oGroup.Id] = oGroup;
+                                }
+                            }
+                            for(var key in oGroupMaps){
+                                if(oGroupMaps.hasOwnProperty(key)){
+                                    oGroupMaps[key].updateCoordinatesAfterInternalResize();
+                                }
+                            }
+                            if(group)
+                            {
+                                group.updateCoordinatesAfterInternalResize();
+                            }
+                            if(!oThis.drawingObjects.drawingObjects || !oThis.drawingObjects.drawingObjects.cSld)
+                            {
+                                var min_x, min_y, drawing, arr_x2 = [], arr_y2 = [], oTransform;
+                                for(i = 0; i < oThis.drawingObjects.selectedObjects.length; ++i)
+                                {
+                                    drawing = oThis.drawingObjects.selectedObjects[i];
+                                    var rot = AscFormat.isRealNumber(drawing.spPr.xfrm.rot) ? drawing.spPr.xfrm.rot : 0;
+                                    rot = AscFormat.normalizeRotate(rot);
+                                    arr_x2.push(drawing.spPr.xfrm.offX);
+                                    arr_y2.push(drawing.spPr.xfrm.offY);
+                                    arr_x2.push(drawing.spPr.xfrm.offX + drawing.spPr.xfrm.extX);
+                                    arr_y2.push(drawing.spPr.xfrm.offY + drawing.spPr.xfrm.extY);
+                                    if (AscFormat.checkNormalRotate(rot))
+                                    {
+                                        min_x = drawing.spPr.xfrm.offX;
+                                        min_y = drawing.spPr.xfrm.offY;
+                                    }
+                                    else
+                                    {
+                                        min_x = drawing.spPr.xfrm.offX + drawing.spPr.xfrm.extX/2 - drawing.spPr.xfrm.extY/2;
+                                        min_y = drawing.spPr.xfrm.offY + drawing.spPr.xfrm.extY/2 - drawing.spPr.xfrm.extX/2;
+                                        arr_x2.push(min_x);
+                                        arr_y2.push(min_y);
+                                        arr_x2.push(min_x + drawing.spPr.xfrm.extY);
+                                        arr_y2.push(min_y + drawing.spPr.xfrm.extX);
+                                    }
+                                    if(min_x < 0)
+                                    {
+                                        drawing.spPr.xfrm.setOffX(drawing.spPr.xfrm.offX - min_x);
+                                    }
+                                    if(min_y < 0)
+                                    {
+                                        drawing.spPr.xfrm.setOffY(drawing.spPr.xfrm.offY - min_y);
+                                    }
+                                    drawing.checkDrawingBaseCoords();
+                                    drawing.recalculateTransform();
+                                    oTransform = drawing.transform;
+                                    arr_x2.push(oTransform.TransformPointX(0, 0));
+                                    arr_y2.push(oTransform.TransformPointY(0, 0));
+                                    arr_x2.push(oTransform.TransformPointX(drawing.extX, 0));
+                                    arr_y2.push(oTransform.TransformPointY(drawing.extX, 0));
+                                    arr_x2.push(oTransform.TransformPointX(drawing.extX, drawing.extY));
+                                    arr_y2.push(oTransform.TransformPointY(drawing.extX, drawing.extY));
+                                    arr_x2.push(oTransform.TransformPointX(0, drawing.extY));
+                                    arr_y2.push(oTransform.TransformPointY(0, drawing.extY));
+                                }
+                                oThis.drawingObjects.drawingObjects.checkGraphicObjectPosition(0, 0, Math.max.apply(Math, arr_x2), Math.max.apply(Math, arr_y2));
+                            }
+
+
+                        }, [], false, AscDFH.historydescription_CommonDrawings_EndTrack, aAdditionalForCheck
+                    );
+                }
             }
 
         }
@@ -881,6 +971,9 @@ PreMoveState.prototype =
         {
             return {objectId: this.majorObject.Get_Id(), cursorType: "move", bMarker: true};
         }
+        else{
+            this.onMouseUp(e, x, y, pageIndex);
+        }
     },
 
     onMouseMove: function(e, x, y, pageIndex)
@@ -981,25 +1074,53 @@ MoveState.prototype =
         var start_arr = this.drawingObjects.getAllObjectsOnPage(0);
         var min_dx = null, min_dy = null;
         var dx, dy;
-        var snap_x = null, snap_y = null;
+        var snap_x = [], snap_y = [];
 
         var snapHorArray = [], snapVerArray = [];
-        if(result_x === this.startX)
+
+
+        //-------------------------------------------------
+        for(var track_index = 0; track_index < _arr_track_objects.length; ++track_index)
         {
-            min_dx = 0;
-        }
-        else
-        {
-            for(var track_index = 0; track_index < _arr_track_objects.length; ++track_index)
+            var cur_track_original_shape = _arr_track_objects[track_index].originalObject;
+            var trackSnapArrayX = cur_track_original_shape.snapArrayX;
+            var curDX =  result_x - startPos.x;
+
+
+            for(snap_index = 0; snap_index < trackSnapArrayX.length; ++snap_index)
             {
-                var cur_track_original_shape = _arr_track_objects[track_index].originalObject;
-                var trackSnapArrayX = cur_track_original_shape.snapArrayX;
-                var curDX =  result_x - startPos.x;
-
-
-                for(snap_index = 0; snap_index < trackSnapArrayX.length; ++snap_index)
+                var snap_obj = AscFormat.GetMinSnapDistanceXObjectByArrays(trackSnapArrayX[snap_index] + curDX, snapHorArray);
+                if(isRealObject(snap_obj))
                 {
-                    var snap_obj = AscFormat.GetMinSnapDistanceXObjectByArrays(trackSnapArrayX[snap_index] + curDX, snapHorArray);
+                    dx = snap_obj.dist;
+                    if(dx !== null)
+                    {
+                        if(min_dx === null)
+                        {
+                            min_dx = dx;
+                            snap_x.push(snap_obj.pos);
+                        }
+                        else
+                        {
+                            if(AscFormat.fApproxEqual(min_dx, dx, 0.01)){
+                                snap_x.push(snap_obj.pos);
+                            }
+                            else if(Math.abs(min_dx) > Math.abs(dx))
+                            {
+                                min_dx = dx;
+                                snap_x.length = 0;
+                                snap_x.push(snap_obj.pos);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(start_arr.length > 0)
+            {
+                for(var snap_index = 0; snap_index < trackSnapArrayX.length; ++snap_index)
+                {
+                    var snap_obj = AscFormat.GetMinSnapDistanceXObject(trackSnapArrayX[snap_index] + curDX, start_arr);
                     if(isRealObject(snap_obj))
                     {
                         dx = snap_obj.dist;
@@ -1008,42 +1129,18 @@ MoveState.prototype =
                             if(min_dx === null)
                             {
                                 min_dx = dx;
-                                snap_x = snap_obj.pos;
+                                snap_x.push(snap_obj.pos);
                             }
                             else
                             {
-                                if(Math.abs(min_dx) > Math.abs(dx))
+                                if(AscFormat.fApproxEqual(min_dx, dx, 0.01)){
+                                    snap_x.push(snap_obj.pos);
+                                }
+                                else if(Math.abs(min_dx) > Math.abs(dx))
                                 {
                                     min_dx = dx;
-                                    snap_x = snap_obj.pos;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if(start_arr.length > 0)
-                {
-                    for(var snap_index = 0; snap_index < trackSnapArrayX.length; ++snap_index)
-                    {
-                        var snap_obj = AscFormat.GetMinSnapDistanceXObject(trackSnapArrayX[snap_index] + curDX, start_arr);
-                        if(isRealObject(snap_obj))
-                        {
-                            dx = snap_obj.dist;
-                            if(dx !== null)
-                            {
-                                if(min_dx === null)
-                                {
-                                    snap_x = snap_obj.pos;
-                                    min_dx = dx;
-                                }
-                                else
-                                {
-                                    if(Math.abs(min_dx) > Math.abs(dx))
-                                    {
-                                        min_dx = dx;
-                                        snap_x = snap_obj.pos;
-                                    }
+                                    snap_x.length = 0;
+                                    snap_x.push(snap_obj.pos);
                                 }
                             }
                         }
@@ -1051,23 +1148,53 @@ MoveState.prototype =
                 }
             }
         }
-
-        if(result_y === this.startY)
+        if(result_x === this.startX)
         {
-            min_dy = 0;
+            min_dx = 0;
         }
-        else
+
+        //-----------------------------
+        for(track_index = 0; track_index < _arr_track_objects.length; ++track_index)
         {
-            for(track_index = 0; track_index < _arr_track_objects.length; ++track_index)
+            cur_track_original_shape = _arr_track_objects[track_index].originalObject;
+            var trackSnapArrayY = cur_track_original_shape.snapArrayY;
+            var curDY =  result_y - startPos.y;
+
+
+            for(snap_index = 0; snap_index < trackSnapArrayY.length; ++snap_index)
             {
-                cur_track_original_shape = _arr_track_objects[track_index].originalObject;
-                var trackSnapArrayY = cur_track_original_shape.snapArrayY;
-                var curDY =  result_y - startPos.y;
+                var snap_obj = AscFormat.GetMinSnapDistanceYObjectByArrays(trackSnapArrayY[snap_index] + curDY, snapVerArray);
+                if(isRealObject(snap_obj))
+                {
+                    dy = snap_obj.dist;
+                    if(dy !== null)
+                    {
+                        if(min_dy === null)
+                        {
+                            min_dy = dy;
+                            snap_y.push(snap_obj.pos);
+                        }
+                        else
+                        {
+                            if(AscFormat.fApproxEqual(min_dy, dy, 0.01)){
+                                snap_y.push(snap_obj.pos);
+                            }
+                            else if(Math.abs(min_dy) > Math.abs(dy))
+                            {
+                                min_dy = dy;
+                                snap_y.length = 0;
+                                snap_y.push(snap_obj.pos);
+                            }
+                        }
+                    }
+                }
+            }
 
-
+            if(start_arr.length > 0)
+            {
                 for(snap_index = 0; snap_index < trackSnapArrayY.length; ++snap_index)
                 {
-                    var snap_obj = AscFormat.GetMinSnapDistanceYObjectByArrays(trackSnapArrayY[snap_index] + curDY, snapVerArray);
+                    var snap_obj = AscFormat.GetMinSnapDistanceYObject(trackSnapArrayY[snap_index] + curDY, start_arr);
                     if(isRealObject(snap_obj))
                     {
                         dy = snap_obj.dist;
@@ -1076,42 +1203,18 @@ MoveState.prototype =
                             if(min_dy === null)
                             {
                                 min_dy = dy;
-                                snap_y = snap_obj.pos;
+                                snap_y.push(snap_obj.pos);
                             }
                             else
                             {
-                                if(Math.abs(min_dy) > Math.abs(dy))
+                                if(AscFormat.fApproxEqual(min_dy, dy, 0.01)){
+                                    snap_y.push(snap_obj.pos);
+                                }
+                                else if(Math.abs(min_dy) > Math.abs(dy))
                                 {
                                     min_dy = dy;
-                                    snap_y = snap_obj.pos;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if(start_arr.length > 0)
-                {
-                    for(snap_index = 0; snap_index < trackSnapArrayY.length; ++snap_index)
-                    {
-                        var snap_obj = AscFormat.GetMinSnapDistanceYObject(trackSnapArrayY[snap_index] + curDY, start_arr);
-                        if(isRealObject(snap_obj))
-                        {
-                            dy = snap_obj.dist;
-                            if(dy !== null)
-                            {
-                                if(min_dy === null)
-                                {
-                                    min_dy = dy;
-                                    snap_y = snap_obj.pos;
-                                }
-                                else
-                                {
-                                    if(Math.abs(min_dy) > Math.abs(dy))
-                                    {
-                                        min_dy = dy;
-                                        snap_y = snap_obj.pos;
-                                    }
+                                    snap_y.length = 0;
+                                    snap_y.push(snap_obj.pos);
                                 }
                             }
                         }
@@ -1119,15 +1222,21 @@ MoveState.prototype =
                 }
             }
         }
-
+        if(result_y === this.startY)
+        {
+            min_dy = 0;
+        }
 
         if(min_dx === null || Math.abs(min_dx) > SNAP_DISTANCE)
             min_dx = 0;
         else
         {
-            if(AscFormat.isRealNumber(snap_x) && this.drawingObjects.drawingObjects.cSld)
+            if(this.drawingObjects.drawingObjects.cSld)
             {
-                this.drawingObjects.getDrawingDocument().DrawVerAnchor(pageIndex, snap_x);
+                for(var i = 0; i < snap_x.length; ++i){
+                    this.drawingObjects.getDrawingDocument().DrawVerAnchor(pageIndex, snap_x[i]);
+                }
+
             }
         }
 
@@ -1135,9 +1244,11 @@ MoveState.prototype =
             min_dy = 0;
         else
         {
-            if(AscFormat.isRealNumber(snap_y) && this.drawingObjects.drawingObjects.cSld)
+            if(this.drawingObjects.drawingObjects.cSld)
             {
-                this.drawingObjects.getDrawingDocument().DrawHorAnchor(pageIndex, snap_y);
+                for(var i = 0; i < snap_y.length; ++i){
+                    this.drawingObjects.getDrawingDocument().DrawHorAnchor(pageIndex, snap_y[i]);
+                }
             }
         }
 
@@ -1185,6 +1296,15 @@ PreMoveInGroupState.prototype =
 
     onMouseUp: function(e, x, y, pageIndex)
     {
+        if(e.CtrlKey && this.majorObjectIsSelected)
+        {
+            this.group.deselectObject(this.majorObject);
+            if(this.group.selectedObjects.length === 0){
+                this.drawingObjects.resetInternalSelection();
+            }
+            this.drawingObjects.drawingObjects && this.drawingObjects.drawingObjects.sendGraphicObjectProps && this.drawingObjects.drawingObjects.sendGraphicObjectProps();
+            this.drawingObjects.updateOverlay();
+        }
         this.drawingObjects.clearPreTrackObjects();
         this.drawingObjects.changeCurrentState(new NullState(this.drawingObjects));
     }
@@ -1458,7 +1578,7 @@ SplineBezierState.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         this.drawingObjects.startTrackPos = {x: x, y: y, pageIndex: pageIndex};
         this.drawingObjects.clearTrackObjects();
         this.drawingObjects.addTrackObject(new AscFormat.Spline(this.drawingObjects, this.drawingObjects.getTheme(), null, null, null, pageIndex));
@@ -1503,7 +1623,7 @@ SplineBezierState33.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
     },
 
     onMouseMove: function(e, x, y, pageIndex)
@@ -1547,7 +1667,7 @@ SplineBezierState2.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         if(e.ClickCount >= 2)
         {
             this.bStart = true;
@@ -1620,7 +1740,7 @@ SplineBezierState3.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         if(e.ClickCount >= 2)
         {
             this.bStart = true;
@@ -1718,7 +1838,7 @@ SplineBezierState4.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         if(e.ClickCount >= 2)
         {
             this.bStart = true;
@@ -1840,7 +1960,7 @@ SplineBezierState5.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         if(e.ClickCount >= 2)
         {
             this.bStart = true;
@@ -1942,7 +2062,7 @@ PolyLineAddState.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         this.drawingObjects.startTrackPos = {x: x, y: y, pageIndex:pageIndex};
         this.drawingObjects.clearTrackObjects();
         this.drawingObjects.addTrackObject(new AscFormat.PolyLine(this.drawingObjects, this.drawingObjects.getTheme(), null, null, null, pageIndex));
@@ -1986,7 +2106,7 @@ PolyLineAddState2.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
     },
 
     onMouseMove: function(e, x, y, pageIndex)
@@ -2055,7 +2175,7 @@ AddPolyLine2State.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         this.drawingObjects.startTrackPos = {x: x, y: y, pageIndex : pageIndex};
         this.drawingObjects.checkChartTextSelection();
         this.drawingObjects.resetSelection();
@@ -2088,7 +2208,7 @@ AddPolyLine2State2.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         if(e.ClickCount > 1)
         {
             if(Asc["editor"])
@@ -2142,7 +2262,7 @@ AddPolyLine2State3.prototype =
     onMouseDown: function(e, x, y, pageIndex)
     {
         if(this.drawingObjects.handleEventMode === HANDLE_EVENT_MODE_CURSOR)
-            return {objectId: "1", bMarker: true};
+            return {objectId: "1", bMarker: true, cursorType: "crosshair"};
         var tr_x, tr_y;
         if(pageIndex === this.drawingObjects.startTrackPos.pageIndex)
         {
@@ -2240,4 +2360,5 @@ AddPolyLine2State3.prototype =
     window['AscFormat'].SplineBezierState = SplineBezierState;
     window['AscFormat'].PolyLineAddState = PolyLineAddState;
     window['AscFormat'].AddPolyLine2State = AddPolyLine2State;
+    window['AscFormat'].checkEmptyPlaceholderContent = checkEmptyPlaceholderContent;
 })(window);

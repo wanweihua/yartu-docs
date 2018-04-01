@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,24 +31,22 @@
  */
 
 #include "DBQUERYEXT.h"
-#include <Logic/Biff_records/DBQueryExt.h>
-#include <Logic/Biff_records/ExtString.h>
-#include <Logic/Biff_records/OleDbConn.h>
-#include <Logic/Biff_records/TxtQry.h>
+
+#include "../Biff_records/DBQueryExt.h"
+#include "../Biff_records/ExtString.h"
+#include "../Biff_records/OleDbConn.h"
+#include "../Biff_records/TxtQry.h"
 
 namespace XLS
 {
-
 
 DBQUERYEXT::DBQUERYEXT()
 {
 }
 
-
 DBQUERYEXT::~DBQUERYEXT()
 {
 }
-
 
 class Parenthesis_DBQUERYEXT_1: public ABNFParenthesis
 {
@@ -84,11 +82,43 @@ const bool DBQUERYEXT::loadContent(BinProcessor& proc)
 	{
 		return false;
 	}
-	proc.optional<ExtString>();
-	proc.repeated<Parenthesis_DBQUERYEXT_1>(0, 4);
+	m_DBQueryExt = elements_.back();
+	elements_.pop_back();
+
+	if (proc.optional<ExtString>())
+	{
+		m_ExtString = elements_.back();
+		elements_.pop_back();
+	}
+	int count = proc.repeated<Parenthesis_DBQUERYEXT_1>(0, 4);
+
+	while(!elements_.empty())
+	{
+		if (elements_.front()->get_type() == typeOleDbConn)
+		{
+			_oleDbConn conn; 
+			m_arOleDbConn.push_back(conn);
+
+			m_arOleDbConn.back().oleDbConn = elements_.front();
+		}
+		else
+		{
+			m_arOleDbConn.back().arExtString.push_back(elements_.front());
+		}
+		elements_.pop_front();
+	}	
 	if(proc.optional<TxtQry>())
 	{
-		proc.repeated<ExtString>(0, 0);
+		m_TxtQry = elements_.back();
+		elements_.pop_back();
+
+		int count = proc.repeated<ExtString>(0, 0);
+
+		while(count--)
+		{
+			m_arExtString.insert(m_arExtString.begin(), elements_.back());
+			elements_.pop_back();
+		}
 	}
 
 	return true;

@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -63,9 +63,17 @@ namespace DocFileFormat
 {
 	long Converter::Convert(WordDocument* doc, WordprocessingDocument* docx, const ProgressCallback* progress)
 	{
+		if (!doc || !docx) return S_FALSE;
+		
 		ConversionContext context( doc, docx );
 
-		//Write styles.xml
+	//Write fontTable.xml
+		if (doc->FontTable)
+		{
+			FontTableMapping fontTableMapping( &context );
+			doc->FontTable->Convert( &fontTableMapping );
+		}
+	//Write styles.xml
 		if (doc->Styles)
 		{
 			StyleSheetMapping styleSheetMapping( &context );
@@ -88,9 +96,7 @@ namespace DocFileFormat
 				return S_FALSE;
 			}
 		}
-
-
-		//Write numbering.xml
+	//Write numbering.xml
 		if (doc->listTable)
 		{
 			NumberingMapping numberingMapping( &context );
@@ -109,14 +115,6 @@ namespace DocFileFormat
 				return S_FALSE;
 			}
 		}
-
-		//Write fontTable.xml
-		if (doc->FontTable)
-		{
-			FontTableMapping fontTableMapping( &context );
-			doc->FontTable->Convert( &fontTableMapping );
-		}
-
 		if ( progress != NULL )
 		{
 			progress->OnProgress( progress->caller, DOC_ONPROGRESSEVENT_ID, 875000 );
@@ -130,7 +128,7 @@ namespace DocFileFormat
 			}
 		}
 
-		//write the footnotes
+	//write the footnotes
 		FootnotesMapping footnotesMapping( &context );
 		doc->Convert( &footnotesMapping );
 
@@ -147,7 +145,7 @@ namespace DocFileFormat
 			}
 		}
 
-		//write the endnotes
+	//write the endnotes
 		EndnotesMapping endnotesMapping( &context );
 		doc->Convert( &endnotesMapping );
 
@@ -164,7 +162,7 @@ namespace DocFileFormat
 			}
 		}
 
-		//write the comments
+	//write the comments
 		CommentsMapping commentsMapping( &context );
 		doc->Convert( &commentsMapping );
 
@@ -181,13 +179,13 @@ namespace DocFileFormat
 			}
 		}
 
-		//write settings.xml at last because of the rsid list
+	//write settings.xml at last because of the rsid list
 		if (doc->DocProperties)
 		{
 			SettingsMapping settingsMapping( &context );
 			doc->DocProperties->Convert( &settingsMapping );
 		}
-
+		
 		if ( progress != NULL )
 		{
 			progress->OnProgress( progress->caller, DOC_ONPROGRESSEVENT_ID, 975000 );
@@ -204,7 +202,7 @@ namespace DocFileFormat
 		return S_OK;
 	}
 
-	long Converter::LoadAndConvert(const std::wstring& strSrcFile, const std::wstring& strDstDirectory, const std::wstring& password, const ProgressCallback* progress)
+	long Converter::LoadAndConvert(const std::wstring& strSrcFile, const std::wstring& strDstDirectory, const std::wstring& password, const ProgressCallback* progress, bool &bMacros)
 	{
         long result = S_FALSE;
 
@@ -219,7 +217,7 @@ namespace DocFileFormat
 
             if (result == S_OK)
 			{
-				docx.SaveDocument();
+				docx.SaveDocument(bMacros);
 
                 if (progress)progress->OnProgress(progress->caller, DOC_ONPROGRESSEVENT_ID, 1000000);
 

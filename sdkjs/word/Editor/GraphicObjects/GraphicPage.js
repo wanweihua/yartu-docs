@@ -1,5 +1,5 @@
 /*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -439,7 +439,7 @@ CGraphicPage.prototype =
         for(var _object_index = 0; _object_index < this.wrappingObjects.length; ++_object_index)
         {
             drawing = this.wrappingObjects[_object_index];
-            if(!(drawing.parent && drawing.parent.DocumentContent && drawing.parent.DocumentContent.Is_TableCellContent()))
+            if(!(drawing.parent && drawing.parent.DocumentContent && drawing.parent.DocumentContent.IsTableCellContent()))
             {
                 drawing.draw(graphics);
             }

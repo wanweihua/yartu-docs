@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -31,7 +31,9 @@
  */
 #ifndef FILE_WRITER
 #define FILE_WRITER
+
 #include "../../DesktopEditor/common/Path.h"
+#include "../../Common/DocxFormat/Source/DocxFormat/Media/VbaProject.h"
 
 #include "NumberingWriter.h"
 #include "fontTableWriter.h"
@@ -75,6 +77,8 @@ namespace Writers
 		DocumentRelsWriter		m_oDocumentRelsWriter;
 		WebSettingsWriter		m_oWebSettingsWriter;
 		DefaultThemeWriter		m_oTheme;
+		
+		smart_ptr<OOX::VbaProject>		m_pVbaProject;
 	
  		NSBinPptxRW::CDrawingConverter* m_pDrawingConverter;
 		bool							m_bSaveChartAsImg;

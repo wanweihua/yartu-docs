@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -72,7 +72,7 @@ public:
 
 		if (m_Data)
 		{
-            rdUShort	=	DocFormatUtils::FormatUtils::BytesToUInt16 (m_Data, m_Position, m_Size);
+            rdUShort	=	DocFileFormat::FormatUtils::BytesToUInt16 (m_Data, m_Position, m_Size);
 			m_Position	+=	sizeof(rdUShort);
 		}
 
@@ -85,7 +85,7 @@ public:
 
 		if (m_Data)
 		{
-            rdShort		=	DocFormatUtils::FormatUtils::BytesToInt16 (m_Data, m_Position, m_Size);
+            rdShort		=	DocFileFormat::FormatUtils::BytesToInt16 (m_Data, m_Position, m_Size);
 			m_Position	+=	sizeof(rdShort);
 		}
 
@@ -98,7 +98,7 @@ public:
 
 		if (m_Data)
 		{
-            rdInt		=	DocFormatUtils::FormatUtils::BytesToInt32 (m_Data, m_Position, m_Size);
+            rdInt		=	DocFileFormat::FormatUtils::BytesToInt32 (m_Data, m_Position, m_Size);
 			m_Position	+=	sizeof(rdInt);
 		}
 
@@ -111,7 +111,7 @@ public:
 
 		if (m_Data )
 		{
-            rdUInt		=	DocFormatUtils::FormatUtils::BytesToUInt32 (m_Data, m_Position, m_Size);
+            rdUInt		=	DocFileFormat::FormatUtils::BytesToUInt32 (m_Data, m_Position, m_Size);
 			m_Position	+=	sizeof(rdUInt);
 		}
 

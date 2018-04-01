@@ -1,5 +1,5 @@
 ﻿/*
- * (c) Copyright Ascensio System SIA 2010-2017
+ * (c) Copyright Ascensio System SIA 2010-2018
  *
  * This program is a free software product. You can redistribute it and/or
  * modify it under the terms of the GNU Affero General Public License (AGPL)
@@ -32,26 +32,30 @@
 #pragma once
 
 #include "BiffRecord.h"
+#include "../Biff_structures/FrtHeaderOld.h"
+#include "../Biff_structures/Xnum.h"
 
 namespace XLS
 {
-
-
-// Logical representation of YMult record in BIFF8
 class YMult: public BiffRecord
 {
 	BIFF_RECORD_DEFINE_TYPE_INFO(YMult)
 	BASE_OBJECT_DEFINE_CLASS_NAME(YMult)
 public:
-	YMult();
-	~YMult();
+	YMult(){}
+	~YMult(){}
 
 	BaseObjectPtr clone();
 	
 	void readFields(CFRecord& record);
 	
-	static const ElementType	type = typeYMult;
+	static const ElementType type = typeYMult;
 
+	FrtHeaderOld	frtHeaderOld;
+	short			axmid;
+	Xnum			numLabelMultiplier;
+	bool			fAutoShowMultiplier;
+	bool			fBeingEditted;
 };
 
 } // namespace XLS
